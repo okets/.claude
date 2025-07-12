@@ -16,8 +16,7 @@ shell-snapshots/
 settings.local.json
 
 # Ignore database files (contain session data)
-long-agent-context.db  # Old global database (can be removed)
-project-context.db      # New per-project database
+queryable-context.db      # New per-project database
 *.db
 
 # Ignore Python runtime files

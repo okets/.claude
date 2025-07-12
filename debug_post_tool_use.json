@@ -1,0 +1,16 @@
+{
+  "session_id": "95692a5a-a450-4b4d-b24f-1cf7c4678ae8",
+  "transcript_path": "/Users/hanan/.claude/projects/-Users-hanan--claude/95692a5a-a450-4b4d-b24f-1cf7c4678ae8.jsonl",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "echo \"Testing updated validation system\" > /tmp/test_validation_complete.txt",
+    "description": "Test updated hook system with real data validation"
+  },
+  "tool_response": {
+    "stdout": "",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false
+  }
+}

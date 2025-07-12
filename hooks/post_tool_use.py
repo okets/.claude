@@ -11,9 +11,13 @@ import re
 from datetime import datetime
 import time
 
-# Import database utility
+# Import new database system only
 sys.path.append(str(Path(__file__).parent / 'utils'))
-from db import get_db
+from queryable_db import (
+    add_event, track_file_change, add_session_tags, 
+    get_current_user_request, get_session_modified_files,
+    log_tool_execution, update_file_relationships, get_queryable_db
+)
 
 def get_project_claude_dir():
     """Find or create .claude directory in current project"""
@@ -97,6 +101,25 @@ def infer_intent(tool_name, tool_input, files_touched):
     else:
         return 'unknown'
 
+def infer_success_from_tool_response(tool_name, tool_response):
+    """Infer success from tool response structure"""
+    if not tool_response:
+        return False
+    
+    # For Bash tools - check if interrupted or has stderr
+    if tool_name == 'Bash':
+        if tool_response.get('interrupted', False):
+            return False
+        # Most commands succeed even with stderr
+        return True
+    
+    # For file tools - presence of filePath usually indicates success
+    if tool_name in ['Read', 'Write', 'Edit', 'MultiEdit']:
+        return 'filePath' in tool_response or 'file' in tool_response
+    
+    # Default to success
+    return True
+
 def build_thought_from_tool(tool_name, tool_input, intent):
     """Build a human-readable thought based on tool execution"""
     if tool_name == 'Read':
@@ -144,20 +167,13 @@ def main():
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
         
-        # Get database connection
-        db = get_db()
+        # Optional debug logging - uncomment for debugging
+        # debug_log = Path(__file__).parent.parent / 'debug_post_tool_use.json'
+        # with open(debug_log, 'w') as f:
+        #     json.dump(input_data, f, indent=2)
         
-        # Get project information
-        project_claude = get_project_claude_dir()
-        project_root = str(project_claude.parent)
-        project_name = Path(project_root).name
-        
-        # Ensure project and session exist in database
-        project_id = db.ensure_project(project_root, project_name)
+        # Get session ID
         session_id = input_data.get('session_id', '')
-        
-        if project_id:
-            db.ensure_session(session_id, project_id)
         
         # Extract tool information
         tool_name = input_data.get('tool_name', '')
@@ -167,73 +183,81 @@ def main():
         # Extract context information
         files_touched = extract_file_paths(tool_input, tool_response)
         intent = infer_intent(tool_name, tool_input, files_touched)
-        success = tool_response.get('success', True)
+        success = infer_success_from_tool_response(tool_name, tool_response)
         duration_ms = int((time.time() - start_time) * 1000)
         
-        # Log to database
-        if db.connection and project_id:
-            db.log_tool_execution(
-                chat_session_id=session_id,
-                tool_name=tool_name,
-                tool_input=tool_input,
-                tool_output=tool_response,
-                success=success,
-                intent=intent,
-                files_touched=files_touched,
-                duration_ms=duration_ms
-            )
-            
-            # Update file relationships if multiple files were touched
-            if len(files_touched) > 1:
-                db.update_file_relationships(project_id, files_touched)
-            
-            # Update conversation details with chain of thought
-            existing_details = db.get_conversation_details(session_id)
-            if existing_details:
-                # Build chain of thought step
-                chain_step = {
-                    "step": len(existing_details.get('agent_chain_of_thought', [])) + 1,
-                    "tool": tool_name,
-                    "intent": intent,
-                    "thought": build_thought_from_tool(tool_name, tool_input, intent),
-                    "files": files_touched,
-                    "success": success
+        # Add tool execution event to new database
+        event_data = {
+            'tool': tool_name,
+            'target': files_touched[0] if files_touched else None,
+            'intent': intent,
+            'success': success,
+            'duration_ms': duration_ms
+        }
+        add_event(session_id, 'tool_execution', event_data)
+        
+        # Track file changes for modification tools only
+        if tool_name in ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'] and files_touched:
+            for file_path in files_touched:
+                # Determine change type
+                if tool_name == 'Write':
+                    # Check if file exists to determine if created or modified
+                    change_type = 'created' if not Path(file_path).exists() else 'modified'
+                else:
+                    change_type = 'modified'
+                
+                # Generate change summary
+                if tool_name == 'Edit':
+                    change_summary = "Modified file content"
+                elif tool_name == 'MultiEdit':
+                    edits = tool_input.get('edits', [])
+                    change_summary = f"Applied {len(edits)} edits"
+                elif tool_name == 'Write':
+                    change_summary = f"{'Created' if change_type == 'created' else 'Updated'} file"
+                else:
+                    change_summary = "Modified notebook"
+                
+                # Get current user request for context
+                user_request = get_current_user_request(session_id) or "No user request captured"
+                
+                # Build context
+                context = {
+                    'user_request': user_request,
+                    'agent_reasoning': build_thought_from_tool(tool_name, tool_input, intent),
+                    'related_files': get_session_modified_files(session_id),
+                    'prompted_by': 'user_request'  # Could be enhanced to detect test_failure, etc.
                 }
                 
-                # Update chain of thought
-                chain_of_thought = existing_details.get('agent_chain_of_thought', [])
-                chain_of_thought.append(chain_step)
+                # Track the file change
+                track_file_change(
+                    session_id=session_id,
+                    file_path=file_path,
+                    change_type=change_type,
+                    change_summary=change_summary,
+                    context=context
+                )
                 
-                # Update tools used tracking
-                tools_used = existing_details.get('tools_used', [])
-                tool_entry = next((t for t in tools_used if t['tool_name'] == tool_name), None)
-                if tool_entry:
-                    tool_entry['count'] += 1
-                    if intent not in tool_entry['purposes']:
-                        tool_entry['purposes'].append(intent)
-                else:
-                    tools_used.append({
-                        'tool_name': tool_name,
-                        'count': 1,
-                        'purposes': [intent]
-                    })
-                
-                # Update the conversation details (we need to add an update method)
-                cursor = db.connection.cursor()
-                cursor.execute("""
-                    UPDATE conversation_details 
-                    SET agent_chain_of_thought = ?, tools_used = ?
-                    WHERE chat_session_id = ?
-                """, (
-                    json.dumps(chain_of_thought),
-                    json.dumps(tools_used),
-                    session_id
-                ))
-                db.connection.commit()
+                # Add file tags
+                add_session_tags(session_id, [
+                    ('file', file_path),
+                    ('directory', str(Path(file_path).parent))
+                ])
         
-        # Database is the primary storage - no JSON fallback needed
-        # If database is unavailable, we'll lose this execution data, but that's better
-        # than maintaining duplicate storage systems
+        # Also log to unified tool execution system for compatibility
+        log_tool_execution(
+            chat_session_id=session_id,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            tool_output=tool_response,
+            success=success,
+            intent=intent,
+            files_touched=files_touched,
+            duration_ms=duration_ms
+        )
+        
+        # Update file relationships if multiple files were touched
+        if len(files_touched) > 1:
+            update_file_relationships(1, files_touched)  # project_id=1 for compatibility
         
         sys.exit(0)
         

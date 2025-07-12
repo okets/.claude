@@ -107,7 +107,7 @@ When you work on files, the system can automatically:
 ## Database Storage
 
 All work data is stored in per-project SQLite database at:
-`<project-root>/.claude/project-context.db`
+`<project-root>/.claude/queryable-context.db`
 
 Tables include:
 - `phases` - High-level project phases

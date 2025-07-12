@@ -8,9 +8,9 @@ import sys
 import re
 from pathlib import Path
 
-# Import database utility
+# Import new database system only
 sys.path.append(str(Path(__file__).parent / 'utils'))
-from db import get_db
+from queryable_db import log_security_event
 
 def get_project_root():
     """Find project root by looking for .git directory"""
@@ -124,6 +124,11 @@ def main():
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
         
+        # Optional debug logging - uncomment for debugging
+        # debug_log = Path(__file__).parent.parent / 'debug_pre_tool_use.json'
+        # with open(debug_log, 'w') as f:
+        #     json.dump(input_data, f, indent=2)
+        
         tool_name = input_data.get('tool_name', '')
         tool_input = input_data.get('tool_input', {})
         
@@ -133,20 +138,14 @@ def main():
             print("Use .env.sample for template files instead", file=sys.stderr)
             
             # Log blocked operation to database
-            project_root = get_project_root()
-            db = get_db()
-            project_id = db.ensure_project(str(project_root), project_root.name)
             session_id = input_data.get('session_id', '')
-            
-            if project_id:
-                db.ensure_session(session_id, project_id)
-                db.log_security_event(
-                    chat_session_id=session_id,
-                    event_type='blocked',
-                    tool_name=tool_name,
-                    tool_input=tool_input,
-                    reason='Access to .env files prohibited'
-                )
+            log_security_event(
+                chat_session_id=session_id,
+                event_type='blocked',
+                tool_name=tool_name,
+                tool_input=tool_input,
+                reason='Access to .env files prohibited'
+            )
             
             sys.exit(2)  # Exit code 2 blocks tool call and shows error to Claude
         
@@ -160,20 +159,14 @@ def main():
                 print("Only operations within the current project are allowed", file=sys.stderr)
                 
                 # Log blocked operation to database
-                project_root = get_project_root()
-                db = get_db()
-                project_id = db.ensure_project(str(project_root), project_root.name)
                 session_id = input_data.get('session_id', '')
-                
-                if project_id:
-                    db.ensure_session(session_id, project_id)
-                    db.log_security_event(
-                        chat_session_id=session_id,
-                        event_type='blocked',
-                        tool_name=tool_name,
-                        tool_input=tool_input,
-                        reason='Operation outside project directory blocked'
-                    )
+                log_security_event(
+                    chat_session_id=session_id,
+                    event_type='blocked',
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                    reason='Operation outside project directory blocked'
+                )
                 
                 sys.exit(2)
             
@@ -196,30 +189,15 @@ def main():
                 
                 print("✅ Git command proceeding...", file=sys.stderr)
         
-        # Enhanced database logging with fallback
-        project_root = get_project_root()
-        project_claude = project_root / '.claude'
-        project_claude.mkdir(exist_ok=True)
-        
-        # Get database connection
-        db = get_db()
-        
-        # Ensure project exists in database
-        project_name = project_root.name
-        project_id = db.ensure_project(str(project_root), project_name)
+        # Log security event to database
         session_id = input_data.get('session_id', '')
-        
-        if project_id:
-            db.ensure_session(session_id, project_id)
-            
-            # Log security event to database
-            db.log_security_event(
-                chat_session_id=session_id,
-                event_type='allowed',
-                tool_name=tool_name,
-                tool_input=tool_input,
-                reason='Security check passed'
-            )
+        log_security_event(
+            chat_session_id=session_id,
+            event_type='allowed',
+            tool_name=tool_name,
+            tool_input=tool_input,
+            reason='Security check passed'
+        )
         
         # Database is the primary storage - no JSON fallback needed
         

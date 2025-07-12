@@ -82,6 +82,29 @@ def announce_notification():
         pass
 
 
+def get_first_user_message_from_transcript(transcript_path):
+    """Extract the first user message from the transcript file."""
+    try:
+        if not os.path.exists(transcript_path):
+            return None
+            
+        with open(transcript_path, 'r') as f:
+            for line in f:
+                try:
+                    entry = json.loads(line.strip())
+                    # Look for first user message (parentUuid is null)
+                    if (entry.get('type') == 'user' and 
+                        entry.get('parentUuid') is None and
+                        'message' in entry and
+                        'content' in entry['message']):
+                        return entry['message']['content']
+                except json.JSONDecodeError:
+                    continue
+        return None
+    except Exception:
+        return None
+
+
 def main():
     try:
         # Parse command line arguments
@@ -92,50 +115,79 @@ def main():
         # Read JSON input from stdin
         input_data = json.loads(sys.stdin.read())
         
-        # Debug: Log input data to understand structure
-        debug_log = Path(__file__).parent.parent / 'debug_notification.json'
-        with open(debug_log, 'w') as f:
-            json.dump(input_data, f, indent=2)
-        
-        # Import database utility
-        sys.path.append(str(Path(__file__).parent / 'utils'))
-        from db import get_db
-        
-        # Get database connection
-        db = get_db()
-        
-        # Check if this is a user message (first message in conversation)
-        message = input_data.get('message', '')
+        # Get session info
         session_id = input_data.get('session_id', '')
+        transcript_path = input_data.get('transcript_path', '')
+        
+        # Extract actual user request from transcript
+        user_request = None
+        if transcript_path:
+            user_request = get_first_user_message_from_transcript(transcript_path)
+        
+        # Debug: Log input data and extracted user request
+        debug_log = Path(__file__).parent.parent / 'debug_notification.json'
+        debug_data = {
+            'input_data': input_data,
+            'extracted_user_request': user_request,
+            'transcript_path': transcript_path
+        }
+        with open(debug_log, 'w') as f:
+            json.dump(debug_data, f, indent=2)
+        
+        # Import new queryable database utility
+        sys.path.append(str(Path(__file__).parent / 'utils'))
+        from queryable_db import create_session, add_event, add_session_tags, update_session_summary
         
         # Store first user message as the conversation request
-        if message and session_id and message != 'Claude is waiting for your input':
+        if user_request and session_id:
             # Get project information
             project_root = Path.cwd()
-            while project_root != project_root.parent:
-                if (project_root / '.git').exists():
+            project_path = str(project_root)
+            
+            # Extract model from input or use default
+            model = input_data.get('model', 'claude-unknown')
+            
+            # Create session and first event
+            create_session(session_id, project_path, model)
+            
+            # Add session start event with user request
+            event_id = add_event(session_id, 'session_start', {
+                'user_request': user_request,
+                'model': model,
+                'project_path': project_path
+            })
+            
+            # Update session with user request summary
+            summary = user_request[:100] + '...' if len(user_request) > 100 else user_request
+            update_session_summary(session_id, summary)
+            
+            # Generate initial tags
+            tags = [
+                ('model', model),
+            ]
+            
+            # Extract topics from message (simple keyword matching for now)
+            message_lower = user_request.lower()
+            topic_keywords = {
+                'auth': 'authentication',
+                'login': 'authentication', 
+                'test': 'testing',
+                'bug': 'bug-fix',
+                'fix': 'bug-fix',
+                'feature': 'feature-development',
+                'implement': 'feature-development',
+                'refactor': 'refactoring',
+                'clean': 'refactoring',
+                'doc': 'documentation',
+                'readme': 'documentation'
+            }
+            
+            for keyword, topic in topic_keywords.items():
+                if keyword in message_lower:
+                    tags.append(('topic', topic))
                     break
-                project_root = project_root.parent
             
-            project_id = db.ensure_project(str(project_root), project_root.name)
-            
-            if project_id and db.connection:
-                # Check if this session already has a conversation detail entry
-                existing = db.get_conversation_details(session_id)
-                
-                if not existing:
-                    # This is the first user message - capture it
-                    # Generate a summary (in real implementation, could use LLM)
-                    summary = message[:100] if len(message) > 100 else message
-                    
-                    # Save initial conversation details
-                    db.save_conversation_details(
-                        chat_session_id=session_id,
-                        project_id=project_id,
-                        user_request_summary=summary,
-                        user_request_raw=message,
-                        agent_model=input_data.get('model', 'unknown')
-                    )
+            add_session_tags(session_id, tags)
         
         # Announce notification via TTS only if --notify flag is set
         # Skip TTS for the generic "Claude is waiting for your input" message

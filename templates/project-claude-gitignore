@@ -2,10 +2,7 @@
 # Add this to your project's .claude/.gitignore
 
 # Database file - contains all context and history for this project
-project-context.db
-
-# JSON log files (fallback when DB unavailable)
-logs/
+queryable-context.db
 
 # Any temporary files
 *.tmp

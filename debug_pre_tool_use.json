@@ -1,0 +1,11 @@
+{
+  "session_id": "95692a5a-a450-4b4d-b24f-1cf7c4678ae8",
+  "transcript_path": "/Users/hanan/.claude/projects/-Users-hanan--claude/95692a5a-a450-4b4d-b24f-1cf7c4678ae8.jsonl",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/Users/hanan/.claude/hooks/pre_tool_use.py",
+    "old_string": "        # Debug: Log input data to understand actual structure\n        debug_log = Path(__file__).parent.parent / 'debug_pre_tool_use.json'\n        with open(debug_log, 'w') as f:\n            json.dump(input_data, f, indent=2)",
+    "new_string": "        # Optional debug logging - uncomment for debugging\n        # debug_log = Path(__file__).parent.parent / 'debug_pre_tool_use.json'\n        # with open(debug_log, 'w') as f:\n        #     json.dump(input_data, f, indent=2)"
+  }
+}

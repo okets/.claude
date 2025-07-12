@@ -26,8 +26,8 @@ class ClaudeDB:
             project_claude_dir = project_root / '.claude'
             project_claude_dir.mkdir(exist_ok=True)
             
-            # Database lives in project's .claude directory
-            db_path = project_claude_dir / 'project-context.db'
+            # Database lives in project's .claude directory - legacy support
+            db_path = project_claude_dir / 'queryable-context.db'
             
             self.connection = sqlite3.connect(str(db_path), check_same_thread=False)
             self.connection.row_factory = sqlite3.Row  # Dict-like access

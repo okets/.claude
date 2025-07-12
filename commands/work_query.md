@@ -1,6 +1,6 @@
-# Work Query - Advanced Project Intelligence
+# Work Query - Contextual Changelog & Project Intelligence
 
-Query your project work history, phases, tasks, and file relationships using natural language.
+Query your project's contextual changelog, understanding not just what changed but why it changed. Every file modification is tracked with full context including user requests, reasoning, and related changes.
 
 ## Usage
 
@@ -17,73 +17,117 @@ Query your project work history, phases, tasks, and file relationships using nat
 
 ## Query Types
 
-### Recent Activity
+### Contextual File Changelog
+```
+/work_query why did auth.js change?
+/work_query show me the evolution of Login.tsx
+/work_query what prompted changes to the config file?
+/work_query history of authentication implementation
+```
+
+### Recent Sessions with Full Context
 ```
 /work_query what did I work on today?
-/work_query recent file changes
-/work_query show me git operations from yesterday
+/work_query show me complex tasks from this week
+/work_query sessions where tests failed multiple times
+/work_query what did opus model accomplish?
 ```
 
-### File Intelligence
+### File Relationships & Co-changes
 ```
-/work_query files related to user authentication
-/work_query what files are commonly modified together?
-/work_query show file relationships for src/components/Login.tsx
-```
-
-### Task & Phase Tracking
-```
-/work_query active tasks
-/work_query tasks in testing phase
-/work_query completed assignments this week
-/work_query what's blocking me?
+/work_query what files change together with auth.js?
+/work_query files commonly modified during authentication work
+/work_query show related changes when I modify package.json
 ```
 
-### Pattern Analysis
+### Complexity & Pattern Analysis
 ```
-/work_query common workflows in this project
-/work_query how do I usually test components?
-/work_query debugging patterns
+/work_query show me massive tasks
+/work_query simple bug fixes from last week
+/work_query what makes tasks complex in this project?
+/work_query common refactoring patterns
 ```
 
-### Security & Issues
+### Tagged Navigation
 ```
-/work_query blocked operations
-/work_query security warnings
-/work_query failed tool executions
+/work_query authentication work
+/work_query all testing sessions
+/work_query bug-fix conversations
+/work_query feature development by sonnet
 ```
 
 ## Examples
 
 ```bash
-# Quick project overview
-/work_query overview
+# Understand why a file changed
+/work_query "why did src/auth.js change?"
+→ Shows: user request, reasoning, test results, related files
 
-# Find files you work on together
-/work_query "files that change together with package.json"
+# Track file evolution
+/work_query "show me all changes to Login.tsx with context"
+→ Timeline of modifications with reasons and outcomes
 
-# Track testing workflow
-/work_query "show me testing related activities"
+# Find complex work
+/work_query "show me complex authentication tasks"
+→ Sessions tagged as complex + authentication topic
 
-# Phase progress
-/work_query "progress on authentication phase"
+# Analyze patterns
+/work_query "what files usually change together?"
+→ Co-modification frequency analysis
 
-# Debug failed operations
-/work_query "why did my last git push fail?"
+# Model-specific queries
+/work_query "what bugs did opus fix?"
+→ Sessions by opus model with bug-fix tags
 ```
 
-## Smart Features
+## Database Schema
 
-- **Intent Recognition**: Understands natural language queries
-- **Context Aware**: Considers current project and recent work
-- **Relationship Mapping**: Shows how files/tasks connect
-- **Pattern Detection**: Identifies common workflows
-- **Time Intelligence**: Handles relative time queries
+The system uses a new `queryable-context.db` with an event-driven architecture:
 
-## Database Requirements
+### Core Tables
 
-Uses per-project SQLite database automatically created at:
-- `<project-root>/.claude/project-context.db`
+1. **session_events** - Single event stream for all activities
+   - Event types: session_start, tool_execution, file_change, session_end
+   - Parent-child relationships for nested operations
 
-No configuration required - database is created on first use.
-Falls back to JSON logs in `.claude/logs/` if database unavailable.
+2. **file_changes** - Contextual changelog
+   - Tracks only modifications (not reads)
+   - Links each change to user request and reasoning
+
+3. **change_context** - The "why" behind each change
+   - User request that prompted the change
+   - Agent reasoning and thought process
+   - Test results and iteration count
+
+4. **session_tags** - Multi-dimensional navigation
+   - Tag types: complexity, topic, file, directory, model, outcome
+   - Enables fast lookups by any dimension
+
+### Key Features
+
+- **Complete Traceability**: Every file change traces back to the original user request
+- **Rich Context**: Understand not just what changed, but why and what else was affected
+- **Smart Tagging**: Automatic categorization by complexity, topics, and patterns
+- **Fast Navigation**: Indexed tags enable sub-second queries even with millions of events
+
+## Query Implementation
+
+Queries are processed through natural language understanding that maps to optimized SQL:
+
+```sql
+-- Example: "why did auth.js change?"
+SELECT 
+    fc.timestamp,
+    fc.change_summary,
+    cc.user_request,
+    cc.agent_reasoning,
+    cc.test_results
+FROM file_changes fc
+JOIN change_context cc ON fc.id = cc.change_id
+WHERE fc.file_path LIKE '%auth.js%'
+ORDER BY fc.timestamp DESC
+```
+
+## Database Location
+
+- Primary: `<project-root>/.claude/queryable-context.db`

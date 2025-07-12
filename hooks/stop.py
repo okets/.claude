@@ -14,9 +14,12 @@ from datetime import datetime
 import re
 from typing import List, Dict, Set
 
-# Import database utility
+# Import new database system only
 sys.path.append(str(Path(__file__).parent / 'utils'))
-from db import get_db
+from queryable_db import (
+    add_event, add_session_tags, close_session,
+    get_queryable_db, save_conversation_summary
+)
 
 try:
     from dotenv import load_dotenv
@@ -375,81 +378,70 @@ def main():
         # Try to get model info from input
         model_info = input_data.get("model", input_data.get("agent_model", "unknown"))
 
-        # Get database connection and project info
-        db = get_db()
-        project_claude = get_project_claude_dir()
-        project_root = str(project_claude.parent)
-        project_name = Path(project_root).name
+        # Use new database system only
         
-        # Ensure project exists in database
-        project_id = db.ensure_project(project_root, project_name)
+        # Add session end event to new database
+        add_event(session_id, 'session_end', {
+            'model': model_info,
+            'stop_hook_active': stop_hook_active
+        })
         
-        if db.connection and project_id and session_id:
-            # Analyze the session for intelligent summary
-            analysis = analyze_session_for_summary(session_id, project_id, db)
+        # Analyze session for new database
+        queryable_db = get_queryable_db()
+        if queryable_db.connection and session_id:
+            cursor = queryable_db.connection.cursor()
             
-            if analysis:
-                # Generate summary
-                summary = generate_summary_from_analysis(analysis)
-                
-                # Extract lessons learned
-                lessons_learned = extract_lessons_learned(
-                    analysis.get('executions', []),
-                    analysis.get('accomplishments', ''),
-                    analysis.get('files_mentioned', [])
-                )
-                
-                # Save conversation summary (existing table)
-                success = db.save_conversation_summary(
-                    chat_session_id=session_id,
-                    project_id=project_id,
-                    summary=summary,
-                    key_topics=analysis.get('key_topics'),
-                    files_mentioned=analysis.get('files_mentioned'),
-                    phase_tags=analysis.get('phase_tags'),
-                    task_tags=analysis.get('task_tags'),
-                    assignment_tags=None,  # Could be enhanced later
-                    accomplishments=analysis.get('accomplishments'),
-                    next_steps=None  # Could be inferred from incomplete tasks
-                )
-                
-                if success:
-                    print(f"📝 Session summary saved: {summary}", file=sys.stderr)
-                
-                # Update conversation details with final summary and lessons
-                existing_details = db.get_conversation_details(session_id)
-                if existing_details:
-                    # Calculate session duration
-                    start_time = existing_details.get('created_at')
-                    duration_seconds = None
-                    if start_time:
-                        try:
-                            from datetime import datetime
-                            start_dt = datetime.fromisoformat(start_time.replace(' ', 'T'))
-                            duration_seconds = int((datetime.now() - start_dt).total_seconds())
-                        except:
-                            pass
-                    
-                    # Update with final summary and lessons learned
-                    cursor = db.connection.cursor()
-                    cursor.execute("""
-                        UPDATE conversation_details 
-                        SET agent_summary = ?, lessons_learned = ?, duration_seconds = ?, agent_model = ?
-                        WHERE chat_session_id = ?
-                    """, (
-                        summary,
-                        json.dumps(lessons_learned) if lessons_learned else None,
-                        duration_seconds,
-                        model_info,
-                        session_id
-                    ))
-                    db.connection.commit()
-                    
-                    if lessons_learned:
-                        print(f"💡 Lessons learned: {', '.join(lessons_learned[:2])}", file=sys.stderr)
-
-        # Session data is now stored in the database via conversation_summaries
-        # The old JSON logging is obsolete
+            # Get session statistics
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_events,
+                    SUM(CASE WHEN event_type = 'file_change' THEN 1 ELSE 0 END) as file_changes,
+                    SUM(CASE WHEN event_type = 'tool_execution' THEN 1 ELSE 0 END) as tool_executions
+                FROM session_events
+                WHERE session_id = ?
+            """, (session_id,))
+            stats = cursor.fetchone()
+            
+            # Estimate token count (rough approximation)
+            total_tokens = stats['total_events'] * 500  # Rough estimate
+            
+            # Determine complexity based on events and tokens
+            if total_tokens < 1000 and stats['file_changes'] < 2:
+                complexity = 'simple'
+                complexity_metadata = {'reason': 'Quick task with minimal changes'}
+            elif total_tokens < 5000 and stats['file_changes'] < 5:
+                complexity = 'moderate'
+                complexity_metadata = {'reason': 'Standard task with some changes'}
+            elif total_tokens < 15000 and stats['file_changes'] < 10:
+                complexity = 'complex'
+                complexity_metadata = {'reason': 'Multi-step task with significant changes'}
+            else:
+                complexity = 'massive'
+                complexity_metadata = {'reason': 'Major implementation with extensive changes'}
+            
+            # Add complexity tag
+            add_session_tags(session_id, [
+                ('complexity', complexity, {
+                    'tokens': total_tokens,
+                    'file_changes': stats['file_changes'],
+                    'tool_executions': stats['tool_executions'],
+                    **complexity_metadata
+                })
+            ])
+            
+            # Analyze outcomes
+            outcome = 'completed'  # Could be enhanced to detect failures
+            add_session_tags(session_id, [('outcome', outcome)])
+            
+            # Close session with metadata
+            close_session(
+                session_id=session_id,
+                final_outcome=outcome,
+                total_tokens=total_tokens,
+                total_file_changes=stats['file_changes']
+            )
+            
+            print(f"📝 Session analysis complete: {complexity} complexity, {stats['file_changes']} file changes", file=sys.stderr)
 
         # Announce completion via TTS
         announce_completion()
