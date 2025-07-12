@@ -295,6 +295,49 @@ Simply use Claude Code as normal. The system automatically:
 3. Tags sessions by complexity, topics, and outcomes
 4. Enables rich queries through `/work_query`
 
+## Slash Commands Integration
+
+The system provides powerful slash commands for querying your contextual changelog with natural language:
+
+### Available Commands
+
+- **`/work_query`** - Query file changes, relationships, and patterns
+- **`/manage_work`** - Manage project phases, tasks, and assignments
+
+### Example Usage
+
+```bash
+# Query why files changed
+/work_query "why did auth.js change?"
+→ Shows: user request, reasoning, test results, related files
+
+# Find patterns
+/work_query "what files change with auth.js?"
+→ Shows: co-modification patterns and relationships
+
+# Complexity analysis  
+/work_query "show me complex authentication tasks"
+→ Finds: sessions tagged as complex + authentication topic
+
+# Project management
+/manage_work overview
+→ Shows: current phases, active tasks, progress
+```
+
+### When to Use Slash Commands vs Direct SQL
+
+**Use Slash Commands When:**
+- You want **standardized workflows** and consistent formatting
+- You need **natural language queries** without writing SQL
+- You want **team-shared patterns** that work across developers
+- You prefer **quick shortcuts** for common analysis tasks
+
+**Use Direct SQL When:**
+- You need **custom analysis** beyond predefined patterns
+- You want **maximum flexibility** in data exploration
+- You're building **ad-hoc reports** or unique queries
+- You prefer **full control** over query logic
+
 ## Example Workflow
 
 1. **User Request**: "Fix the authentication timeout issue"

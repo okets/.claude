@@ -3,7 +3,7 @@
     "session_id": "95692a5a-a450-4b4d-b24f-1cf7c4678ae8",
     "transcript_path": "/Users/hanan/.claude/projects/-Users-hanan--claude/95692a5a-a450-4b4d-b24f-1cf7c4678ae8.jsonl",
     "hook_event_name": "Notification",
-    "message": "Claude is waiting for your input"
+    "message": "Claude needs your permission to use Bash"
   },
   "extracted_user_request": "read @README.md @CONTEXTUAL-CHANGELOG-PLAN.md  what are we trying to create?",
   "transcript_path": "/Users/hanan/.claude/projects/-Users-hanan--claude/95692a5a-a450-4b4d-b24f-1cf7c4678ae8.jsonl"
