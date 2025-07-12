@@ -186,11 +186,11 @@ class WorkIntelligence:
             SELECT te.tool_name, te.intent, te.files_touched, te.executed_at,
                    te.success, te.duration_ms
             FROM tool_executions te
-            JOIN sessions s ON te.session_id = s.id
-            WHERE s.project_id = %s 
-            AND te.executed_at BETWEEN %s AND %s
+            JOIN sessions s ON te.chat_session_id = s.id
+            WHERE s.project_id = ?
+            AND te.executed_at BETWEEN ? AND ?
             ORDER BY te.executed_at DESC
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, start_date, end_date, limit))
         
         executions = cursor.fetchall()
@@ -220,24 +220,32 @@ class WorkIntelligence:
     def _query_file_relationships(self, cursor, file_filters, limit):
         """Query file co-modification relationships"""
         if file_filters:
-            # Query specific file relationships
-            placeholders = ','.join(['%s'] * len(file_filters))
+            # Query specific file relationships - build SQLite-compatible query
+            conditions = []
+            params = [self.project_id]
+            
+            for f in file_filters:
+                conditions.append("(file1_path LIKE ? OR file2_path LIKE ?)")
+                params.extend([f'%{f}%', f'%{f}%'])
+            
+            where_clause = " OR ".join(conditions)
+            params.append(limit)
+            
             cursor.execute(f"""
                 SELECT file1_path, file2_path, co_modification_count, last_modified_together
                 FROM file_relationships
-                WHERE project_id = %s
-                AND (file1_path LIKE ANY(ARRAY[{placeholders}]) OR file2_path LIKE ANY(ARRAY[{placeholders}]))
+                WHERE project_id = ? AND ({where_clause})
                 ORDER BY co_modification_count DESC
-                LIMIT %s
-            """, [self.project_id] + [f'%{f}%' for f in file_filters] * 2 + [limit])
+                LIMIT ?
+            """, params)
         else:
             # Query all relationships
             cursor.execute("""
                 SELECT file1_path, file2_path, co_modification_count, last_modified_together
                 FROM file_relationships
-                WHERE project_id = %s
+                WHERE project_id = ?
                 ORDER BY co_modification_count DESC
-                LIMIT %s
+                LIMIT ?
             """, (self.project_id, limit))
         
         relationships = cursor.fetchall()
@@ -261,10 +269,10 @@ class WorkIntelligence:
             FROM tasks t
             JOIN phases ph ON t.phase_id = ph.id
             LEFT JOIN assignments a ON t.id = a.task_id
-            WHERE ph.project_id = %s AND t.status IN ('todo', 'in_progress')
+            WHERE ph.project_id = ? AND t.status IN ('todo', 'in_progress')
             GROUP BY t.id, ph.id
             ORDER BY t.priority DESC, t.created_at
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, limit))
         
         tasks = cursor.fetchall()
@@ -282,7 +290,17 @@ class WorkIntelligence:
     def _query_phase_progress(self, cursor, phase_filters, limit):
         """Query phase progress and status"""
         if phase_filters:
-            placeholders = ','.join(['%s'] * len(phase_filters))
+            # Build SQLite-compatible query
+            conditions = []
+            params = [self.project_id]
+            
+            for f in phase_filters:
+                conditions.append("ph.name LIKE ?")
+                params.append(f'%{f}%')
+            
+            where_clause = " OR ".join(conditions)
+            params.append(limit)
+            
             cursor.execute(f"""
                 SELECT ph.name, ph.description, ph.status, ph.started_at, ph.completed_at,
                        COUNT(t.id) as total_tasks,
@@ -290,12 +308,11 @@ class WorkIntelligence:
                        COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks
                 FROM phases ph
                 LEFT JOIN tasks t ON ph.id = t.phase_id
-                WHERE ph.project_id = %s
-                AND ph.name LIKE ANY(ARRAY[{placeholders}])
+                WHERE ph.project_id = ? AND ({where_clause})
                 GROUP BY ph.id
                 ORDER BY ph.created_at
-                LIMIT %s
-            """, [self.project_id] + [f'%{f}%' for f in phase_filters] + [limit])
+                LIMIT ?
+            """, params)
         else:
             cursor.execute("""
                 SELECT ph.name, ph.description, ph.status, ph.started_at, ph.completed_at,
@@ -304,10 +321,10 @@ class WorkIntelligence:
                        COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks
                 FROM phases ph
                 LEFT JOIN tasks t ON ph.id = t.phase_id
-                WHERE ph.project_id = %s
+                WHERE ph.project_id = ?
                 GROUP BY ph.id
                 ORDER BY ph.created_at
-                LIMIT %s
+                LIMIT ?
             """, (self.project_id, limit))
         
         phases = cursor.fetchall()
@@ -327,11 +344,11 @@ class WorkIntelligence:
         cursor.execute("""
             SELECT event_type, tool_name, reason, created_at, tool_input
             FROM security_events se
-            JOIN sessions s ON se.session_id = s.id
-            WHERE s.project_id = %s
-            AND se.created_at BETWEEN %s AND %s
+            JOIN sessions s ON se.chat_session_id = s.id
+            WHERE s.project_id = ?
+            AND se.created_at BETWEEN ? AND ?
             ORDER BY se.created_at DESC
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, start_date, end_date, limit))
         
         events = cursor.fetchall()
@@ -351,9 +368,9 @@ class WorkIntelligence:
         cursor.execute("""
             SELECT pattern_name, tool_sequence, frequency_count, last_used
             FROM work_patterns
-            WHERE project_id = %s
+            WHERE project_id = ?
             ORDER BY frequency_count DESC
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, limit))
         
         patterns = cursor.fetchall()
@@ -372,12 +389,12 @@ class WorkIntelligence:
         cursor.execute("""
             SELECT te.tool_input, te.executed_at, te.success, te.files_touched
             FROM tool_executions te
-            JOIN sessions s ON te.session_id = s.id
-            WHERE s.project_id = %s
+            JOIN sessions s ON te.chat_session_id = s.id
+            WHERE s.project_id = ?
             AND te.intent = 'git-operation'
-            AND te.executed_at BETWEEN %s AND %s
+            AND te.executed_at BETWEEN ? AND ?
             ORDER BY te.executed_at DESC
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, start_date, end_date, limit))
         
         git_ops = cursor.fetchall()
@@ -398,12 +415,12 @@ class WorkIntelligence:
                    AVG(duration_ms) as avg_duration,
                    COUNT(CASE WHEN success = false THEN 1 END) as failure_count
             FROM tool_executions te
-            JOIN sessions s ON te.session_id = s.id
-            WHERE s.project_id = %s
-            AND te.executed_at BETWEEN %s AND %s
+            JOIN sessions s ON te.chat_session_id = s.id
+            WHERE s.project_id = ?
+            AND te.executed_at BETWEEN ? AND ?
             GROUP BY tool_name, intent
             ORDER BY usage_count DESC
-            LIMIT %s
+            LIMIT ?
         """, (self.project_id, start_date, end_date, limit))
         
         usage = cursor.fetchall()

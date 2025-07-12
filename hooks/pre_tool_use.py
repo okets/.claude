@@ -141,7 +141,7 @@ def main():
             if project_id:
                 db.ensure_session(session_id, project_id)
                 db.log_security_event(
-                    session_id=session_id,
+                    chat_session_id=session_id,
                     event_type='blocked',
                     tool_name=tool_name,
                     tool_input=tool_input,
@@ -168,7 +168,7 @@ def main():
                 if project_id:
                     db.ensure_session(session_id, project_id)
                     db.log_security_event(
-                        session_id=session_id,
+                        chat_session_id=session_id,
                         event_type='blocked',
                         tool_name=tool_name,
                         tool_input=tool_input,
@@ -214,7 +214,7 @@ def main():
             
             # Log security event to database
             db.log_security_event(
-                session_id=session_id,
+                chat_session_id=session_id,
                 event_type='allowed',
                 tool_name=tool_name,
                 tool_input=tool_input,

@@ -82,10 +82,8 @@ Query your project work history, phases, tasks, and file relationships using nat
 
 ## Database Requirements
 
-Requires MySQL database with environment variables:
-- `CLAUDE_DB_HOST` (default: localhost)
-- `CLAUDE_DB_USER` (default: root) 
-- `CLAUDE_DB_PASSWORD`
-- `CLAUDE_DB_NAME` (default: claude_intelligence)
+Uses per-project SQLite database automatically created at:
+- `<project-root>/.claude/project-context.db`
 
-Falls back to JSON logs if database unavailable.
+No configuration required - database is created on first use.
+Falls back to JSON logs in `.claude/logs/` if database unavailable.

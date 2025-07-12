@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run ~/.claude/hooks/stop.py --chat"
+            "command": "uv run ~/.claude/hooks/stop.py"
           }
         ]
       }
@@ -72,5 +72,6 @@
         ]
       }
     ]
-  }
+  },
+  "model": "opus"
 }

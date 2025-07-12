@@ -133,7 +133,7 @@ def main():
         # Log to database
         if db.connection and project_id:
             db.log_tool_execution(
-                session_id=session_id,
+                chat_session_id=session_id,
                 tool_name=tool_name,
                 tool_input=tool_input,
                 tool_output=tool_response,

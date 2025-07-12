@@ -156,7 +156,7 @@ def get_project_claude_dir():
     project_claude.mkdir(exist_ok=True)
     return project_claude
 
-def analyze_session_for_summary(session_id: str, project_id: int, db) -> Dict:
+def analyze_session_for_summary(chat_session_id: str, project_id: int, db) -> Dict:
     """Analyze the session's tool executions to generate intelligent summary"""
     if not db.connection:
         return {}
@@ -168,9 +168,9 @@ def analyze_session_for_summary(session_id: str, project_id: int, db) -> Dict:
         cursor.execute("""
             SELECT tool_name, intent, files_touched, tool_input, success, executed_at
             FROM tool_executions
-            WHERE session_id = ?
+            WHERE chat_session_id = ?
             ORDER BY executed_at
-        """, (session_id,))
+        """, (chat_session_id,))
         
         executions = [dict(row) for row in cursor.fetchall()]
         
@@ -297,10 +297,19 @@ def generate_summary_from_analysis(analysis: Dict) -> str:
 
 def main():
     try:
+        # Debug logging to understand the issue
+        with open('/tmp/stop_hook_debug.log', 'a') as f:
+            f.write(f"\n{datetime.now()}: stop.py called with args: {sys.argv}\n")
+            f.write(f"Working directory: {os.getcwd()}\n")
+        
         # Parse command line arguments
         parser = argparse.ArgumentParser()
-        parser.add_argument('--chat', action='store_true', help='Copy transcript to chat.json')
+        # Add --chat argument to prevent error (but ignore it)
+        parser.add_argument('--chat', action='store_true', help='Deprecated flag - ignored')
         args = parser.parse_args()
+        
+        if args.chat:
+            print("Warning: --chat flag is deprecated and will be ignored", file=sys.stderr)
         
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
@@ -328,7 +337,7 @@ def main():
                 
                 # Save conversation summary
                 success = db.save_conversation_summary(
-                    session_id=session_id,
+                    chat_session_id=session_id,
                     project_id=project_id,
                     summary=summary,
                     key_topics=analysis.get('key_topics'),
@@ -343,50 +352,8 @@ def main():
                 if success:
                     print(f"📝 Session summary saved: {summary}", file=sys.stderr)
 
-        # Ensure log directory exists (fallback)
-        log_dir = os.path.join(os.getcwd(), "logs")
-        os.makedirs(log_dir, exist_ok=True)
-        log_path = os.path.join(log_dir, "stop.json")
-
-        # Read existing log data or initialize empty list
-        if os.path.exists(log_path):
-            with open(log_path, 'r') as f:
-                try:
-                    log_data = json.load(f)
-                except (json.JSONDecodeError, ValueError):
-                    log_data = []
-        else:
-            log_data = []
-        
-        # Append new data
-        log_data.append(input_data)
-        
-        # Write back to file with formatting
-        with open(log_path, 'w') as f:
-            json.dump(log_data, f, indent=2)
-        
-        # Handle --chat switch
-        if args.chat and 'transcript_path' in input_data:
-            transcript_path = input_data['transcript_path']
-            if os.path.exists(transcript_path):
-                # Read .jsonl file and convert to JSON array
-                chat_data = []
-                try:
-                    with open(transcript_path, 'r') as f:
-                        for line in f:
-                            line = line.strip()
-                            if line:
-                                try:
-                                    chat_data.append(json.loads(line))
-                                except json.JSONDecodeError:
-                                    pass  # Skip invalid lines
-                    
-                    # Write to logs/chat.json
-                    chat_file = os.path.join(log_dir, 'chat.json')
-                    with open(chat_file, 'w') as f:
-                        json.dump(chat_data, f, indent=2)
-                except Exception:
-                    pass  # Fail silently
+        # Session data is now stored in the database via conversation_summaries
+        # The old JSON logging is obsolete
 
         # Announce completion via TTS
         announce_completion()

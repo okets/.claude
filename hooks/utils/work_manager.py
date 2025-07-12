@@ -31,20 +31,21 @@ class WorkManager:
             return False
         
         try:
-            with self.db.connection.cursor() as cursor:
+            cursor = self.db.connection.cursor()
+            cursor.execute("""
+                INSERT INTO phases (project_id, name, description, status)
+                VALUES (?, ?, ?, ?)
+            """, (self.project_id, name, description, status))
+            
+            if status == 'active':
                 cursor.execute("""
-                    INSERT INTO phases (project_id, name, description, status)
-                    VALUES (%s, %s, %s, %s)
-                """, (self.project_id, name, description, status))
-                
-                if status == 'active':
-                    cursor.execute("""
-                        UPDATE phases SET started_at = NOW() 
-                        WHERE project_id = %s AND name = %s
-                    """, (self.project_id, name))
-                
-                print(f"✅ Created phase: {name} (status: {status})")
-                return True
+                    UPDATE phases SET started_at = CURRENT_TIMESTAMP 
+                    WHERE project_id = ? AND name = ?
+                """, (self.project_id, name))
+            
+            self.db.connection.commit()
+            print(f"✅ Created phase: {name} (status: {status})")
+            return True
         except Exception as e:
             print(f"❌ Error creating phase: {e}")
             return False
@@ -57,32 +58,33 @@ class WorkManager:
             return False
         
         try:
-            with self.db.connection.cursor() as cursor:
-                # Get phase ID
+            cursor = self.db.connection.cursor()
+            # Get phase ID
+            cursor.execute("""
+                SELECT id FROM phases WHERE project_id = ? AND name = ?
+            """, (self.project_id, phase_name))
+            
+            phase = cursor.fetchone()
+            if not phase:
+                print(f"❌ Phase '{phase_name}' not found. Create it first.")
+                return False
+            
+            phase_id = phase['id']
+            
+            cursor.execute("""
+                INSERT INTO tasks (phase_id, name, description, priority, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (phase_id, task_name, description, priority, status))
+            
+            if status == 'in_progress':
                 cursor.execute("""
-                    SELECT id FROM phases WHERE project_id = %s AND name = %s
-                """, (self.project_id, phase_name))
-                
-                phase = cursor.fetchone()
-                if not phase:
-                    print(f"❌ Phase '{phase_name}' not found. Create it first.")
-                    return False
-                
-                phase_id = phase['id']
-                
-                cursor.execute("""
-                    INSERT INTO tasks (phase_id, name, description, priority, status)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (phase_id, task_name, description, priority, status))
-                
-                if status == 'in_progress':
-                    cursor.execute("""
-                        UPDATE tasks SET started_at = NOW() 
-                        WHERE phase_id = %s AND name = %s
-                    """, (phase_id, task_name))
-                
-                print(f"✅ Created task: {task_name} in phase {phase_name} (priority: {priority})")
-                return True
+                    UPDATE tasks SET started_at = CURRENT_TIMESTAMP 
+                    WHERE phase_id = ? AND name = ?
+                """, (phase_id, task_name))
+            
+            self.db.connection.commit()
+            print(f"✅ Created task: {task_name} in phase {phase_name} (priority: {priority})")
+            return True
         except Exception as e:
             print(f"❌ Error creating task: {e}")
             return False
@@ -95,30 +97,31 @@ class WorkManager:
             return False
         
         try:
-            with self.db.connection.cursor() as cursor:
-                # Find task across all phases
-                cursor.execute("""
-                    SELECT t.id FROM tasks t
-                    JOIN phases p ON t.phase_id = p.id
-                    WHERE p.project_id = %s AND t.name = %s
-                """, (self.project_id, task_name))
-                
-                task = cursor.fetchone()
-                if not task:
-                    print(f"❌ Task '{task_name}' not found.")
-                    return False
-                
-                task_id = task['id']
-                
-                cursor.execute("""
-                    INSERT INTO assignments (task_id, description, file_pattern)
-                    VALUES (%s, %s, %s)
-                """, (task_id, description, file_pattern))
-                
-                print(f"✅ Created assignment: {description}")
-                if file_pattern:
-                    print(f"   📁 File pattern: {file_pattern}")
-                return True
+            cursor = self.db.connection.cursor()
+            # Find task across all phases
+            cursor.execute("""
+                SELECT t.id FROM tasks t
+                JOIN phases p ON t.phase_id = p.id
+                WHERE p.project_id = ? AND t.name = ?
+            """, (self.project_id, task_name))
+            
+            task = cursor.fetchone()
+            if not task:
+                print(f"❌ Task '{task_name}' not found.")
+                return False
+            
+            task_id = task['id']
+            
+            cursor.execute("""
+                INSERT INTO assignments (task_id, description, file_pattern)
+                VALUES (?, ?, ?)
+            """, (task_id, description, file_pattern))
+            
+            self.db.connection.commit()
+            print(f"✅ Created assignment: {description}")
+            if file_pattern:
+                print(f"   📁 File pattern: {file_pattern}")
+            return True
         except Exception as e:
             print(f"❌ Error creating assignment: {e}")
             return False
@@ -130,18 +133,18 @@ class WorkManager:
             return []
         
         try:
-            with self.db.connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT ph.name, ph.description, ph.status, ph.started_at, ph.completed_at,
-                           COUNT(t.id) as total_tasks,
-                           COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
-                           COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks
-                    FROM phases ph
-                    LEFT JOIN tasks t ON ph.id = t.phase_id
-                    WHERE ph.project_id = %s
-                    GROUP BY ph.id
-                    ORDER BY ph.created_at
-                """, (self.project_id,))
+            cursor = self.db.connection.cursor()
+            cursor.execute("""
+                SELECT ph.name, ph.description, ph.status, ph.started_at, ph.completed_at,
+                       COUNT(t.id) as total_tasks,
+                       COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
+                       COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks
+                FROM phases ph
+                LEFT JOIN tasks t ON ph.id = t.phase_id
+                WHERE ph.project_id = ?
+                GROUP BY ph.id
+                ORDER BY ph.created_at
+            """, (self.project_id,))
                 
                 phases = cursor.fetchall()
                 
@@ -181,33 +184,33 @@ class WorkManager:
             return []
         
         try:
-            with self.db.connection.cursor() as cursor:
-                if phase_name:
-                    cursor.execute("""
-                        SELECT t.name, t.description, t.status, t.priority, t.created_at,
-                               ph.name as phase_name,
-                               COUNT(a.id) as assignment_count,
-                               COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_assignments
-                        FROM tasks t
-                        JOIN phases ph ON t.phase_id = ph.id
-                        LEFT JOIN assignments a ON t.id = a.task_id
-                        WHERE ph.project_id = %s AND ph.name = %s
-                        GROUP BY t.id
-                        ORDER BY t.priority DESC, t.created_at
-                    """, (self.project_id, phase_name))
-                else:
-                    cursor.execute("""
-                        SELECT t.name, t.description, t.status, t.priority, t.created_at,
-                               ph.name as phase_name,
-                               COUNT(a.id) as assignment_count,
-                               COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_assignments
-                        FROM tasks t
-                        JOIN phases ph ON t.phase_id = ph.id
-                        LEFT JOIN assignments a ON t.id = a.task_id
-                        WHERE ph.project_id = %s
-                        GROUP BY t.id
-                        ORDER BY t.priority DESC, t.created_at
-                    """, (self.project_id,))
+            cursor = self.db.connection.cursor()
+            if phase_name:
+                cursor.execute("""
+                    SELECT t.name, t.description, t.status, t.priority, t.created_at,
+                           ph.name as phase_name,
+                           COUNT(a.id) as assignment_count,
+                           COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_assignments
+                    FROM tasks t
+                    JOIN phases ph ON t.phase_id = ph.id
+                    LEFT JOIN assignments a ON t.id = a.task_id
+                    WHERE ph.project_id = ? AND ph.name = ?
+                    GROUP BY t.id
+                    ORDER BY t.priority DESC, t.created_at
+                """, (self.project_id, phase_name))
+            else:
+                cursor.execute("""
+                    SELECT t.name, t.description, t.status, t.priority, t.created_at,
+                           ph.name as phase_name,
+                           COUNT(a.id) as assignment_count,
+                           COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_assignments
+                    FROM tasks t
+                    JOIN phases ph ON t.phase_id = ph.id
+                    LEFT JOIN assignments a ON t.id = a.task_id
+                    WHERE ph.project_id = ?
+                    GROUP BY t.id
+                    ORDER BY t.priority DESC, t.created_at
+                """, (self.project_id,))
                 
                 tasks = cursor.fetchall()
                 
@@ -246,16 +249,16 @@ class WorkManager:
             return []
         
         try:
-            with self.db.connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT a.description, a.file_pattern, a.status, a.created_at, a.completed_at,
-                           t.name as task_name, ph.name as phase_name
-                    FROM assignments a
-                    JOIN tasks t ON a.task_id = t.id
-                    JOIN phases ph ON t.phase_id = ph.id
-                    WHERE ph.project_id = %s AND t.name = %s
-                    ORDER BY a.created_at
-                """, (self.project_id, task_name))
+            cursor = self.db.connection.cursor()
+            cursor.execute("""
+                SELECT a.description, a.file_pattern, a.status, a.created_at, a.completed_at,
+                       t.name as task_name, ph.name as phase_name
+                FROM assignments a
+                JOIN tasks t ON a.task_id = t.id
+                JOIN phases ph ON t.phase_id = ph.id
+                WHERE ph.project_id = ? AND t.name = ?
+                ORDER BY a.created_at
+            """, (self.project_id, task_name))
                 
                 assignments = cursor.fetchall()
                 
@@ -286,32 +289,33 @@ class WorkManager:
             return False
         
         try:
-            with self.db.connection.cursor() as cursor:
-                if item_type == 'phase':
-                    cursor.execute("""
-                        UPDATE phases 
-                        SET status = %s,
-                            started_at = CASE WHEN %s = 'active' AND started_at IS NULL THEN NOW() ELSE started_at END,
-                            completed_at = CASE WHEN %s = 'completed' THEN NOW() ELSE NULL END
-                        WHERE project_id = %s AND name = %s
-                    """, (status, status, status, self.project_id, name))
-                    
-                elif item_type == 'task':
-                    cursor.execute("""
-                        UPDATE tasks t
-                        JOIN phases ph ON t.phase_id = ph.id
-                        SET t.status = %s,
-                            t.started_at = CASE WHEN %s = 'in_progress' AND t.started_at IS NULL THEN NOW() ELSE t.started_at END,
-                            t.completed_at = CASE WHEN %s = 'completed' THEN NOW() ELSE NULL END
-                        WHERE ph.project_id = %s AND t.name = %s
-                    """, (status, status, status, self.project_id, name))
+            cursor = self.db.connection.cursor()
+            if item_type == 'phase':
+                cursor.execute("""
+                    UPDATE phases 
+                    SET status = ?,
+                        started_at = CASE WHEN ? = 'active' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
+                        completed_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE project_id = ? AND name = ?
+                """, (status, status, status, self.project_id, name))
                 
-                if cursor.rowcount > 0:
-                    print(f"✅ Updated {item_type} '{name}' status to: {status}")
-                    return True
-                else:
-                    print(f"❌ {item_type.title()} '{name}' not found")
-                    return False
+            elif item_type == 'task':
+                # SQLite doesn't support UPDATE with JOIN, need subquery
+                cursor.execute("""
+                    UPDATE tasks 
+                    SET status = ?,
+                        started_at = CASE WHEN ? = 'in_progress' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
+                        completed_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE phase_id IN (SELECT id FROM phases WHERE project_id = ?) AND name = ?
+                """, (status, status, status, self.project_id, name))
+            
+            self.db.connection.commit()
+            if cursor.rowcount > 0:
+                print(f"✅ Updated {item_type} '{name}' status to: {status}")
+                return True
+            else:
+                print(f"❌ {item_type.title()} '{name}' not found")
+                return False
                     
         except Exception as e:
             print(f"❌ Error updating {item_type}: {e}")
@@ -329,17 +333,17 @@ class WorkManager:
         # Show current active work
         if self.db.connection and self.project_id:
             try:
-                with self.db.connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT ph.name as phase_name, t.name as task_name, 
-                               t.priority, COUNT(a.id) as assignments
-                        FROM tasks t
-                        JOIN phases ph ON t.phase_id = ph.id
-                        LEFT JOIN assignments a ON t.id = a.task_id AND a.status != 'completed'
-                        WHERE ph.project_id = %s AND t.status = 'in_progress'
-                        GROUP BY t.id
-                        ORDER BY t.priority DESC
-                    """, (self.project_id,))
+                cursor = self.db.connection.cursor()
+                cursor.execute("""
+                    SELECT ph.name as phase_name, t.name as task_name, 
+                           t.priority, COUNT(a.id) as assignments
+                    FROM tasks t
+                    JOIN phases ph ON t.phase_id = ph.id
+                    LEFT JOIN assignments a ON t.id = a.task_id AND a.status != 'completed'
+                    WHERE ph.project_id = ? AND t.status = 'in_progress'
+                    GROUP BY t.id
+                    ORDER BY t.priority DESC
+                """, (self.project_id,))
                     
                     active_tasks = cursor.fetchall()
                     
@@ -355,7 +359,7 @@ class WorkManager:
                         SELECT ph.name as phase_name, t.name as task_name, t.priority
                         FROM tasks t
                         JOIN phases ph ON t.phase_id = ph.id
-                        WHERE ph.project_id = %s AND t.status = 'todo' AND t.priority IN ('urgent', 'high')
+                        WHERE ph.project_id = ? AND t.status = 'todo' AND t.priority IN ('urgent', 'high')
                         ORDER BY t.priority DESC, t.created_at
                         LIMIT 5
                     """, (self.project_id,))
@@ -381,17 +385,17 @@ class WorkManager:
             return False
         
         try:
-            with self.db.connection.cursor() as cursor:
-                # Find assignments that match this file
-                cursor.execute("""
-                    SELECT a.id, a.description, a.file_pattern, t.name as task_name
-                    FROM assignments a
-                    JOIN tasks t ON a.task_id = t.id
-                    JOIN phases ph ON t.phase_id = ph.id
-                    WHERE ph.project_id = %s 
-                    AND a.status != 'completed'
-                    AND (a.file_pattern IS NULL OR %s LIKE CONCAT('%%', a.file_pattern, '%%'))
-                """, (self.project_id, file_path))
+            cursor = self.db.connection.cursor()
+            # Find assignments that match this file
+            cursor.execute("""
+                SELECT a.id, a.description, a.file_pattern, t.name as task_name
+                FROM assignments a
+                JOIN tasks t ON a.task_id = t.id
+                JOIN phases ph ON t.phase_id = ph.id
+                WHERE ph.project_id = ? 
+                AND a.status != 'completed'
+                AND (a.file_pattern IS NULL OR ? LIKE '%' || a.file_pattern || '%')
+            """, (self.project_id, file_path))
                 
                 matching_assignments = cursor.fetchall()
                 
@@ -408,9 +412,11 @@ class WorkManager:
                     
                     cursor.execute("""
                         UPDATE assignments 
-                        SET status = 'completed', completed_at = NOW()
-                        WHERE id = %s
+                        SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
                     """, (assignment['id'],))
+                
+                self.db.connection.commit()
                 
                 print(f"\n🎉 Completed {len(matching_assignments)} assignments!")
                 return True

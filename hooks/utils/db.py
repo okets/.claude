@@ -17,12 +17,17 @@ class ClaudeDB:
         self._connect()
     
     def _connect(self):
-        """Connect to SQLite database - zero configuration required"""
+        """Connect to SQLite database - per-project configuration"""
         try:
-            # Use global Claude directory for database
-            claude_dir = Path.home() / '.claude'
-            claude_dir.mkdir(exist_ok=True)
-            db_path = claude_dir / 'long-agent-context.db'
+            # Find project root by looking for .git directory
+            project_root = self._find_project_root()
+            
+            # Create .claude directory in project root
+            project_claude_dir = project_root / '.claude'
+            project_claude_dir.mkdir(exist_ok=True)
+            
+            # Database lives in project's .claude directory
+            db_path = project_claude_dir / 'project-context.db'
             
             self.connection = sqlite3.connect(str(db_path), check_same_thread=False)
             self.connection.row_factory = sqlite3.Row  # Dict-like access
@@ -31,8 +36,21 @@ class ClaudeDB:
             self._initialize_database()
             
         except Exception as e:
-            print(f"💾 Long-term context database not yet created. First tool use will initialize it.", file=sys.stderr)
+            print(f"💾 Project context database not yet created. First tool use will initialize it.", file=sys.stderr)
             self.connection = None
+    
+    def _find_project_root(self):
+        """Find project root by looking for .git directory"""
+        cwd = Path.cwd()
+        current = cwd
+        
+        while current != current.parent:
+            if (current / '.git').exists():
+                return current
+            current = current.parent
+        
+        # If no git root found, use current directory
+        return cwd
     
     def _initialize_database(self):
         """Create tables if they don't exist"""
@@ -68,9 +86,11 @@ class ClaudeDB:
                 name TEXT NOT NULL,
                 description TEXT,
                 status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'active', 'completed', 'paused')),
+                chat_session_id TEXT, -- Session when phase was created
                 started_at TIMESTAMP NULL,
                 completed_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, name)
             );
@@ -83,9 +103,16 @@ class ClaudeDB:
                 description TEXT,
                 status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed', 'blocked')),
                 priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+                chat_session_id TEXT, -- Session when task was created
+                created_by_chat_session TEXT, -- Original creation session
+                last_worked_chat_session TEXT, -- Most recent session that worked on this
+                estimated_hours REAL, -- Time estimate
+                actual_hours REAL, -- Time actually spent
+                tags TEXT, -- JSON array of custom tags
                 started_at TIMESTAMP NULL,
                 completed_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (phase_id) REFERENCES phases(id) ON DELETE CASCADE
             );
             
@@ -96,15 +123,20 @@ class ClaudeDB:
                 description TEXT NOT NULL,
                 file_pattern TEXT,
                 status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed')),
+                chat_session_id TEXT, -- Session when assignment was created
+                completed_by_chat_session TEXT, -- Session that completed this
+                difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')), -- Complexity estimate
+                actual_changes_made TEXT, -- Description of what was actually done
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 completed_at TIMESTAMP NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             );
             
             -- Tool executions table
             CREATE TABLE IF NOT EXISTS tool_executions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
+                chat_session_id TEXT NOT NULL, -- Renamed from session_id for consistency
                 tool_name TEXT NOT NULL,
                 tool_input TEXT,  -- JSON as TEXT
                 tool_output TEXT, -- JSON as TEXT
@@ -114,20 +146,26 @@ class ClaudeDB:
                 duration_ms INTEGER,
                 executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 assignment_id INTEGER NULL,
-                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-                FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL
+                task_context_id INTEGER NULL, -- Which task was being worked on
+                error_message TEXT, -- Capture any errors that occurred
+                user_context TEXT, -- Additional context about what user was trying to do
+                FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL,
+                FOREIGN KEY (task_context_id) REFERENCES tasks(id) ON DELETE SET NULL
             );
             
             -- Security events table
             CREATE TABLE IF NOT EXISTS security_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
+                chat_session_id TEXT NOT NULL, -- Renamed for consistency
                 event_type TEXT NOT NULL CHECK (event_type IN ('blocked', 'warned', 'allowed')),
                 tool_name TEXT NOT NULL,
                 tool_input TEXT, -- JSON as TEXT
                 reason TEXT,
+                severity TEXT CHECK (severity IN ('low', 'medium', 'high', 'critical')), -- Risk level
+                remediation_suggested TEXT, -- What should user do about this
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+                FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE
             );
             
             -- File relationships table
@@ -138,6 +176,9 @@ class ClaudeDB:
                 file2_path TEXT NOT NULL,
                 co_modification_count INTEGER DEFAULT 1,
                 last_modified_together TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_chat_session_id TEXT, -- Most recent session that modified both files
+                relationship_strength REAL, -- Calculated strength of relationship (0-1)
+                common_tasks TEXT, -- JSON array of tasks that involved both files
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, file1_path, file2_path)
             );
@@ -145,7 +186,7 @@ class ClaudeDB:
             -- Conversation summaries table
             CREATE TABLE IF NOT EXISTS conversation_summaries (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
+                chat_session_id TEXT NOT NULL, -- Renamed for consistency
                 project_id INTEGER NOT NULL,
                 summary TEXT NOT NULL,
                 key_topics TEXT, -- JSON array of topics discussed
@@ -155,18 +196,31 @@ class ClaudeDB:
                 assignment_tags TEXT, -- JSON array of assignment descriptions
                 accomplishments TEXT, -- What was actually completed
                 next_steps TEXT, -- What should be done next
+                mood TEXT, -- Overall tone: productive, frustrating, exploratory, etc.
+                complexity_level TEXT CHECK (complexity_level IN ('simple', 'moderate', 'complex', 'very_complex')),
+                tools_used_count INTEGER, -- Total number of tool executions
+                files_touched_count INTEGER, -- Number of unique files touched
+                session_duration_minutes INTEGER, -- How long the session lasted
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
             
             -- Create indexes for better performance
             CREATE INDEX IF NOT EXISTS idx_sessions_project_started ON sessions(project_id, started_at);
-            CREATE INDEX IF NOT EXISTS idx_tool_executions_session_executed ON tool_executions(session_id, executed_at);
-            CREATE INDEX IF NOT EXISTS idx_security_events_session_type ON security_events(session_id, event_type);
+            CREATE INDEX IF NOT EXISTS idx_tool_executions_session_executed ON tool_executions(chat_session_id, executed_at);
+            CREATE INDEX IF NOT EXISTS idx_security_events_session_type ON security_events(chat_session_id, event_type);
             CREATE INDEX IF NOT EXISTS idx_file_relationships_project ON file_relationships(project_id, file1_path, file2_path);
-            CREATE INDEX IF NOT EXISTS idx_conversation_summaries_session ON conversation_summaries(session_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_conversation_summaries_session ON conversation_summaries(chat_session_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_conversation_summaries_files ON conversation_summaries(project_id, files_mentioned);
+            
+            -- Additional useful indexes for new fields
+            CREATE INDEX IF NOT EXISTS idx_tasks_chat_session ON tasks(chat_session_id, status);
+            CREATE INDEX IF NOT EXISTS idx_tasks_last_worked ON tasks(last_worked_chat_session, updated_at);
+            CREATE INDEX IF NOT EXISTS idx_assignments_chat_session ON assignments(chat_session_id, status);
+            CREATE INDEX IF NOT EXISTS idx_phases_chat_session ON phases(chat_session_id, status);
+            CREATE INDEX IF NOT EXISTS idx_tool_executions_task_context ON tool_executions(task_context_id, executed_at);
+            CREATE INDEX IF NOT EXISTS idx_file_relationships_session ON file_relationships(last_chat_session_id, relationship_strength);
             """)
             
             self.connection.commit()
@@ -202,7 +256,7 @@ class ClaudeDB:
             print(f"Database error in ensure_project: {e}", file=sys.stderr)
             return None
     
-    def ensure_session(self, session_id: str, project_id: int) -> bool:
+    def ensure_session(self, chat_session_id: str, project_id: int) -> bool:
         """Ensure session exists in database"""
         if not self.connection or not project_id:
             return False
@@ -212,21 +266,21 @@ class ClaudeDB:
             cursor.execute("""
                 INSERT OR IGNORE INTO sessions (id, project_id) 
                 VALUES (?, ?)
-            """, (session_id, project_id))
+            """, (chat_session_id, project_id))
             self.connection.commit()
             return True
         except Exception as e:
             print(f"Database error in ensure_session: {e}", file=sys.stderr)
             return False
     
-    def log_tool_execution(self, session_id: str, tool_name: str, tool_input: Dict, 
+    def log_tool_execution(self, chat_session_id: str, tool_name: str, tool_input: Dict, 
                           tool_output: Dict = None, success: bool = True, 
                           intent: str = None, files_touched: List[str] = None,
                           duration_ms: int = None, assignment_id: int = None):
         """Log a tool execution"""
         if not self.connection:
             return self._fallback_log('tool_execution', {
-                'session_id': session_id,
+                'chat_session_id': chat_session_id,
                 'tool_name': tool_name,
                 'tool_input': tool_input,
                 'tool_output': tool_output,
@@ -241,11 +295,11 @@ class ClaudeDB:
             cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO tool_executions 
-                (session_id, tool_name, tool_input, tool_output, success, 
+                (chat_session_id, tool_name, tool_input, tool_output, success, 
                  intent, files_touched, duration_ms, assignment_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                session_id, tool_name, 
+                chat_session_id, tool_name, 
                 json.dumps(tool_input) if tool_input else None,
                 json.dumps(tool_output) if tool_output else None,
                 success, intent,
@@ -256,17 +310,17 @@ class ClaudeDB:
         except Exception as e:
             print(f"Database error in log_tool_execution: {e}", file=sys.stderr)
             return self._fallback_log('tool_execution', {
-                'session_id': session_id,
+                'chat_session_id': chat_session_id,
                 'tool_name': tool_name,
                 'error': str(e)
             })
     
-    def log_security_event(self, session_id: str, event_type: str, tool_name: str,
+    def log_security_event(self, chat_session_id: str, event_type: str, tool_name: str,
                           tool_input: Dict, reason: str = None):
         """Log a security event"""
         if not self.connection:
             return self._fallback_log('security_event', {
-                'session_id': session_id,
+                'chat_session_id': chat_session_id,
                 'event_type': event_type,
                 'tool_name': tool_name,
                 'tool_input': tool_input,
@@ -277,10 +331,10 @@ class ClaudeDB:
             cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO security_events 
-                (session_id, event_type, tool_name, tool_input, reason)
+                (chat_session_id, event_type, tool_name, tool_input, reason)
                 VALUES (?, ?, ?, ?, ?)
             """, (
-                session_id, event_type, tool_name,
+                chat_session_id, event_type, tool_name,
                 json.dumps(tool_input) if tool_input else None,
                 reason
             ))
@@ -288,7 +342,7 @@ class ClaudeDB:
         except Exception as e:
             print(f"Database error in log_security_event: {e}", file=sys.stderr)
             return self._fallback_log('security_event', {
-                'session_id': session_id,
+                'chat_session_id': chat_session_id,
                 'event_type': event_type,
                 'error': str(e)
             })
@@ -333,7 +387,7 @@ class ClaudeDB:
             cursor.execute("""
                 SELECT tool_name, intent, files_touched, executed_at
                 FROM tool_executions te
-                JOIN sessions s ON te.session_id = s.id
+                JOIN sessions s ON te.chat_session_id = s.id
                 WHERE s.project_id = ?
                 ORDER BY executed_at DESC
                 LIMIT ?
@@ -406,7 +460,7 @@ class ClaudeDB:
         except Exception as e:
             print(f"Fallback logging failed: {e}", file=sys.stderr)
     
-    def save_conversation_summary(self, session_id: str, project_id: int, 
+    def save_conversation_summary(self, chat_session_id: str, project_id: int, 
                                  summary: str, key_topics: List[str] = None,
                                  files_mentioned: List[str] = None, 
                                  phase_tags: List[str] = None,
@@ -417,7 +471,7 @@ class ClaudeDB:
         """Save conversation summary with smart tags"""
         if not self.connection:
             return self._fallback_log('conversation_summary', {
-                'session_id': session_id,
+                'chat_session_id': chat_session_id,
                 'summary': summary,
                 'key_topics': key_topics,
                 'files_mentioned': files_mentioned,
@@ -432,11 +486,11 @@ class ClaudeDB:
             cursor = self.connection.cursor()
             cursor.execute("""
                 INSERT INTO conversation_summaries 
-                (session_id, project_id, summary, key_topics, files_mentioned, 
+                (chat_session_id, project_id, summary, key_topics, files_mentioned, 
                  phase_tags, task_tags, assignment_tags, accomplishments, next_steps)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                session_id, project_id, summary,
+                chat_session_id, project_id, summary,
                 json.dumps(key_topics) if key_topics else None,
                 json.dumps(files_mentioned) if files_mentioned else None,
                 json.dumps(phase_tags) if phase_tags else None,

@@ -1,0 +1,12 @@
+# Project-specific Claude Code data
+# Add this to your project's .claude/.gitignore
+
+# Database file - contains all context and history for this project
+project-context.db
+
+# JSON log files (fallback when DB unavailable)
+logs/
+
+# Any temporary files
+*.tmp
+*.bak

@@ -106,10 +106,14 @@ When you work on files, the system can automatically:
 
 ## Database Storage
 
-All work data is stored in MySQL tables:
+All work data is stored in per-project SQLite database at:
+`<project-root>/.claude/project-context.db`
+
+Tables include:
 - `phases` - High-level project phases
 - `tasks` - Specific work items within phases
 - `assignments` - File-level work within tasks
 - `tool_executions` - Links to actual work done
 
+No configuration required - database is created automatically.
 Falls back to JSON if database unavailable.
