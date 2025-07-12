@@ -78,7 +78,207 @@ This document explains how the Claude Code hooks system creates persistent, sear
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Data Storage Details
+## Enhanced Database Schema
+
+### Core Tables
+
+#### 1. conversation_details (Enhanced conversation tracking)
+```sql
+CREATE TABLE conversation_details (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_session_id TEXT NOT NULL,
+    project_id INTEGER NOT NULL,
+    
+    -- User request
+    user_request_summary TEXT NOT NULL,   -- Initial user request summary
+    user_request_raw TEXT,               -- Original user message
+    
+    -- Agent details  
+    agent_model TEXT,                    -- e.g., 'claude-sonnet-4-20250514'
+    agent_chain_of_thought TEXT,         -- JSON array of reasoning steps
+    
+    -- Tool usage
+    tools_used TEXT,                     -- JSON array of {tool_name, count, purposes}
+    
+    -- Subagents
+    subagents_used TEXT,                 -- JSON array of subagent invocations
+    
+    -- Outcomes
+    agent_summary TEXT,                  -- Final conversation summary
+    lessons_learned TEXT,                -- JSON array of insights
+    
+    -- Metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    duration_seconds INTEGER,
+    token_count INTEGER,
+    
+    FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+```
+
+#### 2. subagent_executions (Subagent delegation tracking)
+```sql
+CREATE TABLE subagent_executions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_chat_session_id TEXT NOT NULL,
+    subagent_session_id TEXT NOT NULL,
+    subagent_model TEXT NOT NULL,        -- e.g., 'claude-3-opus'
+    subagent_task TEXT NOT NULL,         -- What the subagent was asked to do
+    subagent_response_summary TEXT,      -- Brief summary of results
+    duration_ms INTEGER,
+    tool_count INTEGER,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    FOREIGN KEY (parent_chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+## Data Flow and Tracking
+
+### 1. Conversation Start (notification.py)
+**Enhanced tracking captures**:
+```python
+db.create_conversation_details(
+    chat_session_id=session_id,
+    user_request_summary=user_message[:100],  # First 100 chars
+    user_request_raw=user_message,            # Complete message
+    agent_model='claude-sonnet-4-20250514'    # Current model
+)
+```
+
+### 2. Tool Execution (post_tool_use.py)
+**Builds chain of thought in real-time**:
+```python
+# Update conversation with reasoning steps
+chain_step = {
+    "step": step_number,
+    "tool": tool_name,
+    "intent": infer_intent(tool_name, tool_input),
+    "thought": f"Using {tool_name} to {intent_description}",
+    "files": extract_files_from_input(tool_input),
+    "success": tool_success
+}
+
+db.update_conversation_chain_of_thought(session_id, chain_step)
+
+# Track tool usage patterns
+db.update_tools_used_summary(session_id, tool_name, intent)
+```
+
+**Chain of Thought Example**:
+```json
+{
+  "agent_chain_of_thought": [
+    {
+      "step": 1,
+      "tool": "Read",
+      "intent": "reading-file",
+      "thought": "Reading auth.js to understand the implementation",
+      "files": ["src/auth.js"],
+      "success": true
+    },
+    {
+      "step": 2,
+      "tool": "Edit", 
+      "intent": "modifying-file",
+      "thought": "Modifying auth.js to implement changes",
+      "files": ["src/auth.js"],
+      "success": true
+    }
+  ]
+}
+```
+
+### 3. Subagent Delegation (subagent_stop.py)
+**Tracks when main agents delegate work**:
+```python
+db.log_subagent_execution(
+    parent_session_id=main_session_id,
+    subagent_session_id=sub_session_id,
+    subagent_model='claude-3-opus',
+    subagent_task='Analyze authentication patterns',
+    subagent_response_summary='Found 3 security issues',
+    duration_ms=45000,
+    tool_count=8
+)
+```
+
+### 4. Session End (stop.py)
+**Generates comprehensive analysis**:
+```python
+# Extract lessons learned from patterns
+lessons = []
+if test_failures > 2:
+    lessons.append("Required multiple iterations to get tests passing")
+if files_modified > 5:
+    lessons.append("Complex change affecting multiple components")
+
+db.finalize_conversation_details(
+    session_id=session_id,
+    agent_summary=generate_summary(tool_executions),
+    lessons_learned=lessons,
+    duration_seconds=total_duration,
+    token_count=estimated_tokens
+)
+```
+
+**Tools Used Summary Example**:
+```json
+{
+  "tools_used": [
+    {
+      "tool_name": "Read",
+      "count": 5,
+      "purposes": ["reading-file"]
+    },
+    {
+      "tool_name": "Edit",
+      "count": 3, 
+      "purposes": ["modifying-file"]
+    }
+  ]
+}
+```
+
+**Lessons Learned Example**:
+```json
+{
+  "lessons_learned": [
+    "Token validation was failing due to timezone mismatch",
+    "Required multiple iterations (4) to get auth.js working correctly", 
+    "Successfully identified and resolved issues in the codebase"
+  ]
+}
+```
+
+## Enhanced Query Capabilities
+
+### Model Attribution Queries
+```bash
+/work_query "show me all bugs fixed by opus model"
+/work_query "what work was done by sonnet"
+```
+
+### Chain of Thought Analysis
+```bash
+/work_query "show chain of thought for fixing login bug"
+/work_query "how did you solve the auth problem"
+```
+
+### Lessons Learned Mining
+```bash
+/work_query "what lessons were learned about authentication"
+/work_query "insights from testing work"
+```
+
+### Subagent Usage Patterns
+```bash
+/work_query "which tasks used subagents"
+/work_query "show delegated tasks"
+```
+
+## Data Storage Details (Legacy)
 
 ### 1. Pre-Tool Hook (`pre_tool_use.py`)
 
@@ -93,16 +293,6 @@ db.log_security_event(
     tool_input={'command': 'rm -rf /'},
     reason='Operation outside project directory blocked'
 )
-```
-
-**Database Table**: `security_events`
-```sql
-INSERT INTO security_events (
-    chat_session_id, event_type, tool_name, tool_input, reason, created_at
-) VALUES (
-    'abc123-xyz', 'blocked', 'Bash', '{"command":"rm -rf /"}', 
-    'Operation outside project directory blocked', '2025-01-12 15:30:00'
-);
 ```
 
 ### 2. Post-Tool Hook (`post_tool_use.py`)
