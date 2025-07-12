@@ -97,6 +97,46 @@ def infer_intent(tool_name, tool_input, files_touched):
     else:
         return 'unknown'
 
+def build_thought_from_tool(tool_name, tool_input, intent):
+    """Build a human-readable thought based on tool execution"""
+    if tool_name == 'Read':
+        file_path = tool_input.get('file_path', 'unknown file')
+        return f"Reading {Path(file_path).name} to understand the implementation"
+    
+    elif tool_name in ['Edit', 'MultiEdit']:
+        file_path = tool_input.get('file_path', 'unknown file')
+        return f"Modifying {Path(file_path).name} to implement changes"
+    
+    elif tool_name == 'Write':
+        file_path = tool_input.get('file_path', 'unknown file')
+        return f"Creating new file {Path(file_path).name}"
+    
+    elif tool_name == 'Bash':
+        command = tool_input.get('command', '')
+        if 'test' in command.lower():
+            return "Running tests to verify changes"
+        elif 'git' in command.lower():
+            return f"Executing git operation: {command[:50]}..."
+        elif 'npm' in command.lower() or 'yarn' in command.lower():
+            return "Managing package dependencies"
+        else:
+            return f"Executing command: {command[:50]}..."
+    
+    elif tool_name == 'Grep':
+        pattern = tool_input.get('pattern', '')
+        return f"Searching for pattern: {pattern[:30]}..."
+    
+    elif tool_name == 'Glob':
+        pattern = tool_input.get('pattern', '')
+        return f"Finding files matching: {pattern}"
+    
+    elif tool_name == 'Task':
+        desc = tool_input.get('description', '')
+        return f"Launching subagent for: {desc}"
+    
+    else:
+        return f"Using {tool_name} for {intent}"
+
 def main():
     start_time = time.time()
     
@@ -146,48 +186,54 @@ def main():
             # Update file relationships if multiple files were touched
             if len(files_touched) > 1:
                 db.update_file_relationships(project_id, files_touched)
+            
+            # Update conversation details with chain of thought
+            existing_details = db.get_conversation_details(session_id)
+            if existing_details:
+                # Build chain of thought step
+                chain_step = {
+                    "step": len(existing_details.get('agent_chain_of_thought', [])) + 1,
+                    "tool": tool_name,
+                    "intent": intent,
+                    "thought": build_thought_from_tool(tool_name, tool_input, intent),
+                    "files": files_touched,
+                    "success": success
+                }
+                
+                # Update chain of thought
+                chain_of_thought = existing_details.get('agent_chain_of_thought', [])
+                chain_of_thought.append(chain_step)
+                
+                # Update tools used tracking
+                tools_used = existing_details.get('tools_used', [])
+                tool_entry = next((t for t in tools_used if t['tool_name'] == tool_name), None)
+                if tool_entry:
+                    tool_entry['count'] += 1
+                    if intent not in tool_entry['purposes']:
+                        tool_entry['purposes'].append(intent)
+                else:
+                    tools_used.append({
+                        'tool_name': tool_name,
+                        'count': 1,
+                        'purposes': [intent]
+                    })
+                
+                # Update the conversation details (we need to add an update method)
+                cursor = db.connection.cursor()
+                cursor.execute("""
+                    UPDATE conversation_details 
+                    SET agent_chain_of_thought = ?, tools_used = ?
+                    WHERE chat_session_id = ?
+                """, (
+                    json.dumps(chain_of_thought),
+                    json.dumps(tools_used),
+                    session_id
+                ))
+                db.connection.commit()
         
-        # Fallback to JSON logging (handled automatically by db utility)
-        if not db.connection:
-            # Enhanced log entry for JSON fallback
-            enhanced_entry = {
-                'timestamp': datetime.now().isoformat(),
-                'session_id': session_id,
-                'project_root': project_root,
-                'task_metadata': {
-                    'inferred_intent': intent,
-                    'file_context': ', '.join([Path(f).name for f in files_touched[:3]]) if files_touched else 'none'
-                },
-                'tool_execution': {
-                    'tool_name': tool_name,
-                    'input': tool_input,
-                    'response': tool_response,
-                    'files_touched': files_touched,
-                    'success': success,
-                    'duration_ms': duration_ms
-                },
-                'original_data': input_data
-            }
-            
-            # Save to project-specific log
-            log_dir = project_claude / 'logs'
-            log_dir.mkdir(parents=True, exist_ok=True)
-            log_path = log_dir / 'post_tool_use.json'
-            
-            if log_path.exists():
-                with open(log_path, 'r') as f:
-                    try:
-                        log_data = json.load(f)
-                    except (json.JSONDecodeError, ValueError):
-                        log_data = []
-            else:
-                log_data = []
-            
-            log_data.append(enhanced_entry)
-            
-            # Write back to file with formatting
-            with open(log_path, 'w') as f:
-                json.dump(log_data, f, indent=2)
+        # Database is the primary storage - no JSON fallback needed
+        # If database is unavailable, we'll lose this execution data, but that's better
+        # than maintaining duplicate storage systems
         
         sys.exit(0)
         

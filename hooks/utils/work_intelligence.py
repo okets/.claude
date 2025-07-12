@@ -74,6 +74,22 @@ class WorkIntelligence:
             'conversations_by_task': [
                 r'conversations?.*about.*task', r'sessions?.*for.*task',
                 r'work.*on.*task', r'task.*history', r'last.*time.*worked.*on'
+            ],
+            'conversations_by_model': [
+                r'bugs.*fixed.*by.*opus', r'work.*by.*model', r'conversations?.*handled.*by',
+                r'opus.*sessions?', r'sonnet.*sessions?', r'what.*model.*did'
+            ],
+            'lessons_learned': [
+                r'lessons?.*learned', r'what.*learned.*about', r'insights?.*from',
+                r'takeaways?', r'discoveries?', r'findings?'
+            ],
+            'chain_of_thought': [
+                r'chain.*of.*thought', r'reasoning.*steps?', r'how.*solved',
+                r'thought.*process', r'approach.*to', r'steps?.*taken'
+            ],
+            'subagent_usage': [
+                r'subagents?.*used', r'tasks?.*used.*subagents?', r'which.*tasks?.*needed.*help',
+                r'delegated.*tasks?', r'agent.*assistance'
             ]
         }
         
@@ -174,6 +190,14 @@ class WorkIntelligence:
                     return self._query_conversations_by_phase(cursor, entities['phases'], limit)
                 elif intent == 'conversations_by_task':
                     return self._query_conversations_by_task(cursor, entities['tools'] + entities['phases'], limit)
+                elif intent == 'conversations_by_model':
+                    return self._query_conversations_by_model(cursor, entities, limit)
+                elif intent == 'lessons_learned':
+                    return self._query_lessons_learned(cursor, entities, limit)
+                elif intent == 'chain_of_thought':
+                    return self._query_chain_of_thought(cursor, entities, limit)
+                elif intent == 'subagent_usage':
+                    return self._query_subagent_usage(cursor, start_date, end_date, limit)
                 else:
                     return self._query_recent_activity(cursor, start_date, end_date, limit)
                     
@@ -516,34 +540,6 @@ class WorkIntelligence:
             }
         }
     
-    def _fallback_query(self, parsed_query: Dict[str, Any], limit: int) -> Dict[str, Any]:
-        """Fallback to JSON file querying when database is unavailable"""
-        try:
-            project_root = Path(self.project_path)
-            log_dir = project_root / '.claude' / 'logs'
-            
-            if not log_dir.exists():
-                return {'error': 'No logs found and database unavailable', 'results': []}
-            
-            # Read JSON logs
-            post_log = log_dir / 'post_tool_use.json'
-            pre_log = log_dir / 'pre_tool_use.json'
-            
-            results = []
-            
-            if post_log.exists():
-                with open(post_log, 'r') as f:
-                    post_data = json.load(f)
-                    results.extend(post_data[-limit:])  # Get recent entries
-            
-            return {
-                'type': 'fallback',
-                'results': results,
-                'warning': 'Database unavailable, using JSON fallback'
-            }
-            
-        except Exception as e:
-            return {'error': f"Fallback query failed: {e}", 'results': []}
     
     def format_results(self, results: Dict[str, Any], format_type: str = 'summary') -> str:
         """Format query results for display"""
@@ -554,6 +550,135 @@ class WorkIntelligence:
             return json.dumps(results, indent=2, default=str)
         
         return self._format_summary(results)
+    
+    def _query_conversations_by_model(self, cursor, entities, limit):
+        """Query conversations handled by specific AI models"""
+        # Extract model names from query
+        model_names = []
+        for model in ['opus', 'sonnet', 'claude-3-opus', 'claude-3-sonnet']:
+            if any(model in entity.lower() for entity_list in entities.values() for entity in entity_list):
+                model_names.append(f'%{model}%')
+        
+        if not model_names:
+            model_names = ['%opus%', '%sonnet%']  # Default to common models
+        
+        conversations = []
+        for model_pattern in model_names:
+            convs = self.db.get_conversations_by_model(self.project_id, model_pattern, limit)
+            conversations.extend(convs)
+        
+        return {
+            'type': 'conversations_by_model',
+            'conversations': conversations[:limit],
+            'models_queried': model_names,
+            'summary': {
+                'total_conversations': len(conversations),
+                'models': list(set(c.get('agent_model', 'unknown') for c in conversations))
+            }
+        }
+    
+    def _query_lessons_learned(self, cursor, entities, limit):
+        """Query lessons learned from conversations"""
+        # Extract topic filters if any
+        topic = None
+        if entities.get('tools') or entities.get('phases'):
+            topic = ' '.join(entities.get('tools', []) + entities.get('phases', []))
+        
+        lessons = self.db.get_lessons_learned(self.project_id, topic, limit)
+        
+        # Flatten all lessons into a single list
+        all_lessons = []
+        for conv in lessons:
+            if conv.get('lessons_learned'):
+                for lesson in conv['lessons_learned']:
+                    all_lessons.append({
+                        'lesson': lesson,
+                        'session_id': conv['chat_session_id'],
+                        'summary': conv.get('agent_summary', ''),
+                        'date': conv['created_at']
+                    })
+        
+        return {
+            'type': 'lessons_learned',
+            'lessons': all_lessons,
+            'topic_filter': topic,
+            'summary': {
+                'total_lessons': len(all_lessons),
+                'conversations_with_lessons': len(lessons)
+            }
+        }
+    
+    def _query_chain_of_thought(self, cursor, entities, limit):
+        """Query chain of thought for recent conversations"""
+        # Get recent conversation details
+        cursor.execute("""
+            SELECT cd.*, cs.summary
+            FROM conversation_details cd
+            LEFT JOIN conversation_summaries cs ON cd.chat_session_id = cs.chat_session_id
+            WHERE cd.project_id = ? 
+            AND cd.agent_chain_of_thought IS NOT NULL
+            ORDER BY cd.created_at DESC
+            LIMIT ?
+        """, (self.project_id, limit))
+        
+        conversations = []
+        for row in cursor.fetchall():
+            conv = dict(row)
+            if conv.get('agent_chain_of_thought'):
+                try:
+                    conv['agent_chain_of_thought'] = json.loads(conv['agent_chain_of_thought'])
+                except:
+                    pass
+            conversations.append(conv)
+        
+        return {
+            'type': 'chain_of_thought',
+            'conversations': conversations,
+            'summary': {
+                'total_conversations': len(conversations),
+                'avg_steps': sum(len(c.get('agent_chain_of_thought', [])) for c in conversations) / len(conversations) if conversations else 0
+            }
+        }
+    
+    def _query_subagent_usage(self, cursor, start_date, end_date, limit):
+        """Query subagent usage and delegated tasks"""
+        cursor.execute("""
+            SELECT se.*, cd.user_request_summary
+            FROM subagent_executions se
+            JOIN conversation_details cd ON se.parent_conversation_id = cd.id
+            WHERE se.started_at BETWEEN ? AND ?
+            ORDER BY se.started_at DESC
+            LIMIT ?
+        """, (start_date, end_date, limit))
+        
+        subagents = cursor.fetchall()
+        
+        # Group by model
+        model_usage = defaultdict(int)
+        task_types = defaultdict(int)
+        
+        for subagent in subagents:
+            model_usage[subagent['subagent_model']] += 1
+            # Simple task categorization
+            task_lower = subagent['subagent_task'].lower()
+            if 'analyz' in task_lower or 'understand' in task_lower:
+                task_types['analysis'] += 1
+            elif 'search' in task_lower or 'find' in task_lower:
+                task_types['search'] += 1
+            elif 'implement' in task_lower or 'code' in task_lower:
+                task_types['implementation'] += 1
+            else:
+                task_types['other'] += 1
+        
+        return {
+            'type': 'subagent_usage',
+            'subagents': subagents,
+            'summary': {
+                'total_subagent_calls': len(subagents),
+                'model_breakdown': dict(model_usage),
+                'task_categories': dict(task_types)
+            }
+        }
     
     def _format_summary(self, results: Dict[str, Any]) -> str:
         """Format results as human-readable summary"""
@@ -575,6 +700,14 @@ class WorkIntelligence:
             return self._format_conversations_by_phase(results)
         elif result_type == 'conversations_by_task':
             return self._format_conversations_by_task(results)
+        elif result_type == 'conversations_by_model':
+            return self._format_conversations_by_model(results)
+        elif result_type == 'lessons_learned':
+            return self._format_lessons_learned(results)
+        elif result_type == 'chain_of_thought':
+            return self._format_chain_of_thought(results)
+        elif result_type == 'subagent_usage':
+            return self._format_subagent_usage(results)
         else:
             return f"📊 Query Results ({result_type}):\n{json.dumps(results, indent=2, default=str)}"
     
@@ -685,6 +818,123 @@ class WorkIntelligence:
             event_icon = "🚫" if event['event_type'] == 'blocked' else "⚠️" if event['event_type'] == 'warned' else "✅"
             timestamp = event['created_at'].strftime('%m/%d %H:%M')
             output.append(f"   {event_icon} {timestamp} {event['tool_name']} - {event['reason']}")
+        
+        return "\n".join(output)
+
+    def _format_conversations_by_model(self, results: Dict[str, Any]) -> str:
+        """Format conversations by model results"""
+        conversations = results['conversations'][:10]
+        summary = results['summary']
+        
+        output = [
+            "🤖 Conversations by Model:",
+            f"   Total: {summary['total_conversations']} conversations",
+            f"   Models: {', '.join(summary['models'])}",
+            ""
+        ]
+        
+        for conv in conversations:
+            model = conv.get('agent_model', 'unknown')
+            date = conv.get('created_at', '')[:10] if conv.get('created_at') else 'unknown'
+            summary_text = conv.get('summary', conv.get('user_request_summary', 'No summary'))[:80]
+            
+            output.append(f"   [{model}] {date} - {summary_text}...")
+            if conv.get('accomplishments'):
+                output.append(f"      ✅ {conv['accomplishments']}")
+        
+        return "\n".join(output)
+    
+    def _format_lessons_learned(self, results: Dict[str, Any]) -> str:
+        """Format lessons learned results"""
+        lessons = results['lessons'][:15]
+        summary = results['summary']
+        
+        output = [
+            "💡 Lessons Learned:",
+            f"   Total: {summary['total_lessons']} lessons from {summary['conversations_with_lessons']} conversations",
+            ""
+        ]
+        
+        if results.get('topic_filter'):
+            output.append(f"   Filtered by: {results['topic_filter']}")
+            output.append("")
+        
+        for lesson_data in lessons:
+            lesson = lesson_data['lesson']
+            date = lesson_data['date'][:10] if lesson_data.get('date') else 'unknown'
+            output.append(f"   • {lesson}")
+            output.append(f"     ({date} - {lesson_data.get('summary', '')[:50]}...)")
+        
+        return "\n".join(output)
+    
+    def _format_chain_of_thought(self, results: Dict[str, Any]) -> str:
+        """Format chain of thought results"""
+        conversations = results['conversations'][:5]
+        summary = results['summary']
+        
+        output = [
+            "🧠 Chain of Thought Analysis:",
+            f"   Conversations analyzed: {summary['total_conversations']}",
+            f"   Average steps per conversation: {summary['avg_steps']:.1f}",
+            ""
+        ]
+        
+        for conv in conversations:
+            request = conv.get('user_request_summary', 'Unknown request')
+            chain = conv.get('agent_chain_of_thought', [])
+            
+            output.append(f"📌 Request: {request}")
+            output.append("   Steps:")
+            
+            for step in chain[:5]:  # Show first 5 steps
+                thought = step.get('thought', '')
+                tool = step.get('tool', '')
+                success = "✅" if step.get('success', True) else "❌"
+                output.append(f"   {step.get('step', '?')}. {success} [{tool}] {thought}")
+            
+            if len(chain) > 5:
+                output.append(f"   ... and {len(chain) - 5} more steps")
+            output.append("")
+        
+        return "\n".join(output)
+    
+    def _format_subagent_usage(self, results: Dict[str, Any]) -> str:
+        """Format subagent usage results"""
+        subagents = results['subagents'][:10]
+        summary = results['summary']
+        
+        output = [
+            "🤝 Subagent Usage:",
+            f"   Total calls: {summary['total_subagent_calls']}",
+            "",
+            "📊 Model Breakdown:"
+        ]
+        
+        for model, count in summary['model_breakdown'].items():
+            output.append(f"   {model}: {count} calls")
+        
+        output.extend([
+            "",
+            "📋 Task Categories:"
+        ])
+        
+        for category, count in summary['task_categories'].items():
+            output.append(f"   {category}: {count} tasks")
+        
+        output.extend([
+            "",
+            "🔍 Recent Subagent Tasks:"
+        ])
+        
+        for subagent in subagents:
+            model = subagent['subagent_model']
+            task = subagent['subagent_task'][:60]
+            duration = subagent.get('duration_ms', 0) / 1000
+            success = "✅" if subagent.get('success', True) else "❌"
+            
+            output.append(f"   {success} [{model}] {task}... ({duration:.1f}s)")
+            if subagent.get('subagent_response_summary'):
+                output.append(f"      → {subagent['subagent_response_summary'][:80]}...")
         
         return "\n".join(output)
 

@@ -206,6 +206,60 @@ class ClaudeDB:
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
             
+            -- Enhanced conversation tracking tables
+            CREATE TABLE IF NOT EXISTS conversation_details (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_session_id TEXT NOT NULL,
+                project_id INTEGER NOT NULL,
+                
+                -- User request
+                user_request_summary TEXT NOT NULL,
+                user_request_raw TEXT, -- Store original request for reference
+                
+                -- Agent details
+                agent_model TEXT, -- e.g., 'claude-3-opus', 'claude-3-sonnet'
+                agent_chain_of_thought TEXT, -- JSON array of reasoning steps
+                
+                -- Tool usage
+                tools_used TEXT, -- JSON array of {tool_name, count, purposes}
+                
+                -- Subagents
+                subagents_used TEXT, -- JSON array of subagent invocations
+                
+                -- Outcomes
+                agent_summary TEXT,
+                lessons_learned TEXT, -- JSON array of insights
+                
+                -- Metadata
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                duration_seconds INTEGER,
+                token_count INTEGER,
+                
+                FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            
+            -- Separate table for subagent details
+            CREATE TABLE IF NOT EXISTS subagent_executions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                chat_session_id TEXT NOT NULL,
+                parent_conversation_id INTEGER,
+                
+                -- Subagent details
+                subagent_model TEXT NOT NULL,
+                subagent_task TEXT NOT NULL,
+                subagent_response_summary TEXT,
+                
+                -- Execution details
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                duration_ms INTEGER,
+                success BOOLEAN DEFAULT 1,
+                tool_count INTEGER,
+                
+                FOREIGN KEY (chat_session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (parent_conversation_id) REFERENCES conversation_details(id) ON DELETE CASCADE
+            );
+            
             -- Create indexes for better performance
             CREATE INDEX IF NOT EXISTS idx_sessions_project_started ON sessions(project_id, started_at);
             CREATE INDEX IF NOT EXISTS idx_tool_executions_session_executed ON tool_executions(chat_session_id, executed_at);
@@ -221,6 +275,14 @@ class ClaudeDB:
             CREATE INDEX IF NOT EXISTS idx_phases_chat_session ON phases(chat_session_id, status);
             CREATE INDEX IF NOT EXISTS idx_tool_executions_task_context ON tool_executions(task_context_id, executed_at);
             CREATE INDEX IF NOT EXISTS idx_file_relationships_session ON file_relationships(last_chat_session_id, relationship_strength);
+            
+            -- Indexes for new conversation tracking tables
+            CREATE INDEX IF NOT EXISTS idx_conversation_details_session ON conversation_details(chat_session_id);
+            CREATE INDEX IF NOT EXISTS idx_conversation_details_model ON conversation_details(agent_model);
+            CREATE INDEX IF NOT EXISTS idx_conversation_details_project ON conversation_details(project_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_subagent_executions_model ON subagent_executions(subagent_model);
+            CREATE INDEX IF NOT EXISTS idx_subagent_executions_parent ON subagent_executions(parent_conversation_id);
+            CREATE INDEX IF NOT EXISTS idx_subagent_executions_session ON subagent_executions(chat_session_id);
             """)
             
             self.connection.commit()
@@ -279,17 +341,7 @@ class ClaudeDB:
                           duration_ms: int = None, assignment_id: int = None):
         """Log a tool execution"""
         if not self.connection:
-            return self._fallback_log('tool_execution', {
-                'chat_session_id': chat_session_id,
-                'tool_name': tool_name,
-                'tool_input': tool_input,
-                'tool_output': tool_output,
-                'success': success,
-                'intent': intent,
-                'files_touched': files_touched,
-                'duration_ms': duration_ms,
-                'assignment_id': assignment_id
-            })
+            return False
             
         try:
             cursor = self.connection.cursor()
@@ -307,25 +359,16 @@ class ClaudeDB:
                 duration_ms, assignment_id
             ))
             self.connection.commit()
+            return True
         except Exception as e:
             print(f"Database error in log_tool_execution: {e}", file=sys.stderr)
-            return self._fallback_log('tool_execution', {
-                'chat_session_id': chat_session_id,
-                'tool_name': tool_name,
-                'error': str(e)
-            })
+            return False
     
     def log_security_event(self, chat_session_id: str, event_type: str, tool_name: str,
                           tool_input: Dict, reason: str = None):
         """Log a security event"""
         if not self.connection:
-            return self._fallback_log('security_event', {
-                'chat_session_id': chat_session_id,
-                'event_type': event_type,
-                'tool_name': tool_name,
-                'tool_input': tool_input,
-                'reason': reason
-            })
+            return False
             
         try:
             cursor = self.connection.cursor()
@@ -339,13 +382,10 @@ class ClaudeDB:
                 reason
             ))
             self.connection.commit()
+            return True
         except Exception as e:
             print(f"Database error in log_security_event: {e}", file=sys.stderr)
-            return self._fallback_log('security_event', {
-                'chat_session_id': chat_session_id,
-                'event_type': event_type,
-                'error': str(e)
-            })
+            return False
     
     def update_file_relationships(self, project_id: int, files: List[str]):
         """Update file co-modification relationships"""
@@ -425,41 +465,6 @@ class ClaudeDB:
             print(f"Database error in get_project_context: {e}", file=sys.stderr)
             return {}
     
-    def _fallback_log(self, log_type: str, data: Dict[str, Any]):
-        """Fallback to JSON logging when database is unavailable"""
-        try:
-            # Use the same fallback as existing hooks
-            from pathlib import Path
-            project_root = Path.cwd()
-            while project_root != project_root.parent:
-                if (project_root / '.git').exists():
-                    break
-                project_root = project_root.parent
-            
-            log_dir = project_root / '.claude' / 'logs'
-            log_dir.mkdir(parents=True, exist_ok=True)
-            log_file = log_dir / f"{log_type}.json"
-            
-            # Read existing logs
-            if log_file.exists():
-                with open(log_file, 'r') as f:
-                    logs = json.load(f)
-            else:
-                logs = []
-            
-            # Add new entry
-            logs.append({
-                'timestamp': datetime.now().isoformat(),
-                **data
-            })
-            
-            # Write back
-            with open(log_file, 'w') as f:
-                json.dump(logs, f, indent=2)
-                
-        except Exception as e:
-            print(f"Fallback logging failed: {e}", file=sys.stderr)
-    
     def save_conversation_summary(self, chat_session_id: str, project_id: int, 
                                  summary: str, key_topics: List[str] = None,
                                  files_mentioned: List[str] = None, 
@@ -470,17 +475,7 @@ class ClaudeDB:
                                  next_steps: str = None):
         """Save conversation summary with smart tags"""
         if not self.connection:
-            return self._fallback_log('conversation_summary', {
-                'chat_session_id': chat_session_id,
-                'summary': summary,
-                'key_topics': key_topics,
-                'files_mentioned': files_mentioned,
-                'phase_tags': phase_tags,
-                'task_tags': task_tags,
-                'assignment_tags': assignment_tags,
-                'accomplishments': accomplishments,
-                'next_steps': next_steps
-            })
+            return False
             
         try:
             cursor = self.connection.cursor()
@@ -565,6 +560,152 @@ class ClaudeDB:
             return [dict(row) for row in cursor.fetchall()]
         except Exception as e:
             print(f"Database error in get_conversations_by_task: {e}", file=sys.stderr)
+            return []
+    
+    def save_conversation_details(self, chat_session_id: str, project_id: int,
+                                user_request_summary: str, user_request_raw: str = None,
+                                agent_model: str = None, agent_chain_of_thought: List[Dict] = None,
+                                tools_used: List[Dict] = None, subagents_used: List[Dict] = None,
+                                agent_summary: str = None, lessons_learned: List[str] = None,
+                                duration_seconds: int = None, token_count: int = None) -> int:
+        """Save detailed conversation tracking data"""
+        if not self.connection:
+            return None
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO conversation_details 
+                (chat_session_id, project_id, user_request_summary, user_request_raw,
+                 agent_model, agent_chain_of_thought, tools_used, subagents_used,
+                 agent_summary, lessons_learned, duration_seconds, token_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                chat_session_id, project_id, user_request_summary, user_request_raw,
+                agent_model,
+                json.dumps(agent_chain_of_thought) if agent_chain_of_thought else None,
+                json.dumps(tools_used) if tools_used else None,
+                json.dumps(subagents_used) if subagents_used else None,
+                agent_summary,
+                json.dumps(lessons_learned) if lessons_learned else None,
+                duration_seconds, token_count
+            ))
+            self.connection.commit()
+            return cursor.lastrowid
+        except Exception as e:
+            print(f"Database error in save_conversation_details: {e}", file=sys.stderr)
+            return None
+    
+    def save_subagent_execution(self, chat_session_id: str, parent_conversation_id: int,
+                               subagent_model: str, subagent_task: str,
+                               subagent_response_summary: str = None, duration_ms: int = None,
+                               success: bool = True, tool_count: int = None) -> bool:
+        """Save subagent execution details"""
+        if not self.connection:
+            return False
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO subagent_executions 
+                (chat_session_id, parent_conversation_id, subagent_model, subagent_task,
+                 subagent_response_summary, duration_ms, success, tool_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                chat_session_id, parent_conversation_id, subagent_model, subagent_task,
+                subagent_response_summary, duration_ms, success, tool_count
+            ))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Database error in save_subagent_execution: {e}", file=sys.stderr)
+            return False
+    
+    def get_conversation_details(self, chat_session_id: str) -> Dict[str, Any]:
+        """Get detailed conversation tracking data"""
+        if not self.connection:
+            return {}
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT * FROM conversation_details
+                WHERE chat_session_id = ?
+            """, (chat_session_id,))
+            
+            row = cursor.fetchone()
+            if row:
+                result = dict(row)
+                # Parse JSON fields
+                for field in ['agent_chain_of_thought', 'tools_used', 'subagents_used', 'lessons_learned']:
+                    if result.get(field):
+                        try:
+                            result[field] = json.loads(result[field])
+                        except:
+                            pass
+                return result
+            return {}
+        except Exception as e:
+            print(f"Database error in get_conversation_details: {e}", file=sys.stderr)
+            return {}
+    
+    def get_conversations_by_model(self, project_id: int, agent_model: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversations handled by a specific model"""
+        if not self.connection:
+            return []
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT cd.*, cs.summary, cs.accomplishments, cs.files_mentioned
+                FROM conversation_details cd
+                LEFT JOIN conversation_summaries cs ON cd.chat_session_id = cs.chat_session_id
+                WHERE cd.project_id = ? AND cd.agent_model = ?
+                ORDER BY cd.created_at DESC
+                LIMIT ?
+            """, (project_id, agent_model, limit))
+            
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Database error in get_conversations_by_model: {e}", file=sys.stderr)
+            return []
+    
+    def get_lessons_learned(self, project_id: int, topic: str = None, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get lessons learned, optionally filtered by topic"""
+        if not self.connection:
+            return []
+            
+        try:
+            cursor = self.connection.cursor()
+            if topic:
+                cursor.execute("""
+                    SELECT chat_session_id, lessons_learned, agent_summary, created_at
+                    FROM conversation_details
+                    WHERE project_id = ? AND lessons_learned LIKE ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                """, (project_id, f'%{topic}%', limit))
+            else:
+                cursor.execute("""
+                    SELECT chat_session_id, lessons_learned, agent_summary, created_at
+                    FROM conversation_details
+                    WHERE project_id = ? AND lessons_learned IS NOT NULL
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                """, (project_id, limit))
+            
+            results = []
+            for row in cursor.fetchall():
+                result = dict(row)
+                if result.get('lessons_learned'):
+                    try:
+                        result['lessons_learned'] = json.loads(result['lessons_learned'])
+                    except:
+                        pass
+                results.append(result)
+            return results
+        except Exception as e:
+            print(f"Database error in get_lessons_learned: {e}", file=sys.stderr)
             return []
 
     def close(self):

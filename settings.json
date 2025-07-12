@@ -16,6 +16,7 @@
     ],
     "deny": []
   },
+  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -72,6 +73,5 @@
         ]
       }
     ]
-  },
-  "model": "opus"
+  }
 }

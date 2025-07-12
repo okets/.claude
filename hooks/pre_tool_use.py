@@ -221,38 +221,7 @@ def main():
                 reason='Security check passed'
             )
         
-        # Fallback to JSON logging if database unavailable
-        if not db.connection:
-            log_dir = project_claude / 'logs'
-            log_dir.mkdir(parents=True, exist_ok=True)
-            log_path = log_dir / 'pre_tool_use.json'
-            
-            # Enhanced log entry with context
-            from datetime import datetime
-            enhanced_entry = {
-                'timestamp': datetime.now().isoformat(),
-                'session_id': session_id,
-                'project_root': str(project_root),
-                'security_check': 'passed',
-                'original_data': input_data
-            }
-            
-            # Read existing log data or initialize empty list
-            if log_path.exists():
-                with open(log_path, 'r') as f:
-                    try:
-                        log_data = json.load(f)
-                    except (json.JSONDecodeError, ValueError):
-                        log_data = []
-            else:
-                log_data = []
-            
-            # Append new data
-            log_data.append(enhanced_entry)
-            
-            # Write back to file with formatting
-            with open(log_path, 'w') as f:
-                json.dump(log_data, f, indent=2)
+        # Database is the primary storage - no JSON fallback needed
         
         sys.exit(0)
         

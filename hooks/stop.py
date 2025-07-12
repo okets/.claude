@@ -156,6 +156,54 @@ def get_project_claude_dir():
     project_claude.mkdir(exist_ok=True)
     return project_claude
 
+def extract_lessons_learned(tool_executions: List[Dict], accomplishments: str, files_mentioned: List[str]) -> List[str]:
+    """Extract lessons learned from the session"""
+    lessons = []
+    
+    # Check for test failures and fixes
+    test_failures = sum(1 for exec in tool_executions if exec['intent'] == 'running-tests' and not exec.get('success', True))
+    test_successes = sum(1 for exec in tool_executions if exec['intent'] == 'running-tests' and exec.get('success', True))
+    
+    if test_failures > 0 and test_successes > test_failures:
+        lessons.append("Fixed failing tests through iterative debugging")
+    
+    # Check for multiple modifications to same file
+    file_edit_counts = {}
+    for exec in tool_executions:
+        if exec['intent'] == 'modifying-file' and exec['files_touched']:
+            try:
+                files = json.loads(exec['files_touched']) if isinstance(exec['files_touched'], str) else exec['files_touched']
+                for file in files:
+                    file_name = Path(file).name
+                    file_edit_counts[file_name] = file_edit_counts.get(file_name, 0) + 1
+            except:
+                pass
+    
+    for file, count in file_edit_counts.items():
+        if count > 3:
+            lessons.append(f"Required multiple iterations ({count}) to get {file} working correctly")
+    
+    # Check for git operations
+    git_ops = [exec for exec in tool_executions if exec['intent'] == 'git-operation']
+    if git_ops:
+        lessons.append(f"Used {len(git_ops)} git operations to manage version control")
+    
+    # Check for search patterns
+    search_count = sum(1 for exec in tool_executions if exec['intent'] in ['searching-code', 'finding-files'])
+    if search_count > 5:
+        lessons.append(f"Required extensive searching ({search_count} searches) to understand codebase")
+    
+    # Generic accomplishment-based lessons
+    if accomplishments:
+        if 'bug' in accomplishments.lower() or 'fix' in accomplishments.lower():
+            lessons.append("Successfully identified and resolved issues in the codebase")
+        if 'refactor' in accomplishments.lower():
+            lessons.append("Improved code structure through refactoring")
+        if 'implement' in accomplishments.lower() or 'add' in accomplishments.lower():
+            lessons.append("Added new functionality to the system")
+    
+    return lessons
+
 def analyze_session_for_summary(chat_session_id: str, project_id: int, db) -> Dict:
     """Analyze the session's tool executions to generate intelligent summary"""
     if not db.connection:
@@ -267,7 +315,8 @@ def analyze_session_for_summary(chat_session_id: str, project_id: int, db) -> Di
             'phase_tags': list(phase_tags),
             'task_tags': list(task_tags),
             'accomplishments': ', '.join(accomplishments) if accomplishments else None,
-            'intent_summary': intent_counts
+            'intent_summary': intent_counts,
+            'executions': executions  # Return raw executions for lessons learned extraction
         }
         
     except Exception as e:
@@ -313,10 +362,18 @@ def main():
         
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
+        
+        # Debug: Log input data to understand structure
+        debug_log = Path(__file__).parent.parent / 'debug_stop.json'
+        with open(debug_log, 'w') as f:
+            json.dump(input_data, f, indent=2)
 
         # Extract required fields
         session_id = input_data.get("session_id", "")
         stop_hook_active = input_data.get("stop_hook_active", False)
+        
+        # Try to get model info from input
+        model_info = input_data.get("model", input_data.get("agent_model", "unknown"))
 
         # Get database connection and project info
         db = get_db()
@@ -335,7 +392,14 @@ def main():
                 # Generate summary
                 summary = generate_summary_from_analysis(analysis)
                 
-                # Save conversation summary
+                # Extract lessons learned
+                lessons_learned = extract_lessons_learned(
+                    analysis.get('executions', []),
+                    analysis.get('accomplishments', ''),
+                    analysis.get('files_mentioned', [])
+                )
+                
+                # Save conversation summary (existing table)
                 success = db.save_conversation_summary(
                     chat_session_id=session_id,
                     project_id=project_id,
@@ -351,6 +415,38 @@ def main():
                 
                 if success:
                     print(f"📝 Session summary saved: {summary}", file=sys.stderr)
+                
+                # Update conversation details with final summary and lessons
+                existing_details = db.get_conversation_details(session_id)
+                if existing_details:
+                    # Calculate session duration
+                    start_time = existing_details.get('created_at')
+                    duration_seconds = None
+                    if start_time:
+                        try:
+                            from datetime import datetime
+                            start_dt = datetime.fromisoformat(start_time.replace(' ', 'T'))
+                            duration_seconds = int((datetime.now() - start_dt).total_seconds())
+                        except:
+                            pass
+                    
+                    # Update with final summary and lessons learned
+                    cursor = db.connection.cursor()
+                    cursor.execute("""
+                        UPDATE conversation_details 
+                        SET agent_summary = ?, lessons_learned = ?, duration_seconds = ?, agent_model = ?
+                        WHERE chat_session_id = ?
+                    """, (
+                        summary,
+                        json.dumps(lessons_learned) if lessons_learned else None,
+                        duration_seconds,
+                        model_info,
+                        session_id
+                    ))
+                    db.connection.commit()
+                    
+                    if lessons_learned:
+                        print(f"💡 Lessons learned: {', '.join(lessons_learned[:2])}", file=sys.stderr)
 
         # Session data is now stored in the database via conversation_summaries
         # The old JSON logging is obsolete

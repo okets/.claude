@@ -92,8 +92,50 @@ def main():
         # Read JSON input from stdin
         input_data = json.loads(sys.stdin.read())
         
-        # Notification events are not stored - they're just ephemeral alerts
-        # The actual work is tracked via tool_executions in the database
+        # Debug: Log input data to understand structure
+        debug_log = Path(__file__).parent.parent / 'debug_notification.json'
+        with open(debug_log, 'w') as f:
+            json.dump(input_data, f, indent=2)
+        
+        # Import database utility
+        sys.path.append(str(Path(__file__).parent / 'utils'))
+        from db import get_db
+        
+        # Get database connection
+        db = get_db()
+        
+        # Check if this is a user message (first message in conversation)
+        message = input_data.get('message', '')
+        session_id = input_data.get('session_id', '')
+        
+        # Store first user message as the conversation request
+        if message and session_id and message != 'Claude is waiting for your input':
+            # Get project information
+            project_root = Path.cwd()
+            while project_root != project_root.parent:
+                if (project_root / '.git').exists():
+                    break
+                project_root = project_root.parent
+            
+            project_id = db.ensure_project(str(project_root), project_root.name)
+            
+            if project_id and db.connection:
+                # Check if this session already has a conversation detail entry
+                existing = db.get_conversation_details(session_id)
+                
+                if not existing:
+                    # This is the first user message - capture it
+                    # Generate a summary (in real implementation, could use LLM)
+                    summary = message[:100] if len(message) > 100 else message
+                    
+                    # Save initial conversation details
+                    db.save_conversation_details(
+                        chat_session_id=session_id,
+                        project_id=project_id,
+                        user_request_summary=summary,
+                        user_request_raw=message,
+                        agent_model=input_data.get('model', 'unknown')
+                    )
         
         # Announce notification via TTS only if --notify flag is set
         # Skip TTS for the generic "Claude is waiting for your input" message

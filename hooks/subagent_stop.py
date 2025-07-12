@@ -88,9 +88,66 @@ def main():
         # Extract required fields
         session_id = input_data.get("session_id", "")
         stop_hook_active = input_data.get("stop_hook_active", False)
-
-        # Subagent data is not currently stored - we could enhance this to track
-        # subagent executions in the database if needed
+        
+        # Import database utility
+        sys.path.append(str(Path(__file__).parent / 'utils'))
+        from db import get_db
+        
+        # Get database connection
+        db = get_db()
+        
+        # Get project information
+        project_root = Path.cwd()
+        while project_root != project_root.parent:
+            if (project_root / '.git').exists():
+                break
+            project_root = project_root.parent
+        
+        project_id = db.ensure_project(str(project_root), project_root.name)
+        
+        if project_id and db.connection and session_id:
+            # Get the parent conversation details
+            parent_details = db.get_conversation_details(session_id)
+            
+            if parent_details:
+                # Extract subagent information from input_data
+                subagent_model = input_data.get('model', 'unknown')
+                subagent_task = input_data.get('task', 'Unknown task')
+                subagent_summary = input_data.get('summary', '')
+                duration_ms = input_data.get('duration_ms', 0)
+                tool_count = input_data.get('tool_count', 0)
+                
+                # Save subagent execution
+                db.save_subagent_execution(
+                    chat_session_id=session_id,
+                    parent_conversation_id=parent_details.get('id'),
+                    subagent_model=subagent_model,
+                    subagent_task=subagent_task,
+                    subagent_response_summary=subagent_summary,
+                    duration_ms=duration_ms,
+                    success=True,
+                    tool_count=tool_count
+                )
+                
+                # Update parent conversation's subagents_used field
+                subagents_used = parent_details.get('subagents_used', [])
+                subagents_used.append({
+                    'model': subagent_model,
+                    'task': subagent_task,
+                    'response_summary': subagent_summary,
+                    'duration_ms': duration_ms
+                })
+                
+                cursor = db.connection.cursor()
+                cursor.execute("""
+                    UPDATE conversation_details 
+                    SET subagents_used = ?
+                    WHERE chat_session_id = ?
+                """, (
+                    json.dumps(subagents_used),
+                    session_id
+                ))
+                db.connection.commit()
 
         # Announce subagent completion via TTS
         announce_subagent_completion()
