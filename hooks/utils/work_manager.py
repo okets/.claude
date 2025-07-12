@@ -27,7 +27,8 @@ class WorkManager:
     def create_phase(self, name: str, description: str = None, status: str = 'planning') -> bool:
         """Create a new phase"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_create('phase', {'name': name, 'description': description, 'status': status})
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return False
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -52,10 +53,8 @@ class WorkManager:
                    priority: str = 'medium', status: str = 'todo') -> bool:
         """Create a new task within a phase"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_create('task', {
-                'phase_name': phase_name, 'name': task_name, 
-                'description': description, 'priority': priority, 'status': status
-            })
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return False
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -92,9 +91,8 @@ class WorkManager:
                          file_pattern: str = None) -> bool:
         """Create a new assignment within a task"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_create('assignment', {
-                'task_name': task_name, 'description': description, 'file_pattern': file_pattern
-            })
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return False
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -128,7 +126,8 @@ class WorkManager:
     def list_phases(self) -> List[Dict[str, Any]]:
         """List all phases in the project"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_list('phases')
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return []
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -178,7 +177,8 @@ class WorkManager:
     def list_tasks(self, phase_name: str = None) -> List[Dict[str, Any]]:
         """List tasks, optionally filtered by phase"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_list('tasks', {'phase_name': phase_name})
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return []
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -242,7 +242,8 @@ class WorkManager:
     def list_assignments(self, task_name: str) -> List[Dict[str, Any]]:
         """List assignments for a specific task"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_list('assignments', {'task_name': task_name})
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return []
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -281,7 +282,8 @@ class WorkManager:
     def update_status(self, item_type: str, name: str, status: str) -> bool:
         """Update status of phase, task, or assignment"""
         if not self.db.connection or not self.project_id:
-            return self._fallback_update(item_type, name, status)
+            print("❌ Long-term context database not available. Use Claude Code tools first to initialize.")
+            return False
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -417,80 +419,6 @@ class WorkManager:
             print(f"❌ Error auto-completing: {e}")
             return False
     
-    def _fallback_create(self, item_type: str, data: Dict[str, Any]) -> bool:
-        """Fallback creation when database unavailable"""
-        print(f"⚠️  Database unavailable. Saving {item_type} to JSON fallback.")
-        
-        try:
-            project_root = Path(self.project_path)
-            work_dir = project_root / '.claude' / 'work'
-            work_dir.mkdir(parents=True, exist_ok=True)
-            
-            work_file = work_dir / f'{item_type}s.json'
-            
-            if work_file.exists():
-                with open(work_file, 'r') as f:
-                    items = json.load(f)
-            else:
-                items = []
-            
-            data['created_at'] = datetime.now().isoformat()
-            items.append(data)
-            
-            with open(work_file, 'w') as f:
-                json.dump(items, f, indent=2)
-            
-            print(f"✅ Saved {item_type} to {work_file}")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Fallback save failed: {e}")
-            return False
-    
-    def _fallback_list(self, item_type: str, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """Fallback listing when database unavailable"""
-        print(f"⚠️  Database unavailable. Reading {item_type} from JSON fallback.")
-        
-        try:
-            project_root = Path(self.project_path)
-            work_file = project_root / '.claude' / 'work' / f'{item_type}.json'
-            
-            if not work_file.exists():
-                print(f"📝 No {item_type} found.")
-                return []
-            
-            with open(work_file, 'r') as f:
-                items = json.load(f)
-            
-            # Apply basic filtering
-            if filters:
-                filtered_items = []
-                for item in items:
-                    match = True
-                    for key, value in filters.items():
-                        if value and item.get(key) != value:
-                            match = False
-                            break
-                    if match:
-                        filtered_items.append(item)
-                items = filtered_items
-            
-            for item in items:
-                print(f"📌 {item.get('name', item.get('description', 'Unknown'))}")
-                if 'status' in item:
-                    print(f"   Status: {item['status']}")
-                print()
-            
-            return items
-            
-        except Exception as e:
-            print(f"❌ Fallback read failed: {e}")
-            return []
-    
-    def _fallback_update(self, item_type: str, name: str, status: str) -> bool:
-        """Fallback update when database unavailable"""
-        print(f"⚠️  Database unavailable. Cannot update {item_type} status.")
-        return False
 
 def main():
     """CLI entry point for work management"""

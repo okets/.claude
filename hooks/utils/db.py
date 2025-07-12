@@ -31,7 +31,7 @@ class ClaudeDB:
             self._initialize_database()
             
         except Exception as e:
-            print(f"Warning: Database connection failed: {e}", file=sys.stderr)
+            print(f"💾 Long-term context database not yet created. First tool use will initialize it.", file=sys.stderr)
             self.connection = None
     
     def _initialize_database(self):
@@ -142,11 +142,31 @@ class ClaudeDB:
                 UNIQUE(project_id, file1_path, file2_path)
             );
             
+            -- Conversation summaries table
+            CREATE TABLE IF NOT EXISTS conversation_summaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                project_id INTEGER NOT NULL,
+                summary TEXT NOT NULL,
+                key_topics TEXT, -- JSON array of topics discussed
+                files_mentioned TEXT, -- JSON array of files discussed/modified
+                phase_tags TEXT, -- JSON array of phase names mentioned
+                task_tags TEXT, -- JSON array of task names mentioned
+                assignment_tags TEXT, -- JSON array of assignment descriptions
+                accomplishments TEXT, -- What was actually completed
+                next_steps TEXT, -- What should be done next
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            
             -- Create indexes for better performance
             CREATE INDEX IF NOT EXISTS idx_sessions_project_started ON sessions(project_id, started_at);
             CREATE INDEX IF NOT EXISTS idx_tool_executions_session_executed ON tool_executions(session_id, executed_at);
             CREATE INDEX IF NOT EXISTS idx_security_events_session_type ON security_events(session_id, event_type);
             CREATE INDEX IF NOT EXISTS idx_file_relationships_project ON file_relationships(project_id, file1_path, file2_path);
+            CREATE INDEX IF NOT EXISTS idx_conversation_summaries_session ON conversation_summaries(session_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_conversation_summaries_files ON conversation_summaries(project_id, files_mentioned);
             """)
             
             self.connection.commit()
@@ -386,6 +406,113 @@ class ClaudeDB:
         except Exception as e:
             print(f"Fallback logging failed: {e}", file=sys.stderr)
     
+    def save_conversation_summary(self, session_id: str, project_id: int, 
+                                 summary: str, key_topics: List[str] = None,
+                                 files_mentioned: List[str] = None, 
+                                 phase_tags: List[str] = None,
+                                 task_tags: List[str] = None,
+                                 assignment_tags: List[str] = None,
+                                 accomplishments: str = None,
+                                 next_steps: str = None):
+        """Save conversation summary with smart tags"""
+        if not self.connection:
+            return self._fallback_log('conversation_summary', {
+                'session_id': session_id,
+                'summary': summary,
+                'key_topics': key_topics,
+                'files_mentioned': files_mentioned,
+                'phase_tags': phase_tags,
+                'task_tags': task_tags,
+                'assignment_tags': assignment_tags,
+                'accomplishments': accomplishments,
+                'next_steps': next_steps
+            })
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO conversation_summaries 
+                (session_id, project_id, summary, key_topics, files_mentioned, 
+                 phase_tags, task_tags, assignment_tags, accomplishments, next_steps)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id, project_id, summary,
+                json.dumps(key_topics) if key_topics else None,
+                json.dumps(files_mentioned) if files_mentioned else None,
+                json.dumps(phase_tags) if phase_tags else None,
+                json.dumps(task_tags) if task_tags else None,
+                json.dumps(assignment_tags) if assignment_tags else None,
+                accomplishments, next_steps
+            ))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print(f"Database error in save_conversation_summary: {e}", file=sys.stderr)
+            return False
+    
+    def get_conversations_by_file(self, project_id: int, file_path: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Get last N conversations that mentioned a specific file"""
+        if not self.connection:
+            return []
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT summary, accomplishments, next_steps, created_at, key_topics,
+                       phase_tags, task_tags, assignment_tags
+                FROM conversation_summaries
+                WHERE project_id = ? AND files_mentioned LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (project_id, f'%{file_path}%', limit))
+            
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Database error in get_conversations_by_file: {e}", file=sys.stderr)
+            return []
+    
+    def get_conversations_by_phase(self, project_id: int, phase_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversations related to a specific phase"""
+        if not self.connection:
+            return []
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT summary, accomplishments, next_steps, created_at, files_mentioned,
+                       task_tags, assignment_tags
+                FROM conversation_summaries
+                WHERE project_id = ? AND phase_tags LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (project_id, f'%{phase_name}%', limit))
+            
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Database error in get_conversations_by_phase: {e}", file=sys.stderr)
+            return []
+    
+    def get_conversations_by_task(self, project_id: int, task_name: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversations related to a specific task"""
+        if not self.connection:
+            return []
+            
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT summary, accomplishments, next_steps, created_at, files_mentioned,
+                       phase_tags, assignment_tags
+                FROM conversation_summaries
+                WHERE project_id = ? AND task_tags LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (project_id, f'%{task_name}%', limit))
+            
+            return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Database error in get_conversations_by_task: {e}", file=sys.stderr)
+            return []
+
     def close(self):
         """Close database connection"""
         if self.connection:

@@ -62,6 +62,18 @@ class WorkIntelligence:
             'tool_usage': [
                 r'tool.*usage', r'tools.*used', r'commands?.*run',
                 r'bash.*commands?', r'shell.*operations?'
+            ],
+            'conversations_by_file': [
+                r'conversations?.*about.*file', r'sessions?.*involving.*file',
+                r'last.*tasks?.*involving', r'history.*of.*file', r'work.*on.*file'
+            ],
+            'conversations_by_phase': [
+                r'conversations?.*about.*phase', r'sessions?.*in.*phase',
+                r'what.*did.*in.*phase', r'work.*in.*phase', r'phase.*history'
+            ],
+            'conversations_by_task': [
+                r'conversations?.*about.*task', r'sessions?.*for.*task',
+                r'work.*on.*task', r'task.*history', r'last.*time.*worked.*on'
             ]
         }
         
@@ -132,7 +144,11 @@ class WorkIntelligence:
         end_date = parsed_query['end_date']
         
         if not self.db.connection or not self.project_id:
-            return self._fallback_query(parsed_query, limit)
+            return {
+                'error': 'Long-term context database not available',
+                'message': 'Use Claude Code to perform some operations first to initialize the database',
+                'suggestion': 'Try reading or editing files to build up context data'
+            }
         
         try:
             with self.db.connection.cursor() as cursor:
@@ -152,6 +168,12 @@ class WorkIntelligence:
                     return self._query_git_operations(cursor, start_date, end_date, limit)
                 elif intent == 'tool_usage':
                     return self._query_tool_usage(cursor, start_date, end_date, limit)
+                elif intent == 'conversations_by_file':
+                    return self._query_conversations_by_file(cursor, entities['files'], limit)
+                elif intent == 'conversations_by_phase':
+                    return self._query_conversations_by_phase(cursor, entities['phases'], limit)
+                elif intent == 'conversations_by_task':
+                    return self._query_conversations_by_task(cursor, entities['tools'] + entities['phases'], limit)
                 else:
                     return self._query_recent_activity(cursor, start_date, end_date, limit)
                     
@@ -395,6 +417,88 @@ class WorkIntelligence:
             }
         }
     
+    def _query_conversations_by_file(self, cursor, file_filters, limit):
+        """Query conversations that mentioned specific files"""
+        if not file_filters:
+            return {'type': 'conversations_by_file', 'conversations': [], 'error': 'No file specified'}
+        
+        all_conversations = []
+        for file_filter in file_filters:
+            conversations = self.db.get_conversations_by_file(self.project_id, file_filter, limit)
+            all_conversations.extend(conversations)
+        
+        # Remove duplicates and sort by date
+        unique_conversations = []
+        seen_ids = set()
+        for conv in sorted(all_conversations, key=lambda x: x.get('created_at', ''), reverse=True):
+            conv_id = f"{conv.get('created_at', '')}-{conv.get('summary', '')[:50]}"
+            if conv_id not in seen_ids:
+                seen_ids.add(conv_id)
+                unique_conversations.append(conv)
+        
+        return {
+            'type': 'conversations_by_file',
+            'conversations': unique_conversations[:limit],
+            'file_filters': file_filters,
+            'summary': {
+                'total_conversations': len(unique_conversations),
+                'files_queried': file_filters
+            }
+        }
+    
+    def _query_conversations_by_phase(self, cursor, phase_filters, limit):
+        """Query conversations related to specific phases"""
+        if not phase_filters:
+            # Get all active phases if none specified
+            cursor.execute("""
+                SELECT name FROM phases 
+                WHERE project_id = ? AND status IN ('active', 'in_progress')
+                LIMIT 3
+            """, (self.project_id,))
+            phase_filters = [row['name'] for row in cursor.fetchall()]
+        
+        all_conversations = []
+        for phase_filter in phase_filters:
+            conversations = self.db.get_conversations_by_phase(self.project_id, phase_filter, limit)
+            all_conversations.extend(conversations)
+        
+        return {
+            'type': 'conversations_by_phase',
+            'conversations': all_conversations[:limit],
+            'phase_filters': phase_filters,
+            'summary': {
+                'total_conversations': len(all_conversations),
+                'phases_queried': phase_filters
+            }
+        }
+    
+    def _query_conversations_by_task(self, cursor, task_filters, limit):
+        """Query conversations related to specific tasks"""
+        if not task_filters:
+            # Get active tasks if none specified
+            cursor.execute("""
+                SELECT t.name FROM tasks t
+                JOIN phases p ON t.phase_id = p.id
+                WHERE p.project_id = ? AND t.status IN ('todo', 'in_progress')
+                LIMIT 3
+            """, (self.project_id,))
+            task_filters = [row['name'] for row in cursor.fetchall()]
+        
+        all_conversations = []
+        for task_filter in task_filters:
+            conversations = self.db.get_conversations_by_task(self.project_id, task_filter, limit)
+            all_conversations.extend(conversations)
+        
+        return {
+            'type': 'conversations_by_task',
+            'conversations': all_conversations[:limit],
+            'task_filters': task_filters,
+            'summary': {
+                'total_conversations': len(all_conversations),
+                'tasks_queried': task_filters
+            }
+        }
+    
     def _fallback_query(self, parsed_query: Dict[str, Any], limit: int) -> Dict[str, Any]:
         """Fallback to JSON file querying when database is unavailable"""
         try:
@@ -448,6 +552,12 @@ class WorkIntelligence:
             return self._format_phase_progress(results)
         elif result_type == 'security_events':
             return self._format_security_events(results)
+        elif result_type == 'conversations_by_file':
+            return self._format_conversations_by_file(results)
+        elif result_type == 'conversations_by_phase':
+            return self._format_conversations_by_phase(results)
+        elif result_type == 'conversations_by_task':
+            return self._format_conversations_by_task(results)
         else:
             return f"📊 Query Results ({result_type}):\n{json.dumps(results, indent=2, default=str)}"
     
