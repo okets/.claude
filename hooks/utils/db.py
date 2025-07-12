@@ -22,7 +22,7 @@ class ClaudeDB:
             # Use global Claude directory for database
             claude_dir = Path.home() / '.claude'
             claude_dir.mkdir(exist_ok=True)
-            db_path = claude_dir / 'intelligence.db'
+            db_path = claude_dir / 'long-agent-context.db'
             
             self.connection = sqlite3.connect(str(db_path), check_same_thread=False)
             self.connection.row_factory = sqlite3.Row  # Dict-like access
