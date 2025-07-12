@@ -1,0 +1,19 @@
+# Ignore all Claude runtime data - only track configs
+*
+
+# Allow only configuration files
+!.gitignore
+!commands/
+!hooks/
+!settings.json
+
+# But still ignore any runtime files that might be in allowed directories
+**/*.lock
+**/*.log
+**/*.jsonl
+**/logs/
+**/projects/
+**/todos/
+**/ide/
+**/statsig/
+**/shell-snapshots/
