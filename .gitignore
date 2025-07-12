@@ -1,22 +1,26 @@
-# Ignore all Claude runtime data - only track configs
-*
+# Claude Code global configuration gitignore
+# Only track configuration files, not runtime data
 
-# Allow only configuration files
-!.gitignore
-!commands/
-!hooks/
-!settings.json
-!CLAUDE.md
-!schema.sql
-!setup_database.py
+# Ignore runtime directories
+ide/
+logs/
+projects/
+todos/
+statsig/
+shell-snapshots/
 
-# But still ignore any runtime files that might be in allowed directories
-**/*.lock
-**/*.log
-**/*.jsonl
-**/logs/
-**/projects/
-**/todos/
-**/ide/
-**/statsig/
-**/shell-snapshots/
+# Ignore runtime files
+*.lock
+*.log
+*.jsonl
+settings.local.json
+
+# Ignore Python runtime files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Allow all other files and directories by default
+# (commands/, hooks/, schema.sql, setup_database.py, etc.)
