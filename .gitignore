@@ -6,6 +6,7 @@
 !commands/
 !hooks/
 !settings.json
+!CLAUDE.md
 
 # But still ignore any runtime files that might be in allowed directories
 **/*.lock
