@@ -15,6 +15,10 @@ shell-snapshots/
 *.jsonl
 settings.local.json
 
+# Ignore database files (contain session data)
+long-agent-context.db
+*.db
+
 # Ignore Python runtime files
 __pycache__/
 *.pyc
