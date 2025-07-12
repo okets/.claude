@@ -1,12 +1,12 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.8"
-# dependencies = ["pymysql", "cryptography"]
 # ///
 
 import os
 import json
-import pymysql
+import sqlite3
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -17,21 +17,142 @@ class ClaudeDB:
         self._connect()
     
     def _connect(self):
-        """Connect to MySQL database using environment variables or defaults"""
+        """Connect to SQLite database - zero configuration required"""
         try:
-            self.connection = pymysql.connect(
-                host=os.getenv('CLAUDE_DB_HOST', 'localhost'),
-                user=os.getenv('CLAUDE_DB_USER', 'root'),
-                password=os.getenv('CLAUDE_DB_PASSWORD', ''),
-                database=os.getenv('CLAUDE_DB_NAME', 'claude_intelligence'),
-                charset='utf8mb4',
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=True
-            )
+            # Use global Claude directory for database
+            claude_dir = Path.home() / '.claude'
+            claude_dir.mkdir(exist_ok=True)
+            db_path = claude_dir / 'intelligence.db'
+            
+            self.connection = sqlite3.connect(str(db_path), check_same_thread=False)
+            self.connection.row_factory = sqlite3.Row  # Dict-like access
+            
+            # Initialize database if needed
+            self._initialize_database()
+            
         except Exception as e:
-            # Fallback to JSON logging if DB not available
             print(f"Warning: Database connection failed: {e}", file=sys.stderr)
             self.connection = None
+    
+    def _initialize_database(self):
+        """Create tables if they don't exist"""
+        try:
+            cursor = self.connection.cursor()
+            
+            # Create tables with SQLite syntax
+            cursor.executescript("""
+            -- Projects table
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                path TEXT NOT NULL UNIQUE,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            -- Sessions table
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ended_at TIMESTAMP NULL,
+                summary TEXT,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            
+            -- Phases table
+            CREATE TABLE IF NOT EXISTS phases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'active', 'completed', 'paused')),
+                started_at TIMESTAMP NULL,
+                completed_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                UNIQUE(project_id, name)
+            );
+            
+            -- Tasks table
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                phase_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed', 'blocked')),
+                priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+                started_at TIMESTAMP NULL,
+                completed_at TIMESTAMP NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (phase_id) REFERENCES phases(id) ON DELETE CASCADE
+            );
+            
+            -- Assignments table
+            CREATE TABLE IF NOT EXISTS assignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id INTEGER NOT NULL,
+                description TEXT NOT NULL,
+                file_pattern TEXT,
+                status TEXT DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'completed')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+            );
+            
+            -- Tool executions table
+            CREATE TABLE IF NOT EXISTS tool_executions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                tool_name TEXT NOT NULL,
+                tool_input TEXT,  -- JSON as TEXT
+                tool_output TEXT, -- JSON as TEXT
+                success BOOLEAN DEFAULT 1,
+                intent TEXT,
+                files_touched TEXT, -- JSON array as TEXT
+                duration_ms INTEGER,
+                executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                assignment_id INTEGER NULL,
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL
+            );
+            
+            -- Security events table
+            CREATE TABLE IF NOT EXISTS security_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                event_type TEXT NOT NULL CHECK (event_type IN ('blocked', 'warned', 'allowed')),
+                tool_name TEXT NOT NULL,
+                tool_input TEXT, -- JSON as TEXT
+                reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+            );
+            
+            -- File relationships table
+            CREATE TABLE IF NOT EXISTS file_relationships (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                file1_path TEXT NOT NULL,
+                file2_path TEXT NOT NULL,
+                co_modification_count INTEGER DEFAULT 1,
+                last_modified_together TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                UNIQUE(project_id, file1_path, file2_path)
+            );
+            
+            -- Create indexes for better performance
+            CREATE INDEX IF NOT EXISTS idx_sessions_project_started ON sessions(project_id, started_at);
+            CREATE INDEX IF NOT EXISTS idx_tool_executions_session_executed ON tool_executions(session_id, executed_at);
+            CREATE INDEX IF NOT EXISTS idx_security_events_session_type ON security_events(session_id, event_type);
+            CREATE INDEX IF NOT EXISTS idx_file_relationships_project ON file_relationships(project_id, file1_path, file2_path);
+            """)
+            
+            self.connection.commit()
+            
+        except Exception as e:
+            print(f"Warning: Database initialization failed: {e}", file=sys.stderr)
     
     def ensure_project(self, project_path: str, project_name: str = None) -> int:
         """Ensure project exists in database, return project_id"""
@@ -42,20 +163,21 @@ class ClaudeDB:
             project_name = Path(project_path).name
             
         try:
-            with self.connection.cursor() as cursor:
-                # Try to insert, ignore if exists
-                cursor.execute("""
-                    INSERT IGNORE INTO projects (name, path) 
-                    VALUES (%s, %s)
-                """, (project_name, project_path))
-                
-                # Get the project ID
-                cursor.execute("""
-                    SELECT id FROM projects WHERE path = %s
-                """, (project_path,))
-                
-                result = cursor.fetchone()
-                return result['id'] if result else None
+            cursor = self.connection.cursor()
+            # Try to insert, ignore if exists
+            cursor.execute("""
+                INSERT OR IGNORE INTO projects (name, path) 
+                VALUES (?, ?)
+            """, (project_name, project_path))
+            
+            # Get the project ID
+            cursor.execute("""
+                SELECT id FROM projects WHERE path = ?
+            """, (project_path,))
+            
+            result = cursor.fetchone()
+            self.connection.commit()
+            return result['id'] if result else None
         except Exception as e:
             print(f"Database error in ensure_project: {e}", file=sys.stderr)
             return None
@@ -66,12 +188,13 @@ class ClaudeDB:
             return False
             
         try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("""
-                    INSERT IGNORE INTO sessions (id, project_id) 
-                    VALUES (%s, %s)
-                """, (session_id, project_id))
-                return True
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO sessions (id, project_id) 
+                VALUES (?, ?)
+            """, (session_id, project_id))
+            self.connection.commit()
+            return True
         except Exception as e:
             print(f"Database error in ensure_session: {e}", file=sys.stderr)
             return False
@@ -95,20 +218,21 @@ class ClaudeDB:
             })
             
         try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO tool_executions 
-                    (session_id, tool_name, tool_input, tool_output, success, 
-                     intent, files_touched, duration_ms, assignment_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    session_id, tool_name, 
-                    json.dumps(tool_input) if tool_input else None,
-                    json.dumps(tool_output) if tool_output else None,
-                    success, intent,
-                    json.dumps(files_touched) if files_touched else None,
-                    duration_ms, assignment_id
-                ))
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO tool_executions 
+                (session_id, tool_name, tool_input, tool_output, success, 
+                 intent, files_touched, duration_ms, assignment_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id, tool_name, 
+                json.dumps(tool_input) if tool_input else None,
+                json.dumps(tool_output) if tool_output else None,
+                success, intent,
+                json.dumps(files_touched) if files_touched else None,
+                duration_ms, assignment_id
+            ))
+            self.connection.commit()
         except Exception as e:
             print(f"Database error in log_tool_execution: {e}", file=sys.stderr)
             return self._fallback_log('tool_execution', {
@@ -130,16 +254,17 @@ class ClaudeDB:
             })
             
         try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO security_events 
-                    (session_id, event_type, tool_name, tool_input, reason)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (
-                    session_id, event_type, tool_name,
-                    json.dumps(tool_input) if tool_input else None,
-                    reason
-                ))
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                INSERT INTO security_events 
+                (session_id, event_type, tool_name, tool_input, reason)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                session_id, event_type, tool_name,
+                json.dumps(tool_input) if tool_input else None,
+                reason
+            ))
+            self.connection.commit()
         except Exception as e:
             print(f"Database error in log_security_event: {e}", file=sys.stderr)
             return self._fallback_log('security_event', {
@@ -154,22 +279,25 @@ class ClaudeDB:
             return
             
         try:
-            with self.connection.cursor() as cursor:
-                # Create pairs of files that were modified together
-                for i, file1 in enumerate(files):
-                    for file2 in files[i+1:]:
-                        # Ensure consistent ordering
-                        if file1 > file2:
-                            file1, file2 = file2, file1
-                            
-                        cursor.execute("""
-                            INSERT INTO file_relationships 
-                            (project_id, file1_path, file2_path, co_modification_count, last_modified_together)
-                            VALUES (%s, %s, %s, 1, NOW())
-                            ON DUPLICATE KEY UPDATE 
-                            co_modification_count = co_modification_count + 1,
-                            last_modified_together = NOW()
-                        """, (project_id, file1, file2))
+            cursor = self.connection.cursor()
+            # Create pairs of files that were modified together
+            for i, file1 in enumerate(files):
+                for file2 in files[i+1:]:
+                    # Ensure consistent ordering
+                    if file1 > file2:
+                        file1, file2 = file2, file1
+                        
+                    cursor.execute("""
+                        INSERT INTO file_relationships 
+                        (project_id, file1_path, file2_path, co_modification_count, last_modified_together)
+                        VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+                        ON CONFLICT(project_id, file1_path, file2_path) 
+                        DO UPDATE SET 
+                        co_modification_count = co_modification_count + 1,
+                        last_modified_together = CURRENT_TIMESTAMP
+                    """, (project_id, file1, file2))
+            
+            self.connection.commit()
         except Exception as e:
             print(f"Database error in update_file_relationships: {e}", file=sys.stderr)
     
@@ -179,45 +307,46 @@ class ClaudeDB:
             return {}
             
         try:
-            with self.connection.cursor() as cursor:
-                # Recent tool executions
-                cursor.execute("""
-                    SELECT tool_name, intent, files_touched, executed_at
-                    FROM tool_executions te
-                    JOIN sessions s ON te.session_id = s.id
-                    WHERE s.project_id = %s
-                    ORDER BY executed_at DESC
-                    LIMIT %s
-                """, (project_id, limit))
-                recent_tools = cursor.fetchall()
-                
-                # Active tasks
-                cursor.execute("""
-                    SELECT ph.name as phase_name, t.name as task_name, 
-                           t.status, t.priority, t.description
-                    FROM tasks t
-                    JOIN phases ph ON t.phase_id = ph.id
-                    WHERE ph.project_id = %s AND t.status IN ('todo', 'in_progress')
-                    ORDER BY t.priority DESC, t.created_at
-                    LIMIT %s
-                """, (project_id, limit))
-                active_tasks = cursor.fetchall()
-                
-                # File relationships
-                cursor.execute("""
-                    SELECT file1_path, file2_path, co_modification_count
-                    FROM file_relationships
-                    WHERE project_id = %s
-                    ORDER BY co_modification_count DESC
-                    LIMIT %s
-                """, (project_id, limit))
-                file_relationships = cursor.fetchall()
-                
-                return {
-                    'recent_tools': recent_tools,
-                    'active_tasks': active_tasks,
-                    'file_relationships': file_relationships
-                }
+            cursor = self.connection.cursor()
+            
+            # Recent tool executions
+            cursor.execute("""
+                SELECT tool_name, intent, files_touched, executed_at
+                FROM tool_executions te
+                JOIN sessions s ON te.session_id = s.id
+                WHERE s.project_id = ?
+                ORDER BY executed_at DESC
+                LIMIT ?
+            """, (project_id, limit))
+            recent_tools = [dict(row) for row in cursor.fetchall()]
+            
+            # Active tasks
+            cursor.execute("""
+                SELECT ph.name as phase_name, t.name as task_name, 
+                       t.status, t.priority, t.description
+                FROM tasks t
+                JOIN phases ph ON t.phase_id = ph.id
+                WHERE ph.project_id = ? AND t.status IN ('todo', 'in_progress')
+                ORDER BY t.priority DESC, t.created_at
+                LIMIT ?
+            """, (project_id, limit))
+            active_tasks = [dict(row) for row in cursor.fetchall()]
+            
+            # File relationships
+            cursor.execute("""
+                SELECT file1_path, file2_path, co_modification_count
+                FROM file_relationships
+                WHERE project_id = ?
+                ORDER BY co_modification_count DESC
+                LIMIT ?
+            """, (project_id, limit))
+            file_relationships = [dict(row) for row in cursor.fetchall()]
+            
+            return {
+                'recent_tools': recent_tools,
+                'active_tasks': active_tasks,
+                'file_relationships': file_relationships
+            }
         except Exception as e:
             print(f"Database error in get_project_context: {e}", file=sys.stderr)
             return {}
