@@ -19,6 +19,7 @@ sys.path.append(str(Path(__file__).parent / 'utils'))
 try:
     from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts
     from hook_parser import generate_contextual_summary, generate_cycle_summary_file
+    from data_collector import DataCollector
 except ImportError:
     # Fallback if utils not available
     def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
@@ -31,6 +32,9 @@ except ImportError:
         return {"error": "Hook parser not available"}
     def announce_tts(message):
         pass
+    class DataCollector:
+        def _process_summary_file(self, file_path):
+            pass
 
 try:
     from dotenv import load_dotenv
@@ -915,8 +919,20 @@ def main():
                     cycle_summary_result = generate_cycle_summary_file(session_id, cycle_id, None, transcript_path)
                     if "error" not in cycle_summary_result:
                         announce_tts(f"Cycle summary generated for cycle {cycle_id}")
+                        summary_path = cycle_summary_result.get("summary_file_path", "unknown")
+                        
+                        # AUTO-INGEST: Immediately add to database
+                        try:
+                            collector = DataCollector()
+                            collector._process_summary_file(Path(summary_path))
+                            announce_tts(f"Cycle {cycle_id} added to database")
+                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                f.write(f"\n{datetime.now()}: Cycle {cycle_id} auto-ingested to database\n")
+                        except Exception as db_error:
+                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                f.write(f"\n{datetime.now()}: Database auto-ingestion failed: {str(db_error)}\n")
+                        
                         with open('/tmp/stop_hook_debug.log', 'a') as f:
-                            summary_path = cycle_summary_result.get("summary_file_path", "unknown")
                             f.write(f"\n{datetime.now()}: Cycle summary saved to {summary_path}\n")
                     else:
                         with open('/tmp/stop_hook_debug.log', 'a') as f:

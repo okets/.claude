@@ -139,16 +139,16 @@ def extract_file_activities(timeline: List[Dict]) -> Dict[str, Dict]:
                     if patches:
                         activity['patches'].extend(patches)
                 
-                # Extract reason from tool context
+                # Extract reason from tool context - PRESERVE FULL CONTEXT
                 if tool_name == 'Write':
                     reason = "File creation"
                 elif tool_name == 'Edit':
                     old_string = tool_input.get('old_string', '')
                     new_string = tool_input.get('new_string', '')
                     if len(old_string) > len(new_string):
-                        reason = f"Removed content: {old_string[:50]}..."
+                        reason = f"Removed content: {old_string}"
                     elif len(new_string) > len(old_string):
-                        reason = f"Added content: {new_string[:50]}..."
+                        reason = f"Added content: {new_string}"
                     else:
                         reason = f"Modified content"
                 elif tool_name == 'MultiEdit':
@@ -249,14 +249,12 @@ def extract_user_intent(timeline: List[Dict]) -> str:
         task_descriptions = [todo.get('content', '') for todo in new_todos]
         todo_progression.extend(task_descriptions)
     
-    # Generate intent from todo progression
+    # Generate intent from todo progression - PRESERVE FULL CONTEXT
     if todo_progression:
         # Take unique tasks and create a summary
         unique_tasks = list(dict.fromkeys(todo_progression))  # Preserve order, remove duplicates
-        if len(unique_tasks) <= 3:
-            return "; ".join(unique_tasks)
-        else:
-            return f"Multi-step task: {unique_tasks[0]}... (and {len(unique_tasks)-1} more steps)"
+        # Always return full context - don't truncate valuable information
+        return "; ".join(unique_tasks)
     
     return "Unknown task"
 

@@ -112,7 +112,7 @@ def get_current_cycle_id(session_id, transcript_path):
 
 
 def _is_valuable_context(hook_name, hook_data):
-    """Filter hook events to capture only valuable context (reduce logging ~70%)"""
+    """Filter hook events to capture valuable context (reduce logging ~50%, not 70%)"""
     tool_name = hook_data.get('tool_name', '')
     
     # Always log Stop hooks (cycle completion)
@@ -123,17 +123,17 @@ def _is_valuable_context(hook_name, hook_data):
     if hook_name == 'SubagentStop':
         return True
     
-    # For PreToolUse: Only log Task tool (subagent delegation)
+    # For PreToolUse: Log TodoWrite and Task tools (user intent + subagent delegation)
     if hook_name == 'PreToolUse':
-        return tool_name == 'Task'
+        return tool_name in ['TodoWrite', 'Task']
     
-    # For PostToolUse: Only log valuable tools
+    # For PostToolUse: Log valuable tools + some context tools
     if hook_name == 'PostToolUse':
         # File modification tools (core value)
         if tool_name in ['Edit', 'Write', 'MultiEdit']:
             return True
         
-        # User intent tracking
+        # User intent tracking (essential)
         if tool_name == 'TodoWrite':
             return True
         
@@ -145,12 +145,17 @@ def _is_valuable_context(hook_name, hook_data):
         if tool_name == 'Bash':
             command = hook_data.get('tool_input', {}).get('command', '').lower()
             # Only log important operations
-            significant_operations = ['git', 'npm', 'pip', 'build', 'test', 'deploy', 'install']
+            significant_operations = ['git', 'npm', 'pip', 'build', 'test', 'deploy', 'install', 'commit']
             return any(op in command for op in significant_operations)
         
-        # Filter out read-only tools (noise)
-        noise_tools = ['Read', 'Grep', 'Glob', 'LS', 'Bash']  # Bash handled above
-        return tool_name not in noise_tools
+        # Keep SOME read operations for context (but not all)
+        # Filter out excessive noise while preserving some exploration context
+        if tool_name in ['Read', 'Grep', 'Glob']:
+            # Could add smarter filtering here if needed (e.g., only first few reads)
+            return False  # For now, still filter these out
+        
+        # Log other tools by default (NotebookRead, WebFetch, etc. might be valuable)
+        return True
     
     # Default: don't log other hook types
     return False
