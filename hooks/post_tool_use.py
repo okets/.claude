@@ -168,7 +168,7 @@ def main():
         input_data = json.load(sys.stdin)
         
         # Optional debug logging - uncomment for debugging
-        # debug_log = Path(__file__).parent.parent / 'debug_post_tool_use.json'
+        # debug_log = Path('/tmp') / 'claude_debug_post_tool_use.json'
         # with open(debug_log, 'w') as f:
         #     json.dump(input_data, f, indent=2)
         

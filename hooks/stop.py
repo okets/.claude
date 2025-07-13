@@ -367,7 +367,7 @@ def main():
         input_data = json.load(sys.stdin)
         
         # Debug: Log input data to understand structure
-        debug_log = Path(__file__).parent.parent / 'debug_stop.json'
+        debug_log = Path('/tmp') / 'claude_debug_stop.json'
         with open(debug_log, 'w') as f:
             json.dump(input_data, f, indent=2)
 

@@ -125,7 +125,7 @@ def main():
             user_request = get_first_user_message_from_transcript(transcript_path)
         
         # Debug: Log input data and extracted user request
-        debug_log = Path(__file__).parent.parent / 'debug_notification.json'
+        debug_log = Path('/tmp') / 'claude_debug_notification.json'
         debug_data = {
             'input_data': input_data,
             'extracted_user_request': user_request,

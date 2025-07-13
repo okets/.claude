@@ -14,6 +14,7 @@ shell-snapshots/
 *.log
 *.jsonl
 settings.local.json
+tool_executions.jsonl
 
 # Ignore database files (contain session data)
 queryable-context.db      # New per-project database
@@ -25,6 +26,11 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+
+# Ignore temp files and debug output
+/tmp/
+debug_*.json
+claude_debug_*.json
 
 # Allow all other files and directories by default
 # (commands/, hooks/, schema.sql, setup_database.py, etc.)

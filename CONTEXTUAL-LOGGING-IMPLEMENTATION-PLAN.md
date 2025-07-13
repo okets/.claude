@@ -41,6 +41,10 @@ This is the global `.claude` folder - every change we make affects:
 3. Clean messages back to hook name only after resolving issues
 4. Test each incremental change with verifiable output
 5. **BE AWARE**: Changes affect the current conversation immediately
+6. **TEMP FILES**: Always write debug/temp files to `/tmp/` with prefix `claude_`
+   - Example: `/tmp/claude_debug_notification.json`
+   - Never write debug files to project directory
+   - This prevents git pollution and project clutter
 
 ## Implementation Phases
 
@@ -271,6 +275,7 @@ sqlite3 .claude/queryable-context.db "SELECT tool_name, tool_intent FROM tool_ex
 - Keep backup of working hook versions
 - Add safety checks to prevent infinite loops
 - Use TTS to understand what's happening in real-time
+- Write all debug output to `/tmp/claude_*` files
 
 ### DON'T's:
 - Don't add hooks that call the same tools they monitor
