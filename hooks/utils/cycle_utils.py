@@ -111,9 +111,54 @@ def get_current_cycle_id(session_id, transcript_path):
     return stop_count + 1
 
 
+def _is_valuable_context(hook_name, hook_data):
+    """Filter hook events to capture only valuable context (reduce logging ~70%)"""
+    tool_name = hook_data.get('tool_name', '')
+    
+    # Always log Stop hooks (cycle completion)
+    if hook_name == 'Stop':
+        return True
+    
+    # Always log SubagentStop hooks  
+    if hook_name == 'SubagentStop':
+        return True
+    
+    # For PreToolUse: Only log Task tool (subagent delegation)
+    if hook_name == 'PreToolUse':
+        return tool_name == 'Task'
+    
+    # For PostToolUse: Only log valuable tools
+    if hook_name == 'PostToolUse':
+        # File modification tools (core value)
+        if tool_name in ['Edit', 'Write', 'MultiEdit']:
+            return True
+        
+        # User intent tracking
+        if tool_name == 'TodoWrite':
+            return True
+        
+        # Subagent delegation completion
+        if tool_name == 'Task':
+            return True
+        
+        # Significant Bash operations only
+        if tool_name == 'Bash':
+            command = hook_data.get('tool_input', {}).get('command', '').lower()
+            # Only log important operations
+            significant_operations = ['git', 'npm', 'pip', 'build', 'test', 'deploy', 'install']
+            return any(op in command for op in significant_operations)
+        
+        # Filter out read-only tools (noise)
+        noise_tools = ['Read', 'Grep', 'Glob', 'LS', 'Bash']  # Bash handled above
+        return tool_name not in noise_tools
+    
+    # Default: don't log other hook types
+    return False
+
+
 def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
     """
-    Dump raw hook JSON data with cycle ID to log file.
+    Dump only valuable hook data to reduce logging volume by ~70%.
     
     Args:
         hook_name: Name of the hook (e.g., "PreToolUse", "Stop")
@@ -122,11 +167,16 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
         transcript_path: Path to transcript
     """
     try:
+        # Filter out noise - only log valuable context
+        if not _is_valuable_context(hook_name, hook_data):
+            return  # Skip logging noise
+        
         # Calculate cycle ID
         cycle_id = get_current_cycle_id(session_id, transcript_path)
         
-        # Announce via TTS
-        announce_tts(f"Hook {hook_name} fired for cycle {cycle_id}")
+        # Announce via TTS only for valuable events
+        tool_name = hook_data.get('tool_name', 'unknown')
+        announce_tts(f"Logging {hook_name}:{tool_name} for cycle {cycle_id}")
         
         # Create output directory
         output_dir = Path("/Users/hanan/.claude/.claude/session_logs")
