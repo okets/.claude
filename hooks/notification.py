@@ -51,8 +51,31 @@ def get_tts_script_path():
 
 
 def announce_notification():
-    """Announce that the agent needs user input."""
+    """Announce that the agent needs user input (controlled by interaction_level)."""
     try:
+        # Check interaction level settings
+        try:
+            sys.path.append(str(Path(__file__).parent / 'utils'))
+            from settings import get_setting
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            # Silent mode: no announcements
+            if interaction_level == "silent":
+                return
+            
+            # Quiet mode: only notification sounds (beep/chime), no verbal announcements
+            if interaction_level == "quiet":
+                # TODO: Implement notification sound (beep/chime) instead of TTS
+                return
+            
+            # Concise and verbose modes: verbal announcements
+            # (concise and verbose both announce notifications)
+            
+        except ImportError:
+            # Settings not available, default to announce
+            pass
+        
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available

@@ -60,8 +60,35 @@ def get_tts_script_path():
 
 
 def announce_subagent_completion():
-    """Announce subagent completion using the best available TTS service."""
+    """Announce subagent completion using the best available TTS service (controlled by interaction_level)."""
     try:
+        # Check interaction level settings
+        try:
+            sys.path.append(str(Path(__file__).parent / 'utils'))
+            from settings import get_setting
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            # Silent mode: no announcements
+            if interaction_level == "silent":
+                return
+            
+            # Quiet mode: only notification sounds (beep/chime), no verbal announcements
+            if interaction_level == "quiet":
+                # TODO: Implement notification sound (beep/chime) instead of TTS
+                return
+            
+            # Concise mode: brief announcements
+            if interaction_level == "concise":
+                # Brief subagent completion announcement
+                pass
+            
+            # Verbose mode: detailed announcements (use full message)
+            
+        except ImportError:
+            # Settings not available, default to announce
+            pass
+        
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available
