@@ -11,13 +11,6 @@ import re
 from datetime import datetime
 import time
 
-# Import new database system only
-sys.path.append(str(Path(__file__).parent / 'utils'))
-from queryable_db import (
-    add_event, track_file_change, add_session_tags, 
-    get_current_user_request, get_session_modified_files,
-    log_tool_execution, update_file_relationships, get_queryable_db
-)
 
 def get_project_claude_dir():
     """Find or create .claude directory in current project"""
@@ -186,15 +179,6 @@ def main():
         success = infer_success_from_tool_response(tool_name, tool_response)
         duration_ms = int((time.time() - start_time) * 1000)
         
-        # Add tool execution event to new database
-        event_data = {
-            'tool': tool_name,
-            'target': files_touched[0] if files_touched else None,
-            'intent': intent,
-            'success': success,
-            'duration_ms': duration_ms
-        }
-        add_event(session_id, 'tool_execution', event_data)
         
         # Track file changes for modification tools only
         if tool_name in ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'] and files_touched:
@@ -217,47 +201,7 @@ def main():
                 else:
                     change_summary = "Modified notebook"
                 
-                # Get current user request for context
-                user_request = get_current_user_request(session_id) or "No user request captured"
-                
-                # Build context
-                context = {
-                    'user_request': user_request,
-                    'agent_reasoning': build_thought_from_tool(tool_name, tool_input, intent),
-                    'related_files': get_session_modified_files(session_id),
-                    'prompted_by': 'user_request'  # Could be enhanced to detect test_failure, etc.
-                }
-                
-                # Track the file change
-                track_file_change(
-                    session_id=session_id,
-                    file_path=file_path,
-                    change_type=change_type,
-                    change_summary=change_summary,
-                    context=context
-                )
-                
-                # Add file tags
-                add_session_tags(session_id, [
-                    ('file', file_path),
-                    ('directory', str(Path(file_path).parent))
-                ])
         
-        # Also log to unified tool execution system for compatibility
-        log_tool_execution(
-            chat_session_id=session_id,
-            tool_name=tool_name,
-            tool_input=tool_input,
-            tool_output=tool_response,
-            success=success,
-            intent=intent,
-            files_touched=files_touched,
-            duration_ms=duration_ms
-        )
-        
-        # Update file relationships if multiple files were touched
-        if len(files_touched) > 1:
-            update_file_relationships(1, files_touched)  # project_id=1 for compatibility
         
         sys.exit(0)
         

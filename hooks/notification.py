@@ -134,60 +134,60 @@ def main():
         with open(debug_log, 'w') as f:
             json.dump(debug_data, f, indent=2)
         
-        # Import new queryable database utility
-        sys.path.append(str(Path(__file__).parent / 'utils'))
-        from queryable_db import create_session, add_event, add_session_tags, update_session_summary
+        # # Import new queryable database utility
+        # sys.path.append(str(Path(__file__).parent / 'utils'))
+        # from queryable_db import create_session, add_event, add_session_tags, update_session_summary
         
-        # Store first user message as the conversation request
-        if user_request and session_id:
-            # Get project information
-            project_root = Path.cwd()
-            project_path = str(project_root)
-            
-            # Extract model from input or use default
-            model = input_data.get('model', 'claude-unknown')
-            
-            # Create session and first event
-            create_session(session_id, project_path, model)
-            
-            # Add session start event with user request
-            event_id = add_event(session_id, 'session_start', {
-                'user_request': user_request,
-                'model': model,
-                'project_path': project_path
-            })
-            
-            # Update session with user request summary
-            summary = user_request[:100] + '...' if len(user_request) > 100 else user_request
-            update_session_summary(session_id, summary)
-            
-            # Generate initial tags
-            tags = [
-                ('model', model),
-            ]
-            
-            # Extract topics from message (simple keyword matching for now)
-            message_lower = user_request.lower()
-            topic_keywords = {
-                'auth': 'authentication',
-                'login': 'authentication', 
-                'test': 'testing',
-                'bug': 'bug-fix',
-                'fix': 'bug-fix',
-                'feature': 'feature-development',
-                'implement': 'feature-development',
-                'refactor': 'refactoring',
-                'clean': 'refactoring',
-                'doc': 'documentation',
-                'readme': 'documentation'
-            }
-            
-            for keyword, topic in topic_keywords.items():
-                if keyword in message_lower:
-                    tags.append(('topic', topic))
-                    break
-            
-            add_session_tags(session_id, tags)
+        # # Store first user message as the conversation request
+        # if user_request and session_id:
+        #     # Get project information
+        #     project_root = Path.cwd()
+        #     project_path = str(project_root)
+        #     
+        #     # Extract model from input or use default
+        #     model = input_data.get('model', 'claude-unknown')
+        #     
+        #     # Create session and first event
+        #     create_session(session_id, project_path, model)
+        #     
+        #     # Add session start event with user request
+        #     event_id = add_event(session_id, 'session_start', {
+        #         'user_request': user_request,
+        #         'model': model,
+        #         'project_path': project_path
+        #     })
+        #     
+        #     # Update session with user request summary
+        #     summary = user_request[:100] + '...' if len(user_request) > 100 else user_request
+        #     update_session_summary(session_id, summary)
+        #     
+        #     # Generate initial tags
+        #     tags = [
+        #         ('model', model),
+        #     ]
+        #     
+        #     # Extract topics from message (simple keyword matching for now)
+        #     message_lower = user_request.lower()
+        #     topic_keywords = {
+        #         'auth': 'authentication',
+        #         'login': 'authentication', 
+        #         'test': 'testing',
+        #         'bug': 'bug-fix',
+        #         'fix': 'bug-fix',
+        #         'feature': 'feature-development',
+        #         'implement': 'feature-development',
+        #         'refactor': 'refactoring',
+        #         'clean': 'refactoring',
+        #         'doc': 'documentation',
+        #         'readme': 'documentation'
+        #     }
+        #     
+        #     for keyword, topic in topic_keywords.items():
+        #         if keyword in message_lower:
+        #             tags.append(('topic', topic))
+        #             break
+        #     
+        #     add_session_tags(session_id, tags)
         
         # Announce notification via TTS only if --notify flag is set
         # Skip TTS for the generic "Claude is waiting for your input" message

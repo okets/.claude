@@ -14,12 +14,6 @@ from datetime import datetime
 import re
 from typing import List, Dict, Set
 
-# Import new database system only
-sys.path.append(str(Path(__file__).parent / 'utils'))
-from queryable_db import (
-    add_event, add_session_tags, close_session,
-    get_queryable_db, save_conversation_summary
-)
 
 try:
     from dotenv import load_dotenv
@@ -386,62 +380,6 @@ def main():
             'stop_hook_active': stop_hook_active
         })
         
-        # Analyze session for new database
-        queryable_db = get_queryable_db()
-        if queryable_db.connection and session_id:
-            cursor = queryable_db.connection.cursor()
-            
-            # Get session statistics
-            cursor.execute("""
-                SELECT 
-                    COUNT(*) as total_events,
-                    SUM(CASE WHEN event_type = 'file_change' THEN 1 ELSE 0 END) as file_changes,
-                    SUM(CASE WHEN event_type = 'tool_execution' THEN 1 ELSE 0 END) as tool_executions
-                FROM session_events
-                WHERE session_id = ?
-            """, (session_id,))
-            stats = cursor.fetchone()
-            
-            # Estimate token count (rough approximation)
-            total_tokens = stats['total_events'] * 500  # Rough estimate
-            
-            # Determine complexity based on events and tokens
-            if total_tokens < 1000 and stats['file_changes'] < 2:
-                complexity = 'simple'
-                complexity_metadata = {'reason': 'Quick task with minimal changes'}
-            elif total_tokens < 5000 and stats['file_changes'] < 5:
-                complexity = 'moderate'
-                complexity_metadata = {'reason': 'Standard task with some changes'}
-            elif total_tokens < 15000 and stats['file_changes'] < 10:
-                complexity = 'complex'
-                complexity_metadata = {'reason': 'Multi-step task with significant changes'}
-            else:
-                complexity = 'massive'
-                complexity_metadata = {'reason': 'Major implementation with extensive changes'}
-            
-            # Add complexity tag
-            add_session_tags(session_id, [
-                ('complexity', complexity, {
-                    'tokens': total_tokens,
-                    'file_changes': stats['file_changes'],
-                    'tool_executions': stats['tool_executions'],
-                    **complexity_metadata
-                })
-            ])
-            
-            # Analyze outcomes
-            outcome = 'completed'  # Could be enhanced to detect failures
-            add_session_tags(session_id, [('outcome', outcome)])
-            
-            # Close session with metadata
-            close_session(
-                session_id=session_id,
-                final_outcome=outcome,
-                total_tokens=total_tokens,
-                total_file_changes=stats['file_changes']
-            )
-            
-            print(f"📝 Session analysis complete: {complexity} complexity, {stats['file_changes']} file changes", file=sys.stderr)
 
         # Announce completion via TTS
         announce_completion()

@@ -28,17 +28,16 @@ This is the global `.claude` folder - every change we make affects:
 
 ## Development Process
 
-### TTS-Based Development Feedback
-- Each hook announces its name at start via TTS
-- Add contextual information about current work being done
-- One TTS announcement per hook execution
-- Progressive refinement: detailed during development, minimal when stable
-- Use as audible "console.log" for real-time development feedback
+### Core Principle: Small Incremental Steps
+- Start with JSON files to understand data structure
+- Build schema from real data, not assumptions
+- Each hook is its own phase
+- Manual iteration to ensure correct context capture
 
 ### Development Guidelines
 1. Each hook must have its own .py UV script
-2. TTS messages evolve with development needs
-3. Clean messages back to hook name only after resolving issues
+2. TTS messages announce hook execution and data location
+3. Start with temporary JSON files before database
 4. Test each incremental change with verifiable output
 5. **BE AWARE**: Changes affect the current conversation immediately
 6. **TEMP FILES**: Always write debug/temp files to `/tmp/` with prefix `claude_`
@@ -48,252 +47,137 @@ This is the global `.claude` folder - every change we make affects:
 
 ## Implementation Phases
 
-### Phase 1: Hook Infrastructure & TTS Integration
-**Goal**: Establish basic hook execution with TTS announcements
-**⚠️ WARNING**: Adding TTS will immediately affect our current conversation
+### Phase 1: Stop Hook - Initial Data Collection
+**Goal**: Understand what data is available in the Stop hook
+**Why Start Here**: Stop hook is guaranteed to run at conversation end
 
-#### Task 1.1: Verify Hook Script Structure
-- Ensure each hook has its own .py script
-- Add TTS announcement at start of each hook
-- Test: Run a tool and hear hook name announcements
-- **SELF-MODIFY NOTE**: First TTS addition will announce on our next action
+#### Task 1.1: Fetch Hook Initial Data
+- Extract all available JSON data from Stop hook
+- Store in `/tmp/claude_contextual_data.json`
+- If file exists from previous run, overwrite it
+- **TTS**: "Stop hook fired, JSON at /tmp/claude_contextual_data.json"
+- Reference: docs/CLAUDE_CODE_HOOKS_REFERENCE.md for field meanings
 
-#### Task 1.2: Fix Hook Path Configuration
-- Update settings.json to point to correct hook locations
-- Ensure all 5 hooks are triggered properly
-- Test: Execute various tools and verify all hooks announce
-- **RESTART REQUIRED**: May need new conversation after settings change
+#### Task 1.2: Manual Iteration - Building Context
+**THIS IS A MANUAL PROCESS - SMALL STEPS, USER-LED**
+- Examine the JSON structure
+- Follow references (e.g., transcript_path) to gather more context
+- Build comprehensive contextual JSON for this hook
+- Iterate until we have all needed data from Stop hook
 
-#### Task 1.3: Standardize TTS Integration
-- Create shared TTS announcement function
-- Add to each hook's entry point
-- Test: All hooks announce consistently with same voice/speed
-- **WATCH FOR**: Recursive announcements if hooks trigger each other
+### Phase 2: PostToolUse - Tool Execution Context
+**Goal**: Capture tool usage and file modifications
+**Challenge**: Runs before Stop hook, needs separate storage
 
-### Phase 2: Database Connection & Schema
-**Goal**: Establish database with proper schema
+#### Task 2.1: Create Per-Agent Tool Logs
+- Main agent: `/tmp/claude_main_tools.json`
+- Subagents: `/tmp/claude_subagent_[ID]_tools.json`
+- Append mode for multiple tool executions per agent
+- **TTS**: "PostToolUse: [tool_name] logged for [agent_type]"
 
-#### Task 2.1: Fix Database Path Resolution
-- Ensure single project database at .claude/queryable-context.db
-- Remove any duplicate databases
-- Test: Verify single database file exists after hook execution
+#### Task 2.2: Extract File Modifications
+- Focus on main agent only initially
+- Identify which files were modified by which tools
+- Build tool execution context
+- This data will merge into contextual_data.json in Stop hook
 
-#### Task 2.2: Implement Core Schema Tables
-- Create sessions table with user_request field
-- Create session_events table for event stream
-- Test: Query tables exist with correct columns
+### Phase 3: SubagentStop - Subagent Summaries
+**Goal**: Create summaries of subagent work
+**Input**: PostToolUse logs + SubagentStop hook data
 
-#### Task 2.3: Create File Change Tables
-- Implement file_changes table
-- Implement change_context table
-- Test: Tables created with proper foreign keys
+#### Task 3.1: Combine Subagent Data
+- Read subagent's tool log
+- Combine with SubagentStop hook data
+- Create summary: tasks completed, files modified
+- Store in `/tmp/claude_subagent_[ID]_summary.json`
 
-### Phase 3: User Intent Capture
-**Goal**: Extract and store original user request
-**⚠️ CRITICAL**: This captures our development conversation!
+### Phase 4: Combine and Store
+**Goal**: Merge all JSONs into database
+**Challenge**: Handle concurrent agents, clean up properly
 
-#### Task 3.1: Transcript Parser Implementation
-- Create function to extract first user message from transcript
-- Handle various transcript formats
-- Test: Extract user request from sample transcript file
-- **INCEPTION WARNING**: Will capture "implement user intent capture" as intent
+#### Task 4.1: Merge All Data
+- In Stop hook, combine:
+  - contextual_data.json (main context)
+  - main_tools.json (main agent tools)
+  - subagent_*_summary.json (all subagent summaries)
+- Create single comprehensive JSON
+- Handle concurrent agents - only clean files for THIS session
 
-#### Task 3.2: Notification Hook Enhancement
-- Integrate transcript parser
-- Store user request in sessions table
-- Test: Query sessions table shows user_request populated
-- **SELF-REFERENCE**: Our implementation prompts become test data
+#### Task 4.2: Design Database Schema
+- Derive schema from actual JSON structure
+- Create relational tables based on real data
+- No assumptions - schema comes from data
 
-#### Task 3.3: Session Initialization
-- Create session with full context
-- Add session_start event
-- Test: Query shows session and first event with user request
-- **DATA POLLUTION**: Development commands mix with real usage data
+#### Task 4.3: Store and Clean
+- Store combined data in database
+- Delete only this session's temp files
+- **Note**: Check if subagents trigger Stop or just SubagentStop
 
-### Phase 4: Tool Execution Tracking
-**Goal**: Capture tool intentions and results
+## Hook Execution Order Reference
 
-#### Task 4.1: PreToolUse Data Capture
-- Extract tool name and parameters
-- Infer tool intent from parameters
-- Test: Query tool intentions in database after execution
+### Typical Flow:
+```
+Session Start (no hook!)
+→ PreToolUse → [Tool] → PostToolUse
+→ PreToolUse → [Tool] → PostToolUse
+→ Stop
+```
 
-#### Task 4.2: PostToolUse Result Recording
-- Capture tool output and success status
-- Extract modified files from results
-- Test: Query shows tool executions with outcomes
-
-#### Task 4.3: File Change Detection
-- Identify files modified by tools
-- Determine change type (create/modify/delete)
-- Test: Query file_changes shows accurate modifications
-
-### Phase 5: Context Enrichment
-**Goal**: Link changes to user intent
-
-#### Task 5.1: Change Context Association
-- Link file changes to user requests
-- Add tool execution context
-- Test: Query shows why each file was changed
-
-#### Task 5.2: Related Files Tracking
-- Identify files changed together
-- Build file relationship map
-- Test: Query co-changed files for any given file
-
-#### Task 5.3: Session Tagging
-- Extract topics from user request
-- Calculate complexity scores
-- Test: Query sessions by topic or complexity
-
-### Phase 6: Pattern Detection
-**Goal**: Identify recurring patterns
-
-#### Task 6.1: Co-change Pattern Detection
-- Analyze files that change together
-- Calculate relationship strength
-- Test: Query shows file pairs with high co-change frequency
-
-#### Task 6.2: Error Pattern Recognition
-- Track tool failures and fixes
-- Identify common error types
-- Test: Query common errors and their solutions
-
-#### Task 6.3: Refactoring Pattern Analysis
-- Detect repeated code transformations
-- Track architectural changes
-- Test: Query shows refactoring patterns
-
-### Phase 7: Query Interface
-**Goal**: Natural language queries over context
-
-#### Task 7.1: Basic Query Functions
-- Implement "why did X change" queries
-- Add file history queries
-- Test: Run queries and get contextual results
-
-#### Task 7.2: Complex Query Support
-- Session filtering by tags
-- Multi-dimensional searches
-- Test: Complex queries return accurate results
-
-#### Task 7.3: Query Optimization
-- Add appropriate indexes
-- Implement query caching
-- Test: Query response time < 100ms
-
-### Phase 8: Stop Hook Intelligence
-**Goal**: Session summarization and insights
-
-#### Task 8.1: Session Summary Generation
-- Analyze session outcomes
-- Generate completion summary
-- Test: Query shows meaningful session summaries
-
-#### Task 8.2: Insight Generation
-- Detect session patterns
-- Generate actionable insights
-- Test: Query returns relevant insights
-
-#### Task 8.3: Metrics Calculation
-- Token usage tracking
-- Complexity scoring
-- Test: Query shows session metrics
+### With Subagents:
+```
+Session Start (no hook!)
+→ PreToolUse → [Task] → PostToolUse
+    ↓
+    [Subagent starts]
+    → PreToolUse → [Tool] → PostToolUse
+    → SubagentStop
+    ↓
+→ Stop
+```
 
 ## Verification Tests
 
-### Phase 1 Tests
+### Phase 1 Test:
 ```bash
-# Test hook announcements
-echo "test" > test.txt
-# Should hear: "notification hook", "pre tool use hook", "post tool use hook"
+# After implementing Stop hook logging
+cat /tmp/claude_contextual_data.json | jq .
+# Should see: session_id, transcript_path, stop_hook_active, etc.
 ```
 
-### Phase 2 Tests
+### Phase 2 Test:
 ```bash
-# Test database creation
-sqlite3 .claude/queryable-context.db ".tables"
-# Should show: sessions, session_events, file_changes, etc.
+# After implementing PostToolUse logging
+cat /tmp/claude_main_tools.json | jq .
+# Should see: tool executions with file modifications
 ```
 
-### Phase 3 Tests
+### Phase 3 Test:
 ```bash
-# Test user intent capture
-sqlite3 .claude/queryable-context.db "SELECT user_request FROM sessions;"
-# Should show: captured user requests
+# After implementing SubagentStop summaries
+cat /tmp/claude_subagent_*_summary.json | jq .
+# Should see: subagent task summaries
 ```
 
-### Phase 4 Tests
+### Phase 4 Test:
 ```bash
-# Test tool tracking
-sqlite3 .claude/queryable-context.db "SELECT tool_name, tool_intent FROM tool_executions;"
-# Should show: tool executions with intents
-```
-
-### Phase 5 Tests
-```bash
-# Test context queries
-/work_query "why did test.txt change?"
-# Should show: user request, tool used, reason for change
-```
-
-### Phase 6 Tests
-```bash
-# Test pattern detection
-/work_query "what files change together?"
-# Should show: co-change patterns with frequencies
-```
-
-### Phase 7 Tests
-```bash
-# Test complex queries
-/work_query "show me complex authentication work"
-# Should show: filtered results by topic and complexity
-```
-
-### Phase 8 Tests
-```bash
-# Test session insights
-/work_query "show session summary"
-# Should show: comprehensive session analysis
+# After database storage
+sqlite3 [database_path] "SELECT * FROM [table];"
+# Should see: all contextual data properly stored
 ```
 
 ## Success Criteria
 
-1. **TTS Feedback**: Clear audio indication of hook execution
-2. **Data Capture**: >95% of user intents captured
-3. **Context Linking**: Every file change linked to user request
-4. **Query Performance**: <100ms response time
-5. **Pattern Detection**: Meaningful patterns identified
-6. **Zero Data Loss**: All events properly recorded
-
-## Self-Modifying System Guidelines
-
-### DO's:
-- Test changes with simple, harmless commands first
-- Be ready to restart conversation if hooks misbehave
-- Keep backup of working hook versions
-- Add safety checks to prevent infinite loops
-- Use TTS to understand what's happening in real-time
-- Write all debug output to `/tmp/claude_*` files
-
-### DON'T's:
-- Don't add hooks that call the same tools they monitor
-- Don't create circular dependencies between hooks
-- Don't forget that changes are LIVE immediately
-- Don't test destructive operations on the hooks folder itself
-
-### Recovery Procedures:
-1. **Hook Infinite Loop**: Kill Claude Code process, fix hook, restart
-2. **Database Corruption**: Move .db file, let it recreate
-3. **TTS Spam**: Comment out TTS temporarily, fix logic
-4. **Lost Context**: Note current task, restart conversation with context
+1. **Complete Context Capture**: Every tool use and file change tracked
+2. **User Intent Preserved**: Original request linked to all actions
+3. **Subagent Hierarchy**: Full delegation tree captured
+4. **Clean Temp Files**: No leftover JSONs after storage
+5. **TTS Feedback**: Clear indication of what's happening
 
 ## Notes
 
-- Start with verbose TTS messages, reduce as features stabilize
-- Each phase builds on previous phases
-- Run verification test after each task
-- Document any deviations or issues encountered
-- Keep implementation incremental and testable
+- Start with Stop hook - it's guaranteed to run
+- Build incrementally - JSON first, database later
+- Let data drive schema design
+- Manual iteration ensures we understand the data
+- Small steps prevent breaking the live system
 - **REMEMBER**: We're performing surgery on a living system!

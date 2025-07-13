@@ -8,9 +8,6 @@ import sys
 import re
 from pathlib import Path
 
-# Import new database system only
-sys.path.append(str(Path(__file__).parent / 'utils'))
-from queryable_db import log_security_event
 
 def get_project_root():
     """Find project root by looking for .git directory"""
@@ -137,15 +134,6 @@ def main():
             print("BLOCKED: Access to .env files containing sensitive data is prohibited", file=sys.stderr)
             print("Use .env.sample for template files instead", file=sys.stderr)
             
-            # Log blocked operation to database
-            session_id = input_data.get('session_id', '')
-            log_security_event(
-                chat_session_id=session_id,
-                event_type='blocked',
-                tool_name=tool_name,
-                tool_input=tool_input,
-                reason='Access to .env files prohibited'
-            )
             
             sys.exit(2)  # Exit code 2 blocks tool call and shows error to Claude
         
@@ -158,15 +146,6 @@ def main():
                 print("BLOCKED: Operation targeting outside project directory", file=sys.stderr)
                 print("Only operations within the current project are allowed", file=sys.stderr)
                 
-                # Log blocked operation to database
-                session_id = input_data.get('session_id', '')
-                log_security_event(
-                    chat_session_id=session_id,
-                    event_type='blocked',
-                    tool_name=tool_name,
-                    tool_input=tool_input,
-                    reason='Operation outside project directory blocked'
-                )
                 
                 sys.exit(2)
             
@@ -189,17 +168,6 @@ def main():
                 
                 print("✅ Git command proceeding...", file=sys.stderr)
         
-        # Log security event to database
-        session_id = input_data.get('session_id', '')
-        log_security_event(
-            chat_session_id=session_id,
-            event_type='allowed',
-            tool_name=tool_name,
-            tool_input=tool_input,
-            reason='Security check passed'
-        )
-        
-        # Database is the primary storage - no JSON fallback needed
         
         sys.exit(0)
         
