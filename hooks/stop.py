@@ -18,7 +18,7 @@ from typing import List, Dict, Set
 sys.path.append(str(Path(__file__).parent / 'utils'))
 try:
     from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts
-    from hook_parser import generate_contextual_summary
+    from hook_parser import generate_contextual_summary, generate_cycle_summary_file
 except ImportError:
     # Fallback if utils not available
     def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
@@ -26,6 +26,8 @@ except ImportError:
     def get_current_cycle_id(session_id, transcript_path):
         return 1
     def generate_contextual_summary(session_id, cycle_id, output_dir=None):
+        return {"error": "Hook parser not available"}
+    def generate_cycle_summary_file(session_id, cycle_id, output_dir=None):
         return {"error": "Hook parser not available"}
     def announce_tts(message):
         pass
@@ -924,6 +926,22 @@ def main():
                 
                 with open('/tmp/stop_hook_debug.log', 'a') as f:
                     f.write(f"\n{datetime.now()}: Successfully used hook-based parsing for cycle {cycle_id}\n")
+                
+                # Generate comprehensive cycle summary file
+                try:
+                    transcript_path = input_data.get('transcript_path', '')
+                    cycle_summary_result = generate_cycle_summary_file(session_id, cycle_id, None, transcript_path)
+                    if "error" not in cycle_summary_result:
+                        announce_tts(f"Cycle summary generated for cycle {cycle_id}")
+                        with open('/tmp/stop_hook_debug.log', 'a') as f:
+                            summary_path = cycle_summary_result.get("summary_file_path", "unknown")
+                            f.write(f"\n{datetime.now()}: Cycle summary saved to {summary_path}\n")
+                    else:
+                        with open('/tmp/stop_hook_debug.log', 'a') as f:
+                            f.write(f"\n{datetime.now()}: Failed to generate cycle summary: {cycle_summary_result.get('error')}\n")
+                except Exception as e:
+                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                        f.write(f"\n{datetime.now()}: Cycle summary generation exception: {str(e)}\n")
                     
             else:
                 # Hook parsing failed - fall back to transcript parsing

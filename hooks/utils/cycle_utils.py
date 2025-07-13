@@ -129,7 +129,7 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
         announce_tts(f"Hook {hook_name} fired for cycle {cycle_id}")
         
         # Create output directory
-        output_dir = Path("/Users/hanan/.claude/.claude")
+        output_dir = Path("/Users/hanan/.claude/.claude/session_logs")
         output_dir.mkdir(exist_ok=True)
         
         # Prepare dump data
@@ -141,17 +141,11 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
             "raw_data": hook_data
         }
         
-        # Create session-specific filename with cycle_id
+        # Create session-specific filename with cycle_id (JSONL only)
         session_short = session_id[:8] if session_id else "unknown"
         dumps_file = output_dir / f"session_{session_short}_cycle_{cycle_id}_hooks.jsonl"
         with open(dumps_file, 'a') as f:
             f.write(json.dumps(dump_entry) + "\n")
-        
-        # Also create a simple text dump for easy reading
-        simple_dump = f"{hook_name}:{json.dumps(hook_data)}\n"
-        simple_file = output_dir / f"session_{session_short}_cycle_{cycle_id}_hooks_simple.log"
-        with open(simple_file, 'a') as f:
-            f.write(simple_dump)
             
     except Exception as e:
         # Log errors but don't fail the hook

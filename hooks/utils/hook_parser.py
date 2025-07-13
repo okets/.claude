@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple, Any
 def load_hook_timeline(session_id: str, cycle_id: int, output_dir: Optional[str] = None) -> List[Dict]:
     """Load complete hook timeline for a specific session and cycle"""
     if output_dir is None:
-        output_dir = "/Users/hanan/.claude/.claude"
+        output_dir = "/Users/hanan/.claude/.claude/session_logs"
     
     # Construct hook file path
     session_short = session_id[:8] if session_id else "unknown"
@@ -261,7 +261,119 @@ def extract_user_intent(timeline: List[Dict]) -> str:
     return "Unknown task"
 
 
-def generate_contextual_summary(session_id: str, cycle_id: int, output_dir: Optional[str] = None) -> Dict:
+def extract_phase_and_task_context(transcript_path: str) -> Dict:
+    """Extract current phase and task numbers by scanning conversation log from bottom to top"""
+    context = {
+        "phase_number": None,
+        "task_number": None,
+        "phase_task_pair": None,
+        "confidence": "none"
+    }
+    
+    if not transcript_path or not Path(transcript_path).exists():
+        return context
+    
+    try:
+        # Read transcript lines in reverse order (bottom to top)
+        with open(transcript_path, 'r') as f:
+            lines = f.readlines()
+        
+        phase_pattern = r'(?i)(?:phase|step)\s*[#:]?\s*(\d+)'
+        task_pattern = r'(?i)task\s*[#:]?\s*(\d+)'
+        
+        # Look for phase and task mentions in recent entries
+        recent_phases = []
+        recent_tasks = []
+        
+        # Scan from bottom up, looking at last 50 entries for recent context
+        for line in reversed(lines[-50:]):
+            try:
+                entry = json.loads(line.strip())
+                
+                # Look in user messages and assistant messages
+                content_sources = []
+                if entry.get('type') == 'user' and 'message' in entry:
+                    message_content = entry['message'].get('content', '')
+                    if isinstance(message_content, str):
+                        content_sources.append(message_content)
+                elif entry.get('type') == 'assistant' and 'message' in entry:
+                    message_content = entry['message'].get('content', [])
+                    if isinstance(message_content, list):
+                        for content_item in message_content:
+                            if isinstance(content_item, dict):
+                                if content_item.get('type') == 'text':
+                                    content_sources.append(content_item.get('text', ''))
+                                elif content_item.get('type') == 'thinking':
+                                    content_sources.append(content_item.get('thinking', ''))
+                
+                # Search for phase and task numbers in content
+                for content in content_sources:
+                    import re
+                    
+                    phase_matches = re.findall(phase_pattern, content)
+                    task_matches = re.findall(task_pattern, content)
+                    
+                    # Store recent mentions with their proximity
+                    for match in phase_matches:
+                        recent_phases.append(int(match))
+                    for match in task_matches:
+                        recent_tasks.append(int(match))
+                    
+                    # Look for phase and task mentioned together (high confidence)
+                    combined_pattern = r'(?i)(?:phase|step)\s*[#:]?\s*(\d+).*?task\s*[#:]?\s*(\d+)|task\s*[#:]?\s*(\d+).*?(?:phase|step)\s*[#:]?\s*(\d+)'
+                    combined_matches = re.findall(combined_pattern, content)
+                    
+                    for match in combined_matches:
+                        if match[0] and match[1]:  # phase first, then task
+                            context.update({
+                                "phase_number": int(match[0]),
+                                "task_number": int(match[1]),
+                                "phase_task_pair": f"Phase {match[0]}, Task {match[1]}",
+                                "confidence": "high"
+                            })
+                            return context
+                        elif match[2] and match[3]:  # task first, then phase
+                            context.update({
+                                "phase_number": int(match[3]),
+                                "task_number": int(match[2]),
+                                "phase_task_pair": f"Phase {match[3]}, Task {match[2]}",
+                                "confidence": "high"
+                            })
+                            return context
+                            
+            except (json.JSONDecodeError, ValueError, KeyError):
+                continue
+        
+        # If no combined mention found, use most recent individual mentions
+        if recent_phases and recent_tasks:
+            # Use the most recent mentions
+            context.update({
+                "phase_number": recent_phases[0],
+                "task_number": recent_tasks[0], 
+                "phase_task_pair": f"Phase {recent_phases[0]}, Task {recent_tasks[0]}",
+                "confidence": "medium"
+            })
+        elif recent_phases:
+            context.update({
+                "phase_number": recent_phases[0],
+                "phase_task_pair": f"Phase {recent_phases[0]}",
+                "confidence": "low"
+            })
+        elif recent_tasks:
+            context.update({
+                "task_number": recent_tasks[0],
+                "phase_task_pair": f"Task {recent_tasks[0]}",
+                "confidence": "low"
+            })
+        
+    except Exception as e:
+        # Return empty context on any error
+        pass
+    
+    return context
+
+
+def generate_contextual_summary(session_id: str, cycle_id: int, output_dir: Optional[str] = None, transcript_path: Optional[str] = None) -> Dict:
     """Generate complete contextual summary from hook timeline"""
     timeline = load_hook_timeline(session_id, cycle_id, output_dir)
     
@@ -273,6 +385,14 @@ def generate_contextual_summary(session_id: str, cycle_id: int, output_dir: Opti
     subagent_tasks = extract_subagent_tasks(timeline)
     user_intent = extract_user_intent(timeline)
     agent_boundaries = identify_agent_boundaries(timeline)
+    
+    # Extract phase and task context from transcript
+    phase_task_context = extract_phase_and_task_context(transcript_path) if transcript_path else {
+        "phase_number": None,
+        "task_number": None,
+        "phase_task_pair": None,
+        "confidence": "none"
+    }
     
     # Calculate metrics
     total_edits = sum(
@@ -296,6 +416,12 @@ def generate_contextual_summary(session_id: str, cycle_id: int, output_dir: Opti
             "total_file_changes": total_edits,
             "involved_subagents": len(subagent_tasks) > 0,
             "primary_activity": determine_primary_activity(timeline, user_intent)
+        },
+        "project_context": {
+            "phase_number": phase_task_context.get("phase_number"),
+            "task_number": phase_task_context.get("task_number"),
+            "phase_task_pair": phase_task_context.get("phase_task_pair"),
+            "context_confidence": phase_task_context.get("confidence")
         },
         "timeline_metadata": {
             "total_hook_events": len(timeline),
@@ -328,3 +454,179 @@ def determine_primary_activity(timeline: List[Dict], user_intent: str) -> str:
         return 'delegated_work'
     else:
         return 'general_assistance'
+
+
+def generate_cycle_summary_file(session_id: str, cycle_id: int, output_dir: Optional[str] = None, transcript_path: Optional[str] = None) -> Dict:
+    """Generate and save a comprehensive cycle summary JSON file"""
+    if output_dir is None:
+        output_dir = "/Users/hanan/.claude/.claude/session_logs"
+    
+    # Generate the contextual summary
+    summary = generate_contextual_summary(session_id, cycle_id, output_dir, transcript_path)
+    
+    if "error" in summary:
+        return summary
+    
+    # Create enhanced cycle summary with additional metadata
+    cycle_summary = {
+        "cycle_metadata": {
+            "session_id": session_id,
+            "cycle_id": cycle_id,
+            "generated_at": datetime.now().isoformat(),
+            "data_source": "hook_timeline",
+            "parser_version": "1.0"
+        },
+        "user_intent": summary.get("user_intent", "Unknown"),
+        "execution_summary": {
+            "total_edits": summary.get("total_edits_in_cycle", 0),
+            "files_modified": len(summary.get("file_activities", {})),
+            "subagents_used": len(summary.get("subagent_tasks", {})),
+            "primary_activity": summary.get("summary", {}).get("primary_activity", "unknown"),
+            "agents_involved": summary.get("agents_involved", {})
+        },
+        "project_context": summary.get("project_context", {}),
+        "file_activities": summary.get("file_activities", {}),
+        "subagent_tasks": summary.get("subagent_tasks", {}),
+        "timeline_metadata": summary.get("timeline_metadata", {}),
+        "workflow_insights": {
+            "file_change_patterns": extract_file_change_patterns(summary.get("file_activities", {})),
+            "agent_collaboration": analyze_agent_collaboration(summary.get("file_activities", {}), summary.get("subagent_tasks", {})),
+            "task_complexity": assess_task_complexity(summary)
+        }
+    }
+    
+    # Save cycle summary to file
+    session_short = session_id[:8] if session_id else "unknown"
+    summary_file = Path(output_dir) / f"session_{session_short}_cycle_{cycle_id}_summary.json"
+    
+    try:
+        with open(summary_file, 'w') as f:
+            json.dump(cycle_summary, f, indent=2)
+        
+        cycle_summary["summary_file_path"] = str(summary_file)
+        return cycle_summary
+        
+    except Exception as e:
+        return {"error": f"Failed to save cycle summary: {str(e)}"}
+
+
+def extract_file_change_patterns(file_activities: Dict) -> Dict:
+    """Extract patterns from file modification activities"""
+    patterns = {
+        "multi_agent_files": [],
+        "main_agent_only": [],
+        "subagent_only": [],
+        "heavy_edit_files": [],
+        "operation_types": {}
+    }
+    
+    for file_path, agents in file_activities.items():
+        file_name = Path(file_path).name
+        agent_types = list(agents.keys())
+        total_edits = sum(agent_data['edit_count'] for agent_data in agents.values())
+        
+        # Categorize by agent involvement
+        if len(agent_types) > 1:
+            patterns["multi_agent_files"].append(file_name)
+        elif "main_agent" in agent_types:
+            patterns["main_agent_only"].append(file_name)
+        elif "subagent" in agent_types:
+            patterns["subagent_only"].append(file_name)
+        
+        # Track heavy editing
+        if total_edits > 2:
+            patterns["heavy_edit_files"].append({
+                "file": file_name,
+                "edit_count": total_edits,
+                "agents": agent_types
+            })
+        
+        # Track operation types
+        for agent_data in agents.values():
+            for operation in agent_data.get('operations', []):
+                patterns["operation_types"][operation] = patterns["operation_types"].get(operation, 0) + 1
+    
+    return patterns
+
+
+def analyze_agent_collaboration(file_activities: Dict, subagent_tasks: Dict) -> Dict:
+    """Analyze how main agent and subagents collaborated"""
+    collaboration = {
+        "collaboration_type": "none",
+        "handoff_files": [],
+        "parallel_work": False,
+        "delegation_effectiveness": "unknown"
+    }
+    
+    # Check for file handoffs between agents
+    for file_path, agents in file_activities.items():
+        if len(agents) > 1:
+            collaboration["handoff_files"].append(Path(file_path).name)
+            collaboration["collaboration_type"] = "sequential"
+    
+    # Assess delegation effectiveness
+    if subagent_tasks:
+        completed_tasks = sum(1 for task in subagent_tasks.values() 
+                            if task['work_summary']['status'] == 'completed')
+        total_tasks = len(subagent_tasks)
+        
+        if completed_tasks == total_tasks:
+            collaboration["delegation_effectiveness"] = "excellent"
+        elif completed_tasks > total_tasks * 0.5:
+            collaboration["delegation_effectiveness"] = "good"
+        else:
+            collaboration["delegation_effectiveness"] = "poor"
+    
+    return collaboration
+
+
+def assess_task_complexity(summary: Dict) -> Dict:
+    """Assess the complexity of the completed task"""
+    complexity = {
+        "level": "simple",
+        "factors": [],
+        "score": 0
+    }
+    
+    # Factor scoring
+    file_count = len(summary.get("file_activities", {}))
+    edit_count = summary.get("total_edits_in_cycle", 0)
+    subagent_count = len(summary.get("subagent_tasks", {}))
+    timeline_events = summary.get("timeline_metadata", {}).get("total_hook_events", 0)
+    
+    score = 0
+    
+    # File complexity
+    if file_count > 3:
+        complexity["factors"].append("multiple files modified")
+        score += 2
+    elif file_count > 1:
+        score += 1
+    
+    # Edit complexity  
+    if edit_count > 5:
+        complexity["factors"].append("many file modifications")
+        score += 2
+    elif edit_count > 2:
+        score += 1
+    
+    # Collaboration complexity
+    if subagent_count > 0:
+        complexity["factors"].append("subagent delegation")
+        score += 2
+    
+    # Timeline complexity
+    if timeline_events > 20:
+        complexity["factors"].append("extensive tool usage")
+        score += 1
+    
+    # Determine level
+    if score >= 5:
+        complexity["level"] = "complex"
+    elif score >= 3:
+        complexity["level"] = "moderate"
+    else:
+        complexity["level"] = "simple"
+    
+    complexity["score"] = score
+    return complexity

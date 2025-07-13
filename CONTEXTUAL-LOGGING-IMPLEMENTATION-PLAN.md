@@ -110,11 +110,47 @@ This is the global `.claude` folder - every change we make affects:
 - Create relational tables based on real data
 - No assumptions - schema comes from data
 
-#### Task 4.3: Store and Clean
+
+
+### Phase 5: Context-Oriented Summary System ✅ PLANNED
+**Goal**: Transform from analytics to context retrieval for fast agent access
+**Vision**: Enable Claude.md to provide relevant context when agents need file history, task info, or phase modifications
+
+#### Task 5.1: Design Context-First Data Structure
+- Create streamlined summary focused on **retrieval queries**
+- Structure around **user intent(s) as primary drivers**
+- Handle **multiple intents per cycle** (continuation/auto-compact scenarios)
+- Core data: intent chains, file context, phase/task metadata, LLM summaries
+
+#### Task 5.2: Multi-Intent Context Extractor
+**Valuable Context Only**:
+- **User intent progression** - track intent evolution within cycle
+- **LLM-generated summaries** from conversations during cycle  
+- **File changes with intent context** - WHY each change happened
+- **Phase/task metadata** for project navigation
+- **Intent-to-outcome mapping** - what was accomplished per intent
+
+**Filter Out**: file reads, tool metadata, analytics, operation counts
+
+#### Task 5.3: Intent-Aware Database Schema
+Tables optimized for context queries:
+- `cycle_intents`: cycle_id → intent_sequence (ordered list of intents)
+- `file_contexts`: file_path + cycle_id → intent_driven change context
+- `phase_tasks`: phase/task → related cycles with intent summaries
+- `llm_summaries`: cycle_id + intent_index → generated insights
+- `intent_outcomes`: intent → files_changed, summaries_generated
+
+#### Task 5.4: Claude.md Integration for Intent-Based Retrieval
+Enable queries like:
+- "Show all changes to hooks/stop.py and the user intents behind them"
+- "What were the user's goals in Phase 3, Task 2?"
+- "Find LLM summaries related to contextual logging implementation"
+
+**Key Principle**: Every stored piece maps back to **"What did the user want and how did we achieve it?"**
+#### Task 5.5: Store and Clean
 - Store combined data in database
 - Delete only this session's temp files
 - **Note**: Check if subagents trigger Stop or just SubagentStop
-
 ## Hook Execution Order Reference
 
 ### Typical Flow:

@@ -8,6 +8,7 @@ projects/
 todos/
 statsig/
 shell-snapshots/
+.claude/session_logs/
 
 # Ignore runtime files
 *.lock
