@@ -229,7 +229,9 @@ def extract_subagent_tasks(timeline: List[Dict]) -> Dict[str, Dict]:
 
 
 def extract_user_intent(timeline: List[Dict]) -> str:
-    """Extract user intent from TodoWrite progression or other indicators"""
+    """Extract user intent from hook timeline - prioritize TodoWrite for structured tasks"""
+    
+    # FIRST PRIORITY: Extract from TodoWrite progression (structured tasks - MOST VALUABLE)
     todo_progression = []
     
     for event in timeline:
@@ -255,6 +257,12 @@ def extract_user_intent(timeline: List[Dict]) -> str:
         unique_tasks = list(dict.fromkeys(todo_progression))  # Preserve order, remove duplicates
         # Always return full context - don't truncate valuable information
         return "; ".join(unique_tasks)
+    
+    # SECOND PRIORITY: Fallback to transcript parsing (for read-only tasks)
+    for event in timeline:
+        user_intent = event.get('user_intent', '')
+        if user_intent and user_intent != "Unknown task":
+            return user_intent
     
     return "Unknown task"
 

@@ -1,354 +1,253 @@
-# Contextual Changelog System - Complete Data Flow
+# Claude Code Global Hooks with Contextual Memory System
 
-## Overview
-This document explains how the Claude Code hooks system creates a **contextual changelog** that tracks not just what files changed, but **why they changed**. Every file modification is linked to the original user request, agent reasoning, test results, and related changes, creating a navigable history of your project's evolution.
+A comprehensive hook system for Claude Code that provides **long-term contextual memory** and **intent-driven logging** for AI development workflows.
 
-**New Architecture**: The system now uses an **event-driven database** (`queryable-context.db`) with rich tagging for multi-dimensional navigation. File reads are ignored - only modifications are tracked to create a clean changelog.
+## 🧠 What This Gives You
 
-## System Architecture Flow Diagram
+**Transform Claude Code from a stateless assistant into a context-aware development partner:**
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          USER STARTS NEW CLAUDE SESSION                      │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     SESSION INITIALIZATION (notification.py)                 │
-│  • Create session in queryable-context.db                                   │
-│  • Capture user request as first event                                      │
-│  • Generate initial tags (model, topic)                                     │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    USER: "Fix the authentication timeout issue"              │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         EVENT STREAM LIFECYCLE                               │
-│                                                                             │
-│  ┌──────────────┐     ┌─────────────┐     ┌──────────────┐               │
-│  │ TOOL EXECUTES│ ──▶ │ POST-TOOL USE│ ──▶ │ FILE CHANGE  │               │
-│  └──────────────┘     └─────────────┘     └──────────────┘               │
-│         │                     │                     │                       │
-│         ▼                     ▼                     ▼                       │
-│   Claude reads        Log as event         Track modification               │
-│   and edits files     in event stream      with full context              │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      CONTEXTUAL CHANGELOG UPDATES                            │
-│                                                                             │
-│  file_changes                          change_context                       │
-│  ┌────────────────────────┐           ┌────────────────────────┐          │
-│  │ file_path: auth.js     │           │ user_request: "Fix..."  │          │
-│  │ change_type: modified  │ ─────────▶│ reasoning: "Adding      │          │
-│  │ summary: "Added        │           │  timeout to address..." │          │
-│  │  timeout parameter"    │           │ related_files: [...]    │          │
-│  └────────────────────────┘           └────────────────────────┘          │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      SESSION END ANALYSIS (stop.py)                          │
-│                                                                             │
-│  1. Calculate session complexity (tokens, file changes)                     │
-│  2. Add tags: complexity, outcome, patterns                                 │
-│  3. Close session with final metadata                                       │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CONTEXTUAL QUERIES                                   │
-│                                                                             │
-│  User: /work_query "why did auth.js change?"                               │
-│         ↓                                                                   │
-│  System queries: file_changes + change_context                             │
-│         ↓                                                                   │
-│  Returns: "Changed to fix timeout issue requested by user,                  │
-│           added configurable timeout parameter, tests passed"               │
-└─────────────────────────────────────────────────────────────────────────────┘
+- **Remember every interaction**: "What was my last request?" answered from database, not memory
+- **Track user intent**: Why each file was changed, not just what changed
+- **Query development history**: "Show me all changes to hooks/stop.py and the user intents behind them"
+- **Context-aware assistance**: Future integration with Claude.md for intelligent context retrieval
+- **Full workflow capture**: File modifications, subagent delegations, and task progressions
+
+## 🚀 Key Features
+
+### Contextual Memory Database
+- **4-table SQLite schema** optimized for fast context queries
+- **Automatic database ingestion** - every cycle immediately available
+- **Intent-driven organization** - every change linked to user goals
+- **Multi-agent tracking** - main agent and subagent work fully captured
+
+### Intelligent Hook System
+- **Universal logging** - Pre/Post tool use, Stop hooks, Subagent completions
+- **Smart intent extraction** - TodoWrite progression for structured tasks, transcript parsing for read-only tasks
+- **Rich timeline data** - Complete audit trail of every development session
+- **TTS announcements** - Real-time feedback on hook execution
+
+### Query Interface
+```python
+# Query what files were edited and why
+db.execute("SELECT file_path, change_reason FROM file_contexts WHERE cycle_id = ?")
+
+# Find user intents for a specific phase
+db.execute("SELECT user_intent FROM cycles WHERE primary_activity = 'file_modification'")
+
+# Track subagent work patterns
+db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id = ?")
 ```
 
-## New Event-Driven Database Schema
-
-### Database: `queryable-context.db`
-
-The new schema focuses on creating a navigable changelog with rich context for every file modification.
+## 📊 Database Schema
 
 ### Core Tables
+- **`cycles`** - User intent, timing, primary activity per development cycle
+- **`file_contexts`** - File changes with WHY context, not just WHAT changed  
+- **`llm_summaries`** - Generated insights and workflow analysis
+- **`subagent_tasks`** - Delegation context and completion tracking
 
-#### 1. session_events (Central event stream)
-```sql
-CREATE TABLE session_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    event_sequence INTEGER NOT NULL,
-    event_type TEXT NOT NULL CHECK (event_type IN (
-        'session_start', 'user_request', 'security_check', 
-        'tool_execution', 'file_change', 'subagent_start', 
-        'subagent_complete', 'session_end'
-    )),
-    event_data JSON NOT NULL,
-    parent_event_id INTEGER REFERENCES session_events(id),
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(session_id, event_sequence)
-);
+### Sample Data
+```json
+{
+  "user_intent": "Add transcript parsing to extract user intent in all hooks",
+  "file_activities": {
+    "/hooks/utils/cycle_utils.py": {
+      "change_reason": "Added extract_user_intent_from_transcript() function",
+      "operations": ["edit"],
+      "edit_count": 3
+    }
+  },
+  "primary_activity": "file_modification"
+}
 ```
 
-#### 2. file_changes (The contextual changelog)
-```sql
-CREATE TABLE file_changes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    event_id INTEGER NOT NULL REFERENCES session_events(id),
-    file_path TEXT NOT NULL,
-    change_type TEXT NOT NULL CHECK (change_type IN ('created', 'modified', 'deleted', 'renamed')),
-    change_summary TEXT NOT NULL,
-    diff_stats JSON,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+## 🛠 Installation
 
-#### 3. change_context (The "why" behind changes)
-```sql
-CREATE TABLE change_context (
-    change_id INTEGER PRIMARY KEY REFERENCES file_changes(id),
-    user_request TEXT NOT NULL,           -- Original user request
-    agent_reasoning TEXT,                 -- Why the change was made
-    task_context TEXT,                    -- Active task/phase
-    phase_context TEXT,
-    related_files JSON,                   -- Other files modified in session
-    test_results TEXT,                    -- Did tests pass?
-    iteration_count INTEGER DEFAULT 1,    -- How many tries?
-    prompted_by TEXT                      -- user_request, test_failure, etc.
-);
-```
+### Prerequisites
+- Claude Code CLI installed and configured
+- Python 3.8+ with standard libraries
+- SQLite3 (included with Python)
 
-#### 4. session_tags (Multi-dimensional navigation)
-```sql
-CREATE TABLE session_tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    tag_type TEXT NOT NULL CHECK (tag_type IN (
-        'complexity', 'phase', 'task', 'file', 'directory',
-        'topic', 'outcome', 'pattern', 'model', 'duration'
-    )),
-    tag_value TEXT NOT NULL,
-    tag_metadata JSON,
-    confidence REAL DEFAULT 1.0,
-    UNIQUE(session_id, tag_type, tag_value)
-);
-```
+### Setup
+1. **Clone to your global Claude directory:**
+   ```bash
+   cd ~/.claude
+   git clone <this-repo> .
+   ```
 
-## Data Flow Through Hooks
+2. **Hooks are automatically active** - Claude Code will start using them immediately
 
-### 1. Session Start (notification.py)
+3. **Verify installation:**
+   ```bash
+   # Check if hooks are working
+   ls ~/.claude/.claude/session_logs/
+   
+   # Should see: session_*_cycle_*_hooks.jsonl and *_summary.json files
+   ```
+
+## 🔧 Usage
+
+### Basic Queries
 ```python
-# Create session and capture user request
-create_session(session_id, project_path, model)
-add_event(session_id, 'session_start', {
-    'user_request': message,
-    'model': model,
-    'project_path': project_path
-})
+from contextual_db import ContextualDB
 
-# Generate initial tags
-add_session_tags(session_id, [
-    ('model', 'claude-opus-4'),
-    ('topic', 'authentication')  # Extracted from message
-])
+db = ContextualDB()
+db.connect()
+
+# What was my last request?
+cursor = db.conn.execute("SELECT user_intent FROM cycles ORDER BY cycle_id DESC LIMIT 1")
+print(cursor.fetchone()[0])
+
+# What files were edited recently?
+cursor = db.conn.execute("""
+    SELECT file_path, change_reason 
+    FROM file_contexts 
+    WHERE cycle_id >= (SELECT MAX(cycle_id) - 5 FROM cycles)
+""")
+for row in cursor.fetchall():
+    print(f"{row[0]}: {row[1]}")
 ```
 
-### 2. File Modification Tracking (post_tool_use.py)
+### Advanced Analysis
 ```python
-# Only tracks modifications, not reads
-if tool_name in ['Edit', 'Write', 'MultiEdit', 'NotebookEdit']:
-    # Track file change with full context
-    track_file_change(
-        session_id=session_id,
-        file_path='src/auth.js',
-        change_type='modified',
-        change_summary='Added timeout parameter to login function',
-        context={
-            'user_request': 'Fix authentication timeout issue',
-            'agent_reasoning': 'Adding configurable timeout to address user complaints',
-            'related_files': ['src/config.js', 'tests/auth.test.js'],
-            'test_results': 'pending',
-            'prompted_by': 'user_request'
-        }
-    )
-    
-    # Add navigation tags
-    add_session_tags(session_id, [
-        ('file', 'src/auth.js'),
-        ('directory', 'src/')
-    ])
+# Find all contextual logging implementations
+cursor = db.conn.execute("""
+    SELECT c.user_intent, f.file_path, f.change_reason
+    FROM cycles c 
+    JOIN file_contexts f ON c.cycle_id = f.cycle_id
+    WHERE c.user_intent LIKE '%contextual%'
+""")
 ```
 
-### 3. Session Analysis (stop.py)
+## 🎯 Use Cases
+
+### Development Workflow Memory
+- **"Why did I change this file?"** - Query change reasons for any file
+- **"What was I working on last session?"** - Review recent user intents
+- **"How did I solve similar problems?"** - Search historical patterns
+
+### Code Review Assistance  
+- **Intent-driven diffs** - See WHY changes were made, not just WHAT
+- **Workflow context** - Understand the full story behind file modifications
+- **Collaboration history** - Track main agent vs subagent contributions
+
+### Project Knowledge Base
+- **Context-aware assistance** - Future Claude.md integration will provide relevant context automatically
+- **Pattern recognition** - Identify recurring development workflows
+- **Knowledge transfer** - Share development context with team members
+
+## 📁 File Structure
+
+```
+~/.claude/
+├── hooks/
+│   ├── pre_tool_use.py       # Captures tool execution intent
+│   ├── post_tool_use.py      # Logs tool results and file changes  
+│   ├── stop.py               # Generates cycle summaries and database ingestion
+│   └── utils/
+│       ├── cycle_utils.py    # Core hook utilities and transcript parsing
+│       ├── hook_parser.py    # Timeline analysis and intent extraction
+│       ├── contextual_db.py  # Database schema and operations
+│       └── data_collector.py # JSONL to database pipeline
+├── session_logs/
+│   ├── session_*_cycle_*_hooks.jsonl     # Raw hook timeline data
+│   ├── session_*_cycle_*_summary.json    # Rich contextual summaries
+│   └── contextual_context.db             # SQLite database
+└── README.md
+```
+
+## 🔍 How It Works
+
+### Hook Execution Flow
+```
+User Request
+    ↓
+PreToolUse Hook → Extract user intent from transcript
+    ↓
+Tool Execution (Edit, Read, Bash, etc.)
+    ↓  
+PostToolUse Hook → Log file changes with context
+    ↓
+Stop Hook → Generate cycle summary → Auto-ingest to database
+```
+
+### Intent Extraction Strategy
+1. **TodoWrite progression** (structured tasks) - Highest priority
+2. **Transcript parsing** (read-only tasks) - Fallback for unstructured queries  
+3. **Tool pattern analysis** - Command descriptions and usage patterns
+
+### Data Processing Pipeline
+```
+Raw Hook Events → Timeline Analysis → Intent Extraction → Summary Generation → Database Storage
+```
+
+## 🎉 Success Stories
+
+### Before: Limited Context
+```json
+{
+  "user_intent": "Unknown task",
+  "file_activities": {},
+  "primary_activity": "general_assistance"
+}
+```
+
+### After: Rich Context Memory
+```json
+{
+  "user_intent": "Add transcript parsing to extract user intent in all hooks",
+  "file_activities": {
+    "cycle_utils.py": {
+      "change_reason": "Added extract_user_intent_from_transcript() for read-only task context",
+      "edit_count": 3
+    }
+  },
+  "primary_activity": "file_modification",
+  "timeline_metadata": {
+    "total_hook_events": 12,
+    "duration": "2 minutes 15 seconds"
+  }
+}
+```
+
+## 🛣 Roadmap
+
+### Phase 5 Complete ✅
+- [x] 4-table database schema
+- [x] Automatic database ingestion
+- [x] Transcript parsing for read-only tasks
+- [x] Intent-driven logging system
+
+### Future Enhancements
+- [ ] Claude.md integration for context-aware assistance
+- [ ] Web interface for browsing development history
+- [ ] Advanced analytics and pattern recognition
+- [ ] Export capabilities for documentation generation
+- [ ] Cross-session project memory
+- [ ] Integration with git for commit message generation
+
+## 🤝 Contributing
+
+This system captures the complete development workflow - including how it was built! Check the database for the full implementation story:
+
 ```python
-# Analyze session complexity
-if total_tokens < 1000 and file_changes < 2:
-    complexity = 'simple'
-elif total_tokens < 5000 and file_changes < 5:
-    complexity = 'moderate'
-elif total_tokens < 15000 and file_changes < 10:
-    complexity = 'complex'
-else:
-    complexity = 'massive'
-
-# Add final tags
-add_session_tags(session_id, [
-    ('complexity', complexity, {
-        'tokens': total_tokens,
-        'file_changes': file_change_count,
-        'reason': 'Multi-step implementation'
-    }),
-    ('outcome', 'completed')
-])
-
-# Close session
-close_session(session_id, final_outcome, total_tokens, file_changes)
+# See how this system was developed
+cursor = db.conn.execute("""
+    SELECT user_intent, file_path, change_reason 
+    FROM cycles c JOIN file_contexts f ON c.cycle_id = f.cycle_id 
+    WHERE f.file_path LIKE '%contextual%' 
+    ORDER BY c.cycle_id
+""")
 ```
 
-## Query Examples
+## 📄 License
 
-### Contextual File History
-```sql
--- "Why did auth.js change?"
-SELECT 
-    fc.timestamp,
-    fc.change_summary,
-    cc.user_request,
-    cc.agent_reasoning,
-    cc.test_results,
-    s.model
-FROM file_changes fc
-JOIN change_context cc ON fc.id = cc.change_id
-JOIN sessions s ON fc.session_id = s.id
-WHERE fc.file_path = 'src/auth.js'
-ORDER BY fc.timestamp DESC;
-```
+MIT License - Build upon this, share improvements, and help make AI development workflows more intelligent.
 
-### Complex Task Discovery
-```sql
--- "Show me complex authentication work"
-SELECT 
-    s.id,
-    s.user_request_summary,
-    st_complex.tag_metadata
-FROM sessions s
-JOIN session_tags st_complex ON s.id = st_complex.session_id 
-    AND st_complex.tag_type = 'complexity' 
-    AND st_complex.tag_value IN ('complex', 'massive')
-JOIN session_tags st_topic ON s.id = st_topic.session_id 
-    AND st_topic.tag_type = 'topic' 
-    AND st_topic.tag_value = 'authentication'
-```
+## 🙏 Acknowledgments
 
-### File Co-modification Patterns
-```sql
--- "What files change together?"
-SELECT 
-    fc1.file_path as file1,
-    fc2.file_path as file2,
-    COUNT(DISTINCT fc1.session_id) as times_changed_together
-FROM file_changes fc1
-JOIN file_changes fc2 ON fc1.session_id = fc2.session_id 
-    AND fc1.id < fc2.id
-GROUP BY file1, file2
-HAVING times_changed_together > 3
-ORDER BY times_changed_together DESC;
-```
+Built with Claude Code CLI - this system is a testament to the power of AI-assisted development with proper contextual memory.
 
-## Key Benefits
+---
 
-1. **Contextual Understanding**: Every file change includes the full context - user request, reasoning, test results
-2. **Navigable History**: Multi-dimensional tags enable finding work by complexity, topic, model, or outcome
-3. **Pattern Discovery**: Automatically identifies which files change together and common workflows
-4. **No Data Gaps**: Event stream architecture ensures complete traceability
-5. **Fast Queries**: Indexed tags and focused schema enable sub-second lookups
-
-## Implementation Status
-
-### Completed
-- ✅ New `queryable-context.db` with event-driven schema
-- ✅ Hooks updated to use new database:
-  - `notification.py` - Creates sessions and captures user requests
-  - `post_tool_use.py` - Tracks file modifications with context
-  - `stop.py` - Adds complexity tags and session analysis
-- ✅ Rich tagging system for multi-dimensional navigation
-- ✅ Contextual changelog tracking (only modifications, not reads)
-- ✅ `/work_query` command documentation updated
-
-### Database Locations
-- **Primary**: `<project-root>/.claude/queryable-context.db` (new)
-
-### Usage
-Simply use Claude Code as normal. The system automatically:
-1. Creates the database on first tool use
-2. Captures user requests and links them to changes
-3. Tags sessions by complexity, topics, and outcomes
-4. Enables rich queries through `/work_query`
-
-## Slash Commands Integration
-
-The system provides powerful slash commands for querying your contextual changelog with natural language:
-
-### Available Commands
-
-- **`/work_query`** - Query file changes, relationships, and patterns
-- **`/manage_work`** - Manage project phases, tasks, and assignments
-
-### Example Usage
-
-```bash
-# Query why files changed
-/work_query "why did auth.js change?"
-→ Shows: user request, reasoning, test results, related files
-
-# Find patterns
-/work_query "what files change with auth.js?"
-→ Shows: co-modification patterns and relationships
-
-# Complexity analysis  
-/work_query "show me complex authentication tasks"
-→ Finds: sessions tagged as complex + authentication topic
-
-# Project management
-/manage_work overview
-→ Shows: current phases, active tasks, progress
-```
-
-### When to Use Slash Commands vs Direct SQL
-
-**Use Slash Commands When:**
-- You want **standardized workflows** and consistent formatting
-- You need **natural language queries** without writing SQL
-- You want **team-shared patterns** that work across developers
-- You prefer **quick shortcuts** for common analysis tasks
-
-**Use Direct SQL When:**
-- You need **custom analysis** beyond predefined patterns
-- You want **maximum flexibility** in data exploration
-- You're building **ad-hoc reports** or unique queries
-- You prefer **full control** over query logic
-
-## Example Workflow
-
-1. **User Request**: "Fix the authentication timeout issue"
-2. **Claude Actions**:
-   - Reads `auth.js` (not tracked - read only)
-   - Edits `auth.js` (tracked with full context)
-   - Edits `config.js` (tracked as related change)
-   - Runs tests (tracked as tool execution)
-3. **Queryable Later**:
-   - `/work_query "why did auth.js change?"` → Shows user request, reasoning, test results
-   - `/work_query "what files change with auth.js?"` → Shows config.js co-modifications
-   - `/work_query "complex authentication tasks"` → Finds this session if tagged as complex
-
-The result is a **navigable changelog** where every file modification tells a complete story.
+**Transform your Claude Code experience from stateless interactions to intelligent, context-aware development sessions.**
