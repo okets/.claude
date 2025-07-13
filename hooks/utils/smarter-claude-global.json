@@ -1,0 +1,18 @@
+{
+  "interaction_level": "concise",
+  "tts_enabled": true,
+  "notification_sounds": true,
+  "cleanup_policy": {
+    "retention_cycles": 3,
+    "auto_cleanup": true
+  },
+  "database_settings": {
+    "auto_ingestion": true,
+    "backup_cycles": 5
+  },
+  "logging_settings": {
+    "hook_logging": true,
+    "debug_logging": false,
+    "log_level": "info"
+  }
+}

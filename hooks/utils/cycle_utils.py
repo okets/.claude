@@ -99,8 +99,17 @@ def get_tts_script_path():
 
 
 def announce_tts(message):
-    """Announce message via TTS with error handling"""
+    """Announce message via TTS with error handling and settings integration"""
     try:
+        # Check settings to see if TTS should be enabled
+        try:
+            from settings import is_tts_enabled, should_announce_hooks
+            if not is_tts_enabled() or not should_announce_hooks():
+                return  # TTS disabled by settings
+        except ImportError:
+            # Settings not available, use default behavior
+            pass
+        
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available

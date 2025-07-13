@@ -933,8 +933,12 @@ def main():
                             try:
                                 session_short = session_id[:8] if session_id else "unknown"
                                 
-                                # Configurable retention (keep last N cycles as backup)
-                                retention_cycles = 3  # Keep 3 previous cycles as backup
+                                # Configurable retention from settings (keep last N cycles as backup)
+                                try:
+                                    from settings import get_setting
+                                    retention_cycles = get_setting("cleanup_policy.retention_cycles", 3)
+                                except ImportError:
+                                    retention_cycles = 3  # Fallback default
                                 
                                 # Find previous cycles to clean up (older than retention_cycles)
                                 cleanup_before_cycle = cycle_id - retention_cycles

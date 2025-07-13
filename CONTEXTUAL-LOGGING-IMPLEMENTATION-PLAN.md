@@ -217,10 +217,15 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - Create `smarter-claude/logs/` for temporary JSON/JSONL files
 - Update all paths in hook utilities
 
-#### Task 7.2: Per-Project Settings System
-- Add `smarter-claude.json` to project folders for local overrides
-- Implement settings hierarchy: project > global > defaults
-- Settings include: interaction_level, cleanup_policy, database_location
+#### Task 7.2: Per-Project Settings System ✅ COMPLETED
+- ✅ Created `settings.py` module with hierarchical settings system
+- ✅ Implemented settings hierarchy: project > global > defaults
+- ✅ Created project settings file: `<project>/.claude/smarter-claude/smarter-claude.json`
+- ✅ Created global settings file: `~/.claude/hooks/utils/smarter-claude-global.json`
+- ✅ Settings include: interaction_level, cleanup_policy, database_settings, logging_settings
+- ✅ Built management CLI: `manage_settings.py` with commands: info, get, set, init, levels
+- ✅ Integrated settings into TTS announcements and retention cleanup
+- ✅ Supports dot notation for nested settings (e.g., "cleanup_policy.retention_cycles")
 
 ### Phase 8: Interaction Levels 🔊 READY
 **Goal**: Four levels of user interaction with TTS and notifications
