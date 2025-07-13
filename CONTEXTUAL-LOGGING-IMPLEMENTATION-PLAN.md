@@ -237,15 +237,17 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - Settings schema: interaction_level, tts_enabled, notification_sounds
 
 #### Task 8.2: Interaction Levels Implementation
-**Silent Mode**:
-- No TTS announcements
-- No notification sounds
-- Database logging only
+**Silent Mode** ✅ COMPLETED:
+- ✅ No TTS announcements
+- ✅ No notification sounds  
+- ✅ Database logging only
 
-**Quiet Mode**:
-- Beep for notification hook
-- Chime for cycle completion
-- No verbal announcements
+**Quiet Mode** ✅ COMPLETED:
+- ✅ Subtle notification.mp3 for notification hook
+- ✅ Subtle decide.mp3 for cycle completion and subagent completion
+- ✅ No verbal announcements
+- ✅ Sound files copied to hooks/utils/resources/sounds/
+- ✅ Uses afplay on macOS for minimal audio feedback
 
 **Concise Mode (Default)**:
 - TTS for notification hooks with short attention description

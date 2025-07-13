@@ -145,7 +145,13 @@ def announce_user_content(message, level="concise"):
             if interaction_level == "silent":
                 return
             elif interaction_level == "quiet":
-                return  # Quiet means no verbal announcements
+                # Quiet mode: play completion sound instead of TTS
+                try:
+                    from notification_sounds import play_completion_sound
+                    play_completion_sound()
+                except ImportError:
+                    pass  # Fall back to no sound if utility not available
+                return
             elif interaction_level == "concise" and level in ["concise", "verbose"]:
                 pass  # Announce concise and verbose content
             elif interaction_level == "verbose":

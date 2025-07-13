@@ -75,7 +75,13 @@ def announce_subagent_completion():
             
             # Quiet mode: only notification sounds (beep/chime), no verbal announcements
             if interaction_level == "quiet":
-                # TODO: Implement notification sound (beep/chime) instead of TTS
+                # Play subtle completion sound instead of TTS
+                try:
+                    sys.path.append(str(Path(__file__).parent / 'utils'))
+                    from notification_sounds import play_subagent_completion_sound
+                    play_subagent_completion_sound()
+                except ImportError:
+                    pass  # Fall back to no sound if utility not available
                 return
             
             # Concise mode: brief announcements

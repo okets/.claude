@@ -66,7 +66,13 @@ def announce_notification():
             
             # Quiet mode: only notification sounds (beep/chime), no verbal announcements
             if interaction_level == "quiet":
-                # TODO: Implement notification sound (beep/chime) instead of TTS
+                # Play subtle notification sound instead of TTS
+                try:
+                    sys.path.append(str(Path(__file__).parent / 'utils'))
+                    from notification_sounds import play_notification_sound
+                    play_notification_sound()
+                except ImportError:
+                    pass  # Fall back to no sound if utility not available
                 return
             
             # Concise and verbose modes: verbal announcements

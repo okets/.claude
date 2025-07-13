@@ -52,7 +52,7 @@ def show_levels():
             "announcements": False
         },
         "quiet": {
-            "description": "Beep/chime only, no verbal announcements about user content",
+            "description": "Subtle sounds only (notification.mp3, decide.mp3), no verbal announcements",
             "tts": False,
             "sounds": True,
             "announcements": False
