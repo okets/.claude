@@ -32,5 +32,10 @@ __pycache__/
 debug_*.json
 claude_debug_*.json
 
+# Ignore contextual logging temp files
+claude_contextual_data.json
+claude_main_tools.json
+claude_subagent_*.json
+
 # Allow all other files and directories by default
 # (commands/, hooks/, schema.sql, setup_database.py, etc.)

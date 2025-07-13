@@ -364,6 +364,127 @@ def main():
         debug_log = Path('/tmp') / 'claude_debug_stop.json'
         with open(debug_log, 'w') as f:
             json.dump(input_data, f, indent=2)
+        
+        # Phase 1: Capture current RequestCycle data by parsing transcript
+        def parse_current_request_cycle(transcript_path):
+            """Parse transcript to extract current RequestCycle (last user message to now)"""
+            try:
+                if not Path(transcript_path).exists():
+                    return {"error": "Transcript file not found", "path": transcript_path}
+                
+                user_messages = []
+                assistant_messages = []
+                tool_calls = []
+                
+                with open(transcript_path, 'r') as f:
+                    for line_num, line in enumerate(f, 1):
+                        try:
+                            entry = json.loads(line.strip())
+                            
+                            # Extract user messages (actual text, not tool results)
+                            if entry.get('type') == 'user' and 'message' in entry:
+                                message_content = entry['message'].get('content', '')
+                                if isinstance(message_content, str) and message_content.strip():
+                                    user_messages.append({
+                                        'line': line_num,
+                                        'content': message_content,
+                                        'timestamp': entry.get('timestamp')
+                                    })
+                            
+                            # Extract assistant messages and embedded tool calls
+                            elif entry.get('type') == 'assistant' and 'message' in entry:
+                                assistant_messages.append({
+                                    'line': line_num,
+                                    'content': entry['message'].get('content', ''),
+                                    'timestamp': entry.get('timestamp')
+                                })
+                                
+                                # Check for tool calls embedded in assistant messages
+                                message_content = entry['message'].get('content', [])
+                                if isinstance(message_content, list):
+                                    for content_item in message_content:
+                                        if content_item.get('type') == 'tool_use':
+                                            tool_calls.append({
+                                                'line': line_num,
+                                                'tool_name': content_item.get('name'),
+                                                'input': content_item.get('input'),
+                                                'timestamp': entry.get('timestamp')
+                                            })
+                            
+                            # Extract standalone tool calls (rare)
+                            elif entry.get('type') == 'tool_use':
+                                tool_calls.append({
+                                    'line': line_num,
+                                    'tool_name': entry.get('name'),
+                                    'input': entry.get('input'),
+                                    'timestamp': entry.get('timestamp')
+                                })
+                                
+                        except json.JSONDecodeError:
+                            continue
+                
+                # Get the LAST user message (start of current RequestCycle)
+                if not user_messages:
+                    return {"error": "No user messages found"}
+                
+                current_request = user_messages[-1]
+                request_cycle_start_line = current_request['line']
+                
+                # Get everything that happened AFTER the last user message
+                request_cycle_tools = [
+                    tool for tool in tool_calls 
+                    if tool['line'] > request_cycle_start_line
+                ]
+                
+                request_cycle_responses = [
+                    msg for msg in assistant_messages 
+                    if msg['line'] > request_cycle_start_line
+                ]
+                
+                return {
+                    "request_cycle": {
+                        "user_request": current_request,
+                        "tools_used": request_cycle_tools,
+                        "assistant_responses": request_cycle_responses,
+                        "tool_count": len(request_cycle_tools),
+                        "response_count": len(request_cycle_responses)
+                    },
+                    "conversation_context": {
+                        "total_request_cycles": len(user_messages),
+                        "conversation_first_request": user_messages[0] if user_messages else None
+                    }
+                }
+                
+            except Exception as e:
+                return {"error": f"Failed to parse transcript: {str(e)}"}
+        
+        # Get transcript path and parse current RequestCycle
+        transcript_path = input_data.get('transcript_path', '')
+        request_cycle_data = parse_current_request_cycle(transcript_path) if transcript_path else {"error": "No transcript path provided"}
+        
+        # Create RequestCycle completion data
+        request_cycle_completion = {
+            **input_data,  # Original hook data
+            "request_cycle_data": request_cycle_data,
+            "request_cycle_end_context": {
+                "session_id": input_data.get("session_id", ""),
+                "stop_hook_active": input_data.get("stop_hook_active", False),
+                "transcript_available": bool(transcript_path),
+                "request_cycle_completed": True,
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+        
+        project_claude_dir = get_project_claude_dir()
+        contextual_data_path = project_claude_dir / 'claude_contextual_data.json'
+        with open(contextual_data_path, 'w') as f:
+            json.dump(request_cycle_completion, f, indent=2)
+        
+        # Add TTS announcement
+        sys.path.append(str(Path(__file__).parent / 'utils'))
+        from tts_announcer import announce_hook
+        user_request_preview = request_cycle_data.get('request_cycle', {}).get('user_request', {}).get('content', 'Unknown')[:50]
+        announce_hook("stop", f"RequestCycle completed: {user_request_preview}...")
 
         # Extract required fields
         session_id = input_data.get("session_id", "")
