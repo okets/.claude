@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
+from cycle_utils import get_project_smarter_claude_dir
 
 
 class ContextualDB:
@@ -23,8 +24,8 @@ class ContextualDB:
     def __init__(self, db_path: Optional[str] = None):
         self.connection = None
         if db_path is None:
-            # Default to smarter-claude directory
-            db_path = "/Users/hanan/.claude/.claude/smarter-claude/smarter-claude.db"
+            # Default to project-specific smarter-claude directory
+            db_path = get_project_smarter_claude_dir() / "smarter-claude.db"
         
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(exist_ok=True)

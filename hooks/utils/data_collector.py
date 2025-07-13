@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 sys.path.append(str(Path(__file__).parent))
 from contextual_db import ContextualDB
 from hook_parser import generate_contextual_summary, load_hook_timeline
+from cycle_utils import get_project_smarter_claude_logs_dir
 
 
 class DataCollector:
@@ -23,7 +24,7 @@ class DataCollector:
     
     def __init__(self, session_logs_dir: str = None):
         if session_logs_dir is None:
-            session_logs_dir = "/Users/hanan/.claude/.claude/smarter-claude/logs"
+            session_logs_dir = str(get_project_smarter_claude_logs_dir())
         
         self.session_logs_dir = Path(session_logs_dir)
         self.db = ContextualDB()

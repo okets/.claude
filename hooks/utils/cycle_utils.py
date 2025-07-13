@@ -11,6 +11,64 @@ from pathlib import Path
 from datetime import datetime
 
 
+def detect_project_root() -> Path:
+    """
+    Detect the current project root directory for smarter-claude.
+    
+    Returns:
+        Path: Project root directory where .claude/smarter-claude/ should be created
+    """
+    current_dir = Path.cwd()
+    
+    # Strategy 1: Look for existing .claude directory (project boundary)
+    search_dir = current_dir
+    for _ in range(10):  # Limit search depth
+        claude_dir = search_dir / ".claude"
+        if claude_dir.exists():
+            return search_dir
+        
+        parent = search_dir.parent
+        if parent == search_dir:  # Reached filesystem root
+            break
+        search_dir = parent
+    
+    # Strategy 2: Look for git repository root
+    search_dir = current_dir
+    for _ in range(10):  # Limit search depth
+        git_dir = search_dir / ".git"
+        if git_dir.exists():
+            return search_dir
+        
+        parent = search_dir.parent
+        if parent == search_dir:  # Reached filesystem root
+            break
+        search_dir = parent
+    
+    # Strategy 3: Fallback to current working directory
+    return current_dir
+
+
+def get_project_smarter_claude_dir() -> Path:
+    """
+    Get the project-specific smarter-claude directory.
+    
+    Returns:
+        Path: <project-root>/.claude/smarter-claude/
+    """
+    project_root = detect_project_root()
+    return project_root / ".claude" / "smarter-claude"
+
+
+def get_project_smarter_claude_logs_dir() -> Path:
+    """
+    Get the project-specific smarter-claude logs directory.
+    
+    Returns:
+        Path: <project-root>/.claude/smarter-claude/logs/
+    """
+    return get_project_smarter_claude_dir() / "logs"
+
+
 def get_tts_script_path():
     """
     Determine which TTS script to use based on available API keys.
@@ -198,9 +256,9 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
         # Announce via TTS
         announce_tts(f"Hook {hook_name} fired for cycle {cycle_id}")
         
-        # Create output directory
-        output_dir = Path("/Users/hanan/.claude/.claude/smarter-claude/logs")
-        output_dir.mkdir(exist_ok=True)
+        # Create project-specific output directory
+        output_dir = get_project_smarter_claude_logs_dir()
+        output_dir.mkdir(parents=True, exist_ok=True)
         
         # Prepare dump data with user intent
         dump_entry = {

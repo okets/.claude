@@ -17,7 +17,7 @@ from typing import List, Dict, Set
 # Import our cycle utilities
 sys.path.append(str(Path(__file__).parent / 'utils'))
 try:
-    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts
+    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts, get_project_smarter_claude_logs_dir
     from hook_parser import generate_contextual_summary, generate_cycle_summary_file
     from data_collector import DataCollector
 except ImportError:
@@ -932,7 +932,6 @@ def main():
                             # RETENTION CLEANUP: Clean up previous cycle files after current cycle is safely stored
                             try:
                                 session_short = session_id[:8] if session_id else "unknown"
-                                logs_dir = Path("/Users/hanan/.claude/.claude/smarter-claude/logs")
                                 
                                 # Configurable retention (keep last N cycles as backup)
                                 retention_cycles = 3  # Keep 3 previous cycles as backup
@@ -942,6 +941,8 @@ def main():
                                 files_cleaned = []
                                 
                                 if cleanup_before_cycle > 0:
+                                    # Use project-specific logs directory
+                                    logs_dir = get_project_smarter_claude_logs_dir()
                                     # Clean up files for cycles before the retention window
                                     for old_cycle_id in range(max(1, cleanup_before_cycle - 5), cleanup_before_cycle):
                                         old_hooks_file = logs_dir / f"session_{session_short}_cycle_{old_cycle_id}_hooks.jsonl"

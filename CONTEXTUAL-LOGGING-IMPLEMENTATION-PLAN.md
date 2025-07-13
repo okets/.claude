@@ -175,11 +175,39 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - Implement cleanup in stop.py after auto-ingestion completes
 - Add error handling to preserve files if database ingestion fails
 
-#### Task 6.2: File Retention Strategy
-- Retain current cycle files until next cycle completes
-- Clean up previous cycle files only after confirming new cycle data is safely in database
+#### Task 6.2: File Retention Strategy ✅ COMPLETED
+- ✅ Retain current cycle files until next cycle completes
+- ✅ Clean up previous cycle files only after confirming new cycle data is safely in database
+- ✅ Configurable 3-cycle retention for backup safety
 
-### Phase 7: Rebrand as "smarter-claude" 🎯 READY
+### Phase 6.5: Fix Project Isolation 🚨 CRITICAL
+**Goal**: Fix critical bug where all projects share global smarter-claude folder
+**Issue**: Working in `/Projects/demo-project` but saving to global `~/.claude/.claude/smarter-claude/`
+
+#### Task 6.5.1: Project Directory Detection
+- Add function to detect current project root directory
+- Look for `.claude` directory or git root as project boundary
+- Fallback to current working directory if no project markers found
+
+#### Task 6.5.2: Dynamic Path Resolution
+- Replace all hardcoded `/Users/hanan/.claude/.claude/smarter-claude/` paths
+- Use `<project-root>/.claude/smarter-claude/` for project-specific data
+- Maintain global location only for global hooks configuration
+
+#### Task 6.5.3: Update All Hook Utilities
+- cycle_utils.py: Dynamic output directory
+- contextual_db.py: Project-specific database path
+- hook_parser.py: Project-specific logs directory
+- data_collector.py: Project-specific session logs
+- stop.py: Project-specific cleanup paths
+
+#### Task 6.5.4: Ensure Project Isolation
+- Each project gets own: `<project>/.claude/smarter-claude/smarter-claude.db`
+- Each project gets own: `<project>/.claude/smarter-claude/logs/`
+- Test: Working in different projects creates separate databases
+- Verify: No cross-project data contamination
+
+### Phase 7: Rebrand as "smarter-claude" 🎯 PARTIALLY COMPLETED
 **Goal**: Professional branding and organized file structure
 **Vision**: Clean, branded system with intuitive folder organization
 
