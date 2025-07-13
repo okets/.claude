@@ -20,6 +20,15 @@ try:
 except ImportError:
     pass  # dotenv is optional
 
+# Import our cycle utilities
+sys.path.append(str(Path(__file__).parent / 'utils'))
+try:
+    from cycle_utils import dump_hook_data
+except ImportError:
+    # Fallback if utils not available
+    def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
+        pass
+
 
 def get_tts_script_path():
     """
@@ -76,6 +85,37 @@ def announce_subagent_completion():
         pass
 
 
+def generate_subagent_contextual_data(session_id, transcript_path, input_data):
+    """Generate contextual data file for subagent session using logic from stop.py"""
+    try:
+        # Call the stop.py script to generate contextual data
+        # We'll pass the same input data to stop.py and let it handle subagent detection
+        stop_script = Path(__file__).parent / "stop.py"
+        
+        if stop_script.exists():
+            # Run stop.py with the same input data
+            result = subprocess.run([
+                "uv", "run", str(stop_script)
+            ], 
+            input=json.dumps(input_data),
+            text=True,
+            capture_output=True,
+            timeout=30
+            )
+            
+            # Log the result for debugging
+            with open('/tmp/subagent_contextual_debug.log', 'a') as f:
+                f.write(f"\n{datetime.now()}: Subagent contextual data generation completed\n")
+                f.write(f"Return code: {result.returncode}\n")
+                if result.stderr:
+                    f.write(f"Stderr: {result.stderr}\n")
+                    
+    except Exception as e:
+        # Log errors but don't fail
+        with open('/tmp/subagent_contextual_debug.log', 'a') as f:
+            f.write(f"\n{datetime.now()}: Error generating subagent contextual data: {str(e)}\n")
+
+
 def main():
     try:
         # Parse command line arguments
@@ -84,6 +124,30 @@ def main():
         
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
+        
+        # Dump raw hook data for analysis
+        session_id = input_data.get('session_id', '')
+        transcript_path = input_data.get('transcript_path', '')
+        dump_hook_data('SubagentStop', input_data, session_id, transcript_path)
+        
+        # First, generate contextual data for subagent session by calling stop.py logic
+        try:
+            # Import the contextual analysis logic from stop.py
+            sys.path.append(str(Path(__file__).parent))
+            
+            # We'll run a simplified version of the stop.py analysis here
+            # since we need to capture subagent work before DB operations
+            session_id = input_data.get("session_id", "")
+            transcript_path = input_data.get("transcript_path", "")
+            
+            if session_id and transcript_path:
+                # Generate subagent contextual data file
+                generate_subagent_contextual_data(session_id, transcript_path, input_data)
+                
+        except Exception as e:
+            # Don't let contextual logging failures break the main hook
+            with open('/tmp/subagent_stop_debug.log', 'a') as f:
+                f.write(f"\n{datetime.now()}: Contextual logging error: {str(e)}\n")
 
         # Extract required fields
         session_id = input_data.get("session_id", "")

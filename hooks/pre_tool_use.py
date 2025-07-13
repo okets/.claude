@@ -8,6 +8,15 @@ import sys
 import re
 from pathlib import Path
 
+# Import our cycle utilities
+sys.path.append(str(Path(__file__).parent / 'utils'))
+try:
+    from cycle_utils import dump_hook_data
+except ImportError:
+    # Fallback if utils not available
+    def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
+        pass
+
 
 def get_project_root():
     """Find project root by looking for .git directory"""
@@ -120,6 +129,11 @@ def main():
     try:
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
+        
+        # Dump raw hook data for analysis
+        session_id = input_data.get('session_id', '')
+        transcript_path = input_data.get('transcript_path', '')
+        dump_hook_data('PreToolUse', input_data, session_id, transcript_path)
         
         # Optional debug logging - uncomment for debugging
         # debug_log = Path('/tmp') / 'claude_debug_pre_tool_use.json'

@@ -14,6 +14,21 @@ from datetime import datetime
 import re
 from typing import List, Dict, Set
 
+# Import our cycle utilities
+sys.path.append(str(Path(__file__).parent / 'utils'))
+try:
+    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts
+    from hook_parser import generate_contextual_summary
+except ImportError:
+    # Fallback if utils not available
+    def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
+        pass
+    def get_current_cycle_id(session_id, transcript_path):
+        return 1
+    def generate_contextual_summary(session_id, cycle_id, output_dir=None):
+        return {"error": "Hook parser not available"}
+    def announce_tts(message):
+        pass
 
 try:
     from dotenv import load_dotenv
@@ -360,6 +375,41 @@ def main():
         # Read JSON input from stdin
         input_data = json.load(sys.stdin)
         
+        # Dump raw hook data for analysis
+        session_id = input_data.get('session_id', '')
+        transcript_path = input_data.get('transcript_path', '')
+        dump_hook_data('Stop', input_data, session_id, transcript_path)
+        
+        # Smart detection: Is this a subagent completion or final cycle completion?
+        def should_generate_final_summary(hook_data):
+            """Determine if this Stop hook should generate final contextual summary"""
+            hook_event_name = hook_data.get("hook_event_name", "")
+            
+            # If this Stop hook has event_name "SubagentStop", it's a subagent completion
+            if hook_event_name == "SubagentStop":
+                announce_tts("Stop detected from a subagent")
+                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                    f.write(f"\n{datetime.now()}: Stop hook triggered by SubagentStop - skipping final summary\n")
+                return False
+            
+            # If this Stop hook has event_name "Stop", it's the final cycle completion
+            if hook_event_name == "Stop":
+                announce_tts("Stop detected from Main Agent")
+                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                    f.write(f"\n{datetime.now()}: Stop hook triggered by cycle completion - generating final summary\n")
+                return True
+            
+            # Fallback: if event name is unclear, default to generating summary
+            announce_tts("Stop detected with unclear source")
+            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                f.write(f"\n{datetime.now()}: Stop hook with unclear event '{hook_event_name}' - defaulting to summary generation\n")
+            return True
+        
+        # Check if we should generate the final summary
+        if not should_generate_final_summary(input_data):
+            # This is just a subagent completion, exit early
+            sys.exit(0)
+        
         # Debug: Log input data to understand structure
         debug_log = Path('/tmp') / 'claude_debug_stop.json'
         with open(debug_log, 'w') as f:
@@ -681,6 +731,7 @@ def main():
                 user_messages = []
                 assistant_messages = []
                 tool_calls = []
+                is_subagent_session = False  # Track if this is a subagent session
                 
                 with open(transcript_path, 'r') as f:
                     for line_num, line in enumerate(f, 1):
@@ -692,6 +743,10 @@ def main():
                                 error_msg = f"Unexpected JSON format at line {line_num}: expected dict, got {type(entry)}"
                                 announce_hook("stop", f"ERROR: {error_msg}")
                                 continue
+                            
+                            # Detect subagent session by checking isSidechain flag
+                            if entry.get('isSidechain') is True:
+                                is_subagent_session = True
                             
                             # Extract user messages (actual text, not tool results)
                             if entry.get('type') == 'user' and 'message' in entry:
@@ -793,6 +848,29 @@ def main():
                 # Analyze and organize the data for better DB structure
                 analysis = analyze_request_cycle(current_request, request_cycle_tools, request_cycle_responses)
                 
+                # Handle subagent sessions differently
+                if is_subagent_session:
+                    # Mark subagent work in file_activities for proper attribution
+                    for file_path, agents in analysis.get('file_activities', {}).items():
+                        if 'main_agent' in agents:
+                            # Transfer main_agent work to subagent
+                            agents['subagent'] = agents.pop('main_agent')
+                            # Update reason to reflect subagent work
+                            agents['subagent']['reason'] = f"Subagent work: {agents['subagent']['reason']}"
+                    
+                    # Update agents_involved to reflect subagent activity
+                    analysis['agents_involved'] = {
+                        'main_agent': False,
+                        'subagents': True,
+                        'subagent_count': 1
+                    }
+                    
+                    # Add subagent session metadata
+                    analysis['session_type'] = 'subagent'
+                    analysis['parent_session_note'] = 'Task delegation details in parent session'
+                else:
+                    analysis['session_type'] = 'main'
+                
                 return {
                     "request_cycle_summary": analysis,
                     "raw_data": {
@@ -804,7 +882,8 @@ def main():
                     },
                     "conversation_context": {
                         "total_request_cycles": len(user_messages),
-                        "conversation_first_request": user_messages[0] if user_messages else None
+                        "conversation_first_request": user_messages[0] if user_messages else None,
+                        "is_subagent_session": is_subagent_session
                     }
                 }
                 
@@ -821,14 +900,54 @@ def main():
                 announce_hook("stop", f"CRITICAL ERROR: {error_msg}")
                 return {"error": error_msg}
         
-        # Get transcript path and parse current RequestCycle
-        transcript_path = input_data.get('transcript_path', '')
-        if not transcript_path:
-            error_msg = "No transcript path provided by Claude Code - hook input format may have changed"
-            announce_hook("stop", f"ERROR: {error_msg}")
-            request_cycle_data = {"error": error_msg}
-        else:
-            request_cycle_data = parse_current_request_cycle(transcript_path)
+        # Phase 1: Try hook-based parsing (new approach)
+        cycle_id = get_current_cycle_id(session_id, input_data.get('transcript_path', ''))
+        
+        try:
+            # Use new hook-based parsing
+            hook_summary = generate_contextual_summary(session_id, cycle_id)
+            
+            if "error" not in hook_summary:
+                # Hook parsing successful - use it as primary data
+                request_cycle_data = {
+                    "request_cycle_summary": hook_summary,
+                    "raw_data": {
+                        "data_source": "hook_timeline",
+                        "cycle_id": cycle_id,
+                        "session_id": session_id
+                    },
+                    "conversation_context": {
+                        "is_hook_based": True,
+                        "cycle_id": cycle_id
+                    }
+                }
+                
+                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                    f.write(f"\n{datetime.now()}: Successfully used hook-based parsing for cycle {cycle_id}\n")
+                    
+            else:
+                # Hook parsing failed - fall back to transcript parsing
+                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                    f.write(f"\n{datetime.now()}: Hook parsing failed ({hook_summary.get('error')}), falling back to transcript parsing\n")
+                    
+                transcript_path = input_data.get('transcript_path', '')
+                if not transcript_path:
+                    error_msg = "No transcript path provided and hook parsing failed"
+                    request_cycle_data = {"error": error_msg}
+                else:
+                    request_cycle_data = parse_current_request_cycle(transcript_path)
+                    
+        except Exception as e:
+            # Hook parsing error - fall back to transcript parsing
+            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                f.write(f"\n{datetime.now()}: Hook parsing exception ({str(e)}), falling back to transcript parsing\n")
+                
+            transcript_path = input_data.get('transcript_path', '')
+            if not transcript_path:
+                error_msg = "No transcript path provided and hook parsing failed with exception"
+                request_cycle_data = {"error": error_msg}
+            else:
+                request_cycle_data = parse_current_request_cycle(transcript_path)
         
         # Create conversation completion data with organized structure
         # Extract request_cycle_summary for top-level placement

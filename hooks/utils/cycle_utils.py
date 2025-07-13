@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""
+Shared utilities for cycle ID calculation and hook data management.
+Used by all hooks to maintain consistent cycle tracking.
+"""
+
+import json
+import os
+import subprocess
+from pathlib import Path
+from datetime import datetime
+
+
+def get_tts_script_path():
+    """
+    Determine which TTS script to use based on available API keys.
+    Priority order: ElevenLabs > OpenAI > pyttsx3
+    """
+    # Get current script directory and construct utils/tts path
+    script_dir = Path(__file__).parent.parent
+    tts_dir = script_dir / "utils" / "tts"
+    
+    # Check for ElevenLabs API key (highest priority)
+    if os.getenv('ELEVENLABS_API_KEY'):
+        elevenlabs_script = tts_dir / "elevenlabs_tts.py"
+        if elevenlabs_script.exists():
+            return str(elevenlabs_script)
+    
+    # Check for OpenAI API key (second priority)
+    if os.getenv('OPENAI_API_KEY'):
+        openai_script = tts_dir / "openai_tts.py"
+        if openai_script.exists():
+            return str(openai_script)
+    
+    # Fall back to pyttsx3 (no API key required)
+    pyttsx3_script = tts_dir / "pyttsx3_tts.py"
+    if pyttsx3_script.exists():
+        return str(pyttsx3_script)
+    
+    return None
+
+
+def announce_tts(message):
+    """Announce message via TTS with error handling"""
+    try:
+        tts_script = get_tts_script_path()
+        if not tts_script:
+            return  # No TTS scripts available
+        
+        # Call the TTS script with the message
+        subprocess.run([
+            "uv", "run", tts_script, message
+        ], 
+        capture_output=True,  # Suppress output
+        timeout=10  # 10-second timeout
+        )
+        
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        # Fail silently if TTS encounters issues
+        pass
+    except Exception:
+        # Fail silently for any other errors
+        pass
+
+
+def is_stop_hook_execution(entry):
+    """Detect final Stop hook execution in transcript (not subagent stops)"""
+    # Look for system messages indicating Stop hook execution
+    if entry.get('type') == 'system':
+        content = entry.get('content', '')
+        # Look for Stop hook indicators, but exclude SubagentStop
+        if ('Stop' in content and 'hook' in content.lower()) or ('stop.py' in content.lower()):
+            # Exclude subagent stop hooks to only count final cycle completions
+            if 'subagent' in content.lower():
+                return False
+            return True
+    return False
+
+
+def get_current_cycle_id(session_id, transcript_path):
+    """
+    Calculate current cycle ID by counting Stop hook executions in transcript.
+    Works from any hook - Pre/Post/Notification/Stop/SubagentStop
+    
+    Args:
+        session_id: Current session identifier
+        transcript_path: Path to the conversation transcript
+        
+    Returns:
+        int: Simple incremental cycle number (1, 2, 3, etc.)
+    """
+    stop_count = 0
+    
+    if transcript_path and Path(transcript_path).exists():
+        try:
+            with open(transcript_path, 'r') as f:
+                for line in f:
+                    try:
+                        entry = json.loads(line.strip())
+                        if is_stop_hook_execution(entry):
+                            stop_count += 1
+                    except json.JSONDecodeError:
+                        continue
+                    except Exception:
+                        continue
+        except Exception:
+            # If we can't read transcript, default to cycle 1
+            pass
+    
+    # Current cycle is next number (stop_count + 1)
+    return stop_count + 1
+
+
+def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
+    """
+    Dump raw hook JSON data with cycle ID to log file.
+    
+    Args:
+        hook_name: Name of the hook (e.g., "PreToolUse", "Stop")
+        hook_data: Raw JSON data from the hook
+        session_id: Session identifier
+        transcript_path: Path to transcript
+    """
+    try:
+        # Calculate cycle ID
+        cycle_id = get_current_cycle_id(session_id, transcript_path)
+        
+        # Announce via TTS
+        announce_tts(f"Hook {hook_name} fired for cycle {cycle_id}")
+        
+        # Create output directory
+        output_dir = Path("/Users/hanan/.claude/.claude")
+        output_dir.mkdir(exist_ok=True)
+        
+        # Prepare dump data
+        dump_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "hook_name": hook_name,
+            "cycle_id": cycle_id,
+            "session_id": session_id,
+            "raw_data": hook_data
+        }
+        
+        # Create session-specific filename with cycle_id
+        session_short = session_id[:8] if session_id else "unknown"
+        dumps_file = output_dir / f"session_{session_short}_cycle_{cycle_id}_hooks.jsonl"
+        with open(dumps_file, 'a') as f:
+            f.write(json.dumps(dump_entry) + "\n")
+        
+        # Also create a simple text dump for easy reading
+        simple_dump = f"{hook_name}:{json.dumps(hook_data)}\n"
+        simple_file = output_dir / f"session_{session_short}_cycle_{cycle_id}_hooks_simple.log"
+        with open(simple_file, 'a') as f:
+            f.write(simple_dump)
+            
+    except Exception as e:
+        # Log errors but don't fail the hook
+        try:
+            with open('/tmp/cycle_utils_debug.log', 'a') as f:
+                f.write(f"\n{datetime.now()}: Error in dump_hook_data: {str(e)}\n")
+        except:
+            pass
