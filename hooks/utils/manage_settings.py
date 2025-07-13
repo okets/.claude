@@ -41,30 +41,30 @@ def show_info():
 
 def show_levels():
     """Show interaction levels information"""
-    print("=== Interaction Levels ===")
+    print("=== Interaction Levels (User-Facing Content) ===")
     current = get_interaction_level()
     
     levels = {
         "silent": {
-            "description": "No TTS announcements, no notification sounds, database logging only",
+            "description": "No user content announcements (user intent, task completion, etc.)",
             "tts": False,
             "sounds": False,
             "announcements": False
         },
         "quiet": {
-            "description": "Beep for notifications, chime for completion, no verbal announcements",
+            "description": "Beep/chime only, no verbal announcements about user content",
             "tts": False,
             "sounds": True,
             "announcements": False
         },
         "concise": {
-            "description": "Brief TTS for notifications and cycle summaries [DEFAULT]",
+            "description": "Brief TTS about task completion and user intent [DEFAULT]",
             "tts": True,
             "sounds": True,
             "announcements": True
         },
         "verbose": {
-            "description": "Detailed workflow narration with all tool announcements",
+            "description": "Detailed announcements about workflow and user content",
             "tts": True,
             "sounds": True,
             "announcements": True,
@@ -79,6 +79,18 @@ def show_levels():
         if level == current:
             print(f"    (Currently Active)")
         print()
+    
+    print("=== Infrastructure/Debug Settings ===")
+    from settings import get_setting
+    speak_hook_logging = get_setting("logging_settings.speak_hook_logging", False)
+    debug_logging = get_setting("logging_settings.debug_logging", False)
+    
+    print(f"speak_hook_logging: {speak_hook_logging}")
+    print("  Controls TTS for infrastructure messages (database operations, hook debugging)")
+    print(f"debug_logging: {debug_logging}")
+    print("  Controls debug log output")
+    print()
+    print("Note: Infrastructure settings are separate from user content interaction levels")
 
 
 def get_value(key):

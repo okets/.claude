@@ -37,6 +37,7 @@ class SmarterClaudeSettings:
         "logging_settings": {
             "hook_logging": True,
             "debug_logging": False,
+            "speak_hook_logging": False,
             "log_level": "info"
         }
     }

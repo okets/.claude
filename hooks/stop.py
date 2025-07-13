@@ -17,7 +17,7 @@ from typing import List, Dict, Set
 # Import our cycle utilities
 sys.path.append(str(Path(__file__).parent / 'utils'))
 try:
-    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts, get_project_smarter_claude_logs_dir
+    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts, announce_user_content, get_project_smarter_claude_logs_dir
     from hook_parser import generate_contextual_summary, generate_cycle_summary_file
     from data_collector import DataCollector
 except ImportError:
@@ -918,14 +918,32 @@ def main():
                     transcript_path = input_data.get('transcript_path', '')
                     cycle_summary_result = generate_cycle_summary_file(session_id, cycle_id, None, transcript_path)
                     if "error" not in cycle_summary_result:
-                        announce_tts(f"Cycle summary generated for cycle {cycle_id}")
+                        # Extract meaningful cycle data for user-facing announcements
+                        user_intent = cycle_summary_result.get("user_intent", "Unknown task")
+                        execution_summary = cycle_summary_result.get("execution_summary", {})
+                        files_modified = execution_summary.get("files_modified", 0)
+                        subagents_used = execution_summary.get("subagents_used", 0)
+                        primary_activity = execution_summary.get("primary_activity", "unknown")
+                        
+                        # Create meaningful user-facing announcement
+                        if primary_activity == "file_modification" and files_modified > 0:
+                            if subagents_used > 0:
+                                announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files with {subagents_used} subagents")
+                            else:
+                                announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files")
+                        elif primary_activity == "code_analysis":
+                            announce_user_content(f"Analysis completed: {user_intent[:50]}")
+                        elif primary_activity == "testing":
+                            announce_user_content(f"Testing completed: {user_intent[:50]}")
+                        else:
+                            announce_user_content(f"Task completed: {user_intent[:50]}")
+                        
                         summary_path = cycle_summary_result.get("summary_file_path", "unknown")
                         
-                        # AUTO-INGEST: Immediately add to database
+                        # AUTO-INGEST: Immediately add to database (infrastructure - no TTS)
                         try:
                             collector = DataCollector()
                             collector._process_summary_file(Path(summary_path))
-                            announce_tts(f"Cycle {cycle_id} added to database")
                             with open('/tmp/stop_hook_debug.log', 'a') as f:
                                 f.write(f"\n{datetime.now()}: Cycle {cycle_id} auto-ingested to database\n")
                             
@@ -960,8 +978,8 @@ def main():
                                             old_summary_file.unlink()
                                             files_cleaned.append(f"cycle_{old_cycle_id}_summary.json")
                                 
+                                # Infrastructure cleanup - no TTS announcement needed
                                 if files_cleaned:
-                                    announce_tts(f"Cleaned up {len(files_cleaned)} old cycle files")
                                     with open('/tmp/stop_hook_debug.log', 'a') as f:
                                         f.write(f"\n{datetime.now()}: Retention cleanup for cycle {cycle_id}: {', '.join(files_cleaned)}\n")
                                 else:

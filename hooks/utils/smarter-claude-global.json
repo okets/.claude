@@ -13,6 +13,7 @@
   "logging_settings": {
     "hook_logging": true,
     "debug_logging": false,
+    "speak_hook_logging": false,
     "log_level": "info"
   }
 }

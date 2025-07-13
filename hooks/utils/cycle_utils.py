@@ -99,15 +99,62 @@ def get_tts_script_path():
 
 
 def announce_tts(message):
-    """Announce message via TTS with error handling and settings integration"""
+    """Announce infrastructure/debugging messages via TTS (controlled by speak_hook_logging)"""
     try:
-        # Check settings to see if TTS should be enabled
+        # Check settings for infrastructure TTS
         try:
-            from settings import is_tts_enabled, should_announce_hooks
-            if not is_tts_enabled() or not should_announce_hooks():
-                return  # TTS disabled by settings
+            from settings import get_setting
+            if not get_setting("logging_settings.speak_hook_logging", False):
+                return  # Infrastructure TTS disabled
         except ImportError:
-            # Settings not available, use default behavior
+            # Settings not available, default to silent for infrastructure
+            return
+        
+        tts_script = get_tts_script_path()
+        if not tts_script:
+            return  # No TTS scripts available
+        
+        # Call the TTS script with the message
+        subprocess.run([
+            "uv", "run", tts_script, message
+        ], 
+        capture_output=True,  # Suppress output
+        timeout=10  # 10-second timeout
+        )
+        
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        # Fail silently if TTS encounters issues
+        pass
+    except Exception:
+        # Fail silently for any other errors
+        pass
+
+
+def announce_user_content(message, level="concise"):
+    """Announce user-facing content about request cycles (controlled by interaction_level)"""
+    try:
+        # Check settings for user-facing TTS
+        try:
+            from settings import get_setting, is_tts_enabled
+            if not is_tts_enabled():
+                return  # User TTS disabled
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            # Only announce at appropriate levels
+            if interaction_level == "silent":
+                return
+            elif interaction_level == "quiet":
+                return  # Quiet means no verbal announcements
+            elif interaction_level == "concise" and level in ["concise", "verbose"]:
+                pass  # Announce concise and verbose content
+            elif interaction_level == "verbose":
+                pass  # Announce everything
+            else:
+                return  # Don't announce
+                
+        except ImportError:
+            # Settings not available, use basic TTS check
             pass
         
         tts_script = get_tts_script_path()
