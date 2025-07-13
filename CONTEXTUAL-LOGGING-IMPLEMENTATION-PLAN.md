@@ -112,45 +112,177 @@ This is the global `.claude` folder - every change we make affects:
 
 
 
-### Phase 5: Context-Oriented Summary System ✅ PLANNED
+### Phase 5: Context-Oriented Summary System ✅ COMPLETED
 **Goal**: Transform from analytics to context retrieval for fast agent access
 **Vision**: Enable Claude.md to provide relevant context when agents need file history, task info, or phase modifications
 
-#### Task 5.1: Design Context-First Data Structure
-- Create streamlined summary focused on **retrieval queries**
-- Structure around **user intent(s) as primary drivers**
-- Handle **multiple intents per cycle** (continuation/auto-compact scenarios)
-- Core data: intent chains, file context, phase/task metadata, LLM summaries
+#### Task 5.1: Design Context-First Data Structure ✅ COMPLETED
+- ✅ Created 4-table SQLite schema optimized for context queries
+- ✅ Structure around **user intent as primary driver**
+- ✅ Handle multiple intents per cycle with hybrid extraction approach
+- ✅ Core data: cycles, file_contexts, llm_summaries, subagent_tasks
 
-#### Task 5.2: Multi-Intent Context Extractor
-**Valuable Context Only**:
-- **User intent progression** - track intent evolution within cycle
-- **LLM-generated summaries** from conversations during cycle  
-- **File changes with intent context** - WHY each change happened
-- **Phase/task metadata** for project navigation
-- **Intent-to-outcome mapping** - what was accomplished per intent
+#### Task 5.2: Multi-Intent Context Extractor ✅ COMPLETED
+**Implemented Context Extraction**:
+- ✅ **User intent progression** - TodoWrite progression + transcript parsing
+- ✅ **LLM-generated summaries** - Rich cycle summaries with workflow insights
+- ✅ **File changes with intent context** - WHY each change happened linked to user request
+- ✅ **Phase/task metadata** - Project context extraction from conversations
+- ✅ **Intent-to-outcome mapping** - Complete workflow capture with agent collaboration
 
-**Filter Out**: file reads, tool metadata, analytics, operation counts
+**Successfully Filters**: Now captures ALL tool events (removed over-filtering that broke read-only tasks)
 
-#### Task 5.3: Intent-Aware Database Schema
-Tables optimized for context queries:
-- `cycle_intents`: cycle_id → intent_sequence (ordered list of intents)
-- `file_contexts`: file_path + cycle_id → intent_driven change context
-- `phase_tasks`: phase/task → related cycles with intent summaries
-- `llm_summaries`: cycle_id + intent_index → generated insights
-- `intent_outcomes`: intent → files_changed, summaries_generated
+#### Task 5.3: Intent-Aware Database Schema ✅ COMPLETED
+**Implemented 4-table schema** optimized for context queries:
+- ✅ `cycles`: cycle_id → user_intent, primary_activity, timing, project_context
+- ✅ `file_contexts`: file_path + cycle_id → change_reason, operations, agent_type, edit_count
+- ✅ `llm_summaries`: cycle_id → execution_summary, workflow_insights, task_complexity
+- ✅ `subagent_tasks`: cycle_id → task_description, delegation_info, completion_status
 
-#### Task 5.4: Claude.md Integration for Intent-Based Retrieval
-Enable queries like:
-- "Show all changes to hooks/stop.py and the user intents behind them"
-- "What were the user's goals in Phase 3, Task 2?"
-- "Find LLM summaries related to contextual logging implementation"
+#### Task 5.4: Claude.md Integration for Intent-Based Retrieval ✅ FOUNDATION COMPLETE
+**Database queries now working**:
+- ✅ "What was my last request?" - answered from database with actual user intent
+- ✅ "What files were edited and why?" - complete change_reason context
+- ✅ "Show all changes to hooks/stop.py" - queryable file modification history
 
-**Key Principle**: Every stored piece maps back to **"What did the user want and how did we achieve it?"**
-#### Task 5.5: Store and Clean
-- Store combined data in database
-- Delete only this session's temp files
-- **Note**: Check if subagents trigger Stop or just SubagentStop
+**Successfully demonstrates**: 
+```python
+# Query what files were edited and why
+db.execute("SELECT file_path, change_reason FROM file_contexts WHERE cycle_id = ?")
+
+# Find user intents for a specific phase  
+db.execute("SELECT user_intent FROM cycles WHERE primary_activity = 'file_modification'")
+
+# Track subagent work patterns
+db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id = ?")
+```
+
+**Key Principle ACHIEVED**: Every stored piece maps back to **"What did the user want and how did we achieve it?"**
+
+#### Task 5.5: Store and Clean ✅ COMPLETED
+- ✅ **Automatic database ingestion** - every cycle immediately stored in database
+- ✅ **Complete data pipeline** - JSONL → Timeline Analysis → Summary Generation → Database Storage
+- ✅ **Hybrid intent extraction** - TodoWrite progression (priority) + transcript parsing (fallback)
+- ✅ **Multi-agent tracking** - SubagentStop hooks capture delegation completion
+
+### Phase 6: Cleanup and Low Signature 🧹 READY
+**Goal**: Clean up logs and JSON files after database ingestion
+**Vision**: Keep minimal footprint - database contains everything, temporary files cleaned up
+
+#### Task 6.1: Automatic Log Cleanup
+- Delete JSONL and JSON summary files after successful database ingestion
+- Keep only the database file for long-term storage
+- Implement cleanup in stop.py after auto-ingestion completes
+- Add error handling to preserve files if database ingestion fails
+
+#### Task 6.2: File Retention Strategy
+- Retain current cycle files until next cycle completes
+- Clean up previous cycle files only after confirming new cycle data is safely in database
+- Optional: Keep last N cycles as backup (configurable)
+
+### Phase 7: Rebrand as "smarter-claude" 🎯 READY
+**Goal**: Professional branding and organized file structure
+**Vision**: Clean, branded system with intuitive folder organization
+
+#### Task 7.1: Folder Structure Redesign
+- Rename `session_logs` → `smarter-claude`
+- Move database to `smarter-claude/smarter-claude.db`
+- Create `smarter-claude/logs/` for temporary JSON/JSONL files
+- Update all paths in hook utilities
+
+#### Task 7.2: Per-Project Settings System
+- Add `smarter-claude.json` to project folders for local overrides
+- Implement settings hierarchy: project > global > defaults
+- Settings include: interaction_level, cleanup_policy, database_location
+
+### Phase 8: Interaction Levels 🔊 READY
+**Goal**: Four levels of user interaction with TTS and notifications
+**Vision**: Customizable experience from silent to verbose
+
+#### Task 8.1: Settings Infrastructure
+- Implement settings loader with project/global hierarchy
+- Default interaction level: "concise"
+- Settings schema: interaction_level, tts_enabled, notification_sounds
+
+#### Task 8.2: Interaction Levels Implementation
+**Silent Mode**:
+- No TTS announcements
+- No notification sounds
+- Database logging only
+
+**Quiet Mode**:
+- Beep for notification hook
+- Chime for cycle completion
+- No verbal announcements
+
+**Concise Mode (Default)**:
+- TTS for notification hooks with short attention description
+- Brief cycle summary: task type, file changes, subagent usage
+- Completion chime with summary
+
+**Verbose Mode**:
+- Everything in concise mode
+- SubagentStop TTS notifications with task summary
+- PreToolUse/PostToolUse announcements with details
+- Detailed workflow narration
+
+### Phase 9: Update Claude.md Integration 📝 READY
+**Goal**: Inform Claude about the new contextual memory system
+**Vision**: Claude understands its own memory capabilities and schema
+
+#### Task 9.1: Claude.md Schema Documentation
+- Document 4-table database schema in Claude.md
+- Explain query patterns for context retrieval
+- Provide example queries for common use cases
+
+#### Task 9.2: Context System Instructions
+- Inform Claude about automatic memory capture
+- Explain user intent tracking and file change context
+- Document how to query its own contextual memory
+
+### Phase 10: Cleanup Unused Components 🗑️ READY
+**Goal**: Remove obsolete files and unused features
+**Vision**: Clean, focused codebase with only essential components
+
+#### Task 10.1: Remove Unused Slash Commands
+- Audit and remove obsolete slash command implementations
+- Keep only actively used and maintained commands
+- Update documentation to reflect available commands
+
+#### Task 10.2: Clean Test Files and Docs
+- Remove irrelevant test files and temporary debugging code
+- Consolidate scattered documentation
+- Remove outdated implementation notes
+
+### Phase 11: Documentation Consolidation 📚 READY
+**Goal**: Professional, comprehensive documentation
+**Vision**: Single source of truth with clear getting started guide
+
+#### Task 11.1: Update README.md
+- Reflect "smarter-claude" branding
+- Update installation instructions for new folder structure
+- Include interaction levels documentation
+
+#### Task 11.2: Consolidate /docs Folder
+- Move all documentation to organized /docs structure
+- Create getting started guide
+- API reference for database schema
+- Advanced usage patterns and examples
+
+### Phase 12: Public Release 🌍 READY
+**Goal**: Share smarter-claude with the community
+**Vision**: Open source the most advanced Claude Code memory system
+
+#### Task 12.1: Repository Preparation
+- Final code review and cleanup
+- Comprehensive testing across interaction levels
+- Version tagging and release notes
+
+#### Task 12.2: Community Sharing
+- GitHub repository with proper documentation
+- Social media announcement
+- Developer community engagement
+- Usage examples and tutorials
 ## Hook Execution Order Reference
 
 ### Typical Flow:

@@ -928,9 +928,39 @@ def main():
                             announce_tts(f"Cycle {cycle_id} added to database")
                             with open('/tmp/stop_hook_debug.log', 'a') as f:
                                 f.write(f"\n{datetime.now()}: Cycle {cycle_id} auto-ingested to database\n")
+                            
+                            # CLEANUP: Delete temporary files after successful database ingestion
+                            try:
+                                session_short = session_id[:8] if session_id else "unknown"
+                                logs_dir = Path("/Users/hanan/.claude/.claude/session_logs")
+                                
+                                # Files to clean up for this cycle
+                                hooks_file = logs_dir / f"session_{session_short}_cycle_{cycle_id}_hooks.jsonl"
+                                summary_file = Path(summary_path)
+                                
+                                files_cleaned = []
+                                if hooks_file.exists():
+                                    hooks_file.unlink()
+                                    files_cleaned.append("hooks.jsonl")
+                                
+                                if summary_file.exists():
+                                    summary_file.unlink()
+                                    files_cleaned.append("summary.json")
+                                
+                                if files_cleaned:
+                                    announce_tts(f"Cleaned up {len(files_cleaned)} temporary files")
+                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                        f.write(f"\n{datetime.now()}: Cleaned up files for cycle {cycle_id}: {', '.join(files_cleaned)}\n")
+                                
+                            except Exception as cleanup_error:
+                                # Log cleanup errors but don't fail the cycle
+                                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                    f.write(f"\n{datetime.now()}: Cleanup failed for cycle {cycle_id}: {str(cleanup_error)}\n")
+                                
                         except Exception as db_error:
                             with open('/tmp/stop_hook_debug.log', 'a') as f:
                                 f.write(f"\n{datetime.now()}: Database auto-ingestion failed: {str(db_error)}\n")
+                            # Don't clean up files if database ingestion failed
                         
                         with open('/tmp/stop_hook_debug.log', 'a') as f:
                             f.write(f"\n{datetime.now()}: Cycle summary saved to {summary_path}\n")
