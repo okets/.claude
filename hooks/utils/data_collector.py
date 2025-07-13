@@ -23,7 +23,7 @@ class DataCollector:
     
     def __init__(self, session_logs_dir: str = None):
         if session_logs_dir is None:
-            session_logs_dir = "/Users/hanan/.claude/.claude/session_logs"
+            session_logs_dir = "/Users/hanan/.claude/.claude/smarter-claude/logs"
         
         self.session_logs_dir = Path(session_logs_dir)
         self.db = ContextualDB()

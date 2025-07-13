@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple, Any
 def load_hook_timeline(session_id: str, cycle_id: int, output_dir: Optional[str] = None) -> List[Dict]:
     """Load complete hook timeline for a specific session and cycle"""
     if output_dir is None:
-        output_dir = "/Users/hanan/.claude/.claude/session_logs"
+        output_dir = "/Users/hanan/.claude/.claude/smarter-claude/logs"
     
     # Construct hook file path
     session_short = session_id[:8] if session_id else "unknown"
@@ -465,7 +465,7 @@ def determine_primary_activity(timeline: List[Dict], user_intent: str) -> str:
 def generate_cycle_summary_file(session_id: str, cycle_id: int, output_dir: Optional[str] = None, transcript_path: Optional[str] = None) -> Dict:
     """Generate and save a comprehensive cycle summary JSON file"""
     if output_dir is None:
-        output_dir = "/Users/hanan/.claude/.claude/session_logs"
+        output_dir = "/Users/hanan/.claude/.claude/smarter-claude/logs"
     
     # Generate the contextual summary
     summary = generate_contextual_summary(session_id, cycle_id, output_dir, transcript_path)

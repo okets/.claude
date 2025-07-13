@@ -23,8 +23,8 @@ class ContextualDB:
     def __init__(self, db_path: Optional[str] = None):
         self.connection = None
         if db_path is None:
-            # Default to session_logs directory
-            db_path = "/Users/hanan/.claude/.claude/session_logs/contextual_context.db"
+            # Default to smarter-claude directory
+            db_path = "/Users/hanan/.claude/.claude/smarter-claude/smarter-claude.db"
         
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(exist_ok=True)

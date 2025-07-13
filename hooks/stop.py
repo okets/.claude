@@ -929,33 +929,44 @@ def main():
                             with open('/tmp/stop_hook_debug.log', 'a') as f:
                                 f.write(f"\n{datetime.now()}: Cycle {cycle_id} auto-ingested to database\n")
                             
-                            # CLEANUP: Delete temporary files after successful database ingestion
+                            # RETENTION CLEANUP: Clean up previous cycle files after current cycle is safely stored
                             try:
                                 session_short = session_id[:8] if session_id else "unknown"
-                                logs_dir = Path("/Users/hanan/.claude/.claude/session_logs")
+                                logs_dir = Path("/Users/hanan/.claude/.claude/smarter-claude/logs")
                                 
-                                # Files to clean up for this cycle
-                                hooks_file = logs_dir / f"session_{session_short}_cycle_{cycle_id}_hooks.jsonl"
-                                summary_file = Path(summary_path)
+                                # Configurable retention (keep last N cycles as backup)
+                                retention_cycles = 3  # Keep 3 previous cycles as backup
                                 
+                                # Find previous cycles to clean up (older than retention_cycles)
+                                cleanup_before_cycle = cycle_id - retention_cycles
                                 files_cleaned = []
-                                if hooks_file.exists():
-                                    hooks_file.unlink()
-                                    files_cleaned.append("hooks.jsonl")
                                 
-                                if summary_file.exists():
-                                    summary_file.unlink()
-                                    files_cleaned.append("summary.json")
+                                if cleanup_before_cycle > 0:
+                                    # Clean up files for cycles before the retention window
+                                    for old_cycle_id in range(max(1, cleanup_before_cycle - 5), cleanup_before_cycle):
+                                        old_hooks_file = logs_dir / f"session_{session_short}_cycle_{old_cycle_id}_hooks.jsonl"
+                                        old_summary_file = logs_dir / f"session_{session_short}_cycle_{old_cycle_id}_summary.json"
+                                        
+                                        if old_hooks_file.exists():
+                                            old_hooks_file.unlink()
+                                            files_cleaned.append(f"cycle_{old_cycle_id}_hooks.jsonl")
+                                        
+                                        if old_summary_file.exists():
+                                            old_summary_file.unlink()
+                                            files_cleaned.append(f"cycle_{old_cycle_id}_summary.json")
                                 
                                 if files_cleaned:
-                                    announce_tts(f"Cleaned up {len(files_cleaned)} temporary files")
+                                    announce_tts(f"Cleaned up {len(files_cleaned)} old cycle files")
                                     with open('/tmp/stop_hook_debug.log', 'a') as f:
-                                        f.write(f"\n{datetime.now()}: Cleaned up files for cycle {cycle_id}: {', '.join(files_cleaned)}\n")
+                                        f.write(f"\n{datetime.now()}: Retention cleanup for cycle {cycle_id}: {', '.join(files_cleaned)}\n")
+                                else:
+                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                        f.write(f"\n{datetime.now()}: No old files to clean up (retention_cycles={retention_cycles})\n")
                                 
                             except Exception as cleanup_error:
                                 # Log cleanup errors but don't fail the cycle
                                 with open('/tmp/stop_hook_debug.log', 'a') as f:
-                                    f.write(f"\n{datetime.now()}: Cleanup failed for cycle {cycle_id}: {str(cleanup_error)}\n")
+                                    f.write(f"\n{datetime.now()}: Retention cleanup failed for cycle {cycle_id}: {str(cleanup_error)}\n")
                                 
                         except Exception as db_error:
                             with open('/tmp/stop_hook_debug.log', 'a') as f:

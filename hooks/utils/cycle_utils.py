@@ -199,7 +199,7 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
         announce_tts(f"Hook {hook_name} fired for cycle {cycle_id}")
         
         # Create output directory
-        output_dir = Path("/Users/hanan/.claude/.claude/session_logs")
+        output_dir = Path("/Users/hanan/.claude/.claude/smarter-claude/logs")
         output_dir.mkdir(exist_ok=True)
         
         # Prepare dump data with user intent

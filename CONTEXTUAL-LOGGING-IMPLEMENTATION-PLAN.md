@@ -178,7 +178,6 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 #### Task 6.2: File Retention Strategy
 - Retain current cycle files until next cycle completes
 - Clean up previous cycle files only after confirming new cycle data is safely in database
-- Optional: Keep last N cycles as backup (configurable)
 
 ### Phase 7: Rebrand as "smarter-claude" 🎯 READY
 **Goal**: Professional branding and organized file structure
