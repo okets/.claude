@@ -1,74 +1,85 @@
-# Smarter-Claude
+```
+███████╗███╗   ███╗ █████╗ ██████╗ ████████╗███████╗██████╗ 
+██╔════╝████╗ ████║██╔══██╗██╔══██╗╚══██╔══╝██╔════╝██╔══██╗
+███████╗██╔████╔██║███████║██████╔╝   ██║   █████╗  ██████╔╝
+╚════██║██║╚██╔╝██║██╔══██║██╔══██╗   ██║   ██╔══╝  ██╔══██╗
+███████║██║ ╚═╝ ██║██║  ██║██║  ██║   ██║   ███████╗██║  ██║
+╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
+                      C L A U D E
+```
 
-> **Give Claude Code long-term memory and context awareness**
+## **100% local. Zero tokens. Cloud-level context. And yes, it speaks.**
 
-<div align="center">
-
-# 🚀 One-Line Install
+**One line install:**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-⚠️ **This installs to your `~/.claude/` folder and may overwrite existing hooks.** 
+*\* This will run over your global .claude directory. But trust me, it's worth it.*
 
-**But it's worth it! This is the Claude you need!** 🤖✨
+## The Problem You Face Daily
 
+Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
 
-</div>
+**What if Claude remembered?**
 
-## What It Does
+**It actually knows.** Your entire development journey, queryable by context, stored locally, zero tokens wasted.
 
-- **Remembers every interaction** - "What was my last request?" gets a real answer
-- **Tracks WHY files changed** - Not just what, but the intent behind every edit  
-- **Smart notifications** - Customizable TTS announcements that actually help
-- **Query your history** - Ask Claude about your past work and decisions
+This is Claude Code with memory. This is what you've been missing.
 
-## How It Works
+## The Story
 
-1. **Install once** - The script sets up everything automatically
-2. **Use Claude Code normally** - Every interaction gets recorded with context
-3. **Query when needed** - Ask Claude about your development history
+I saw [this demo](https://www.youtube.com/watch?v=J5B9UGTuNoM&t=1547s) of Claude Code with "long-term memory" and voice that had me thinking for days. Brilliant concept, and I really appreciate the innovation. But the more I thought about it, the less usable it seemed - burning tokens to re-process transcript data that Claude already saves in `~/.claude/` anyway.
 
-```python
-# Ask Claude: "What files did I change yesterday and why?"
-# Or query directly:
-from hooks.utils.contextual_db import ContextualDB
-db = ContextualDB()
-recent_files = db.get_file_context("", limit=10)
+So I dove deep: **What exactly does Claude Code give you?** Just hooks. Raw, cryptic lifecycle events. I analyzed massive JSON dumps, deployed sub-agents to reverse-engineer Claude's internals, built scaffolding to connect the dots. 
+
+I started methodically piecing together how Claude thinks, how it processes, how it remembers. Claude and I spent 48 hours trying to make him remember useful information. Then it clicked! The context was there all along, hidden in the lifecycle. I just had to know how to catch it.
+
+The result: A contextual system that uses **zero tokens** and honestly, should have been BAKED INTO CLAUDE to begin with.
+
+## What I Built
+
+**Real contextual memory that actually works:**
+
+Here's my reasoning: If I tag all files and tasks with the context Claude generates when creating them, but do it in a relational database, I get a system ANY machine can run. Instead of running local agents to analyze my data or sending it to cloud LLMs, **I can utilize the fact that Claude is an intelligence** - give it a schema and it will fetch anything by creating creative SQL queries **that can run locally on any machine**.
+
+So I capture all contextual data Claude generates and store it locally. Now Claude can query its own memory.
+
+**Bottom line: It gives long context that works on any machine and doesn't consume tokens.**
+
+## Try This Right Now
+
+Ask Claude after install:
+```
+"Show me all files modified in phase 8 and **why**?"
+"What task involving index.js changed the header?"
+"Why did task 8 change the interface of my rest server?"
+"Can you check what was my last really complex task before the debugging session?"
 ```
 
-## Features
+**It knows. It actually knows.** 🤯
 
-- **Contextual database** - 4-table SQLite schema tracks everything
-- **TTS notifications** - Choose from silent, quiet, concise, or verbose modes
-- **Intent tracking** - Every file change linked to your original request
-- **Multi-agent support** - Tracks both main Claude and subagent work
-- **Easy queries** - Ask Claude about your development history
+## How It Actually Works
 
-## Configuration
-
-```bash
-# Change notification level
-python ~/.claude/hooks/utils/manage_settings.py set interaction_level verbose
-
-# Switch TTS voice  
-python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-female
-```
-
-**Or just ask Claude**: *"Make my notifications more verbose"* or *"Switch to the male voice"*
-
-## Documentation
-
-- **[Getting Started](docs/GETTING_STARTED.md)** - Complete setup guide
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Fix issues with Claude's help  
-- **[Database Schema](docs/DATABASE_SCHEMA.md)** - Query patterns and examples
+1. **Hooks into Claude Code lifecycle** - Captures everything as it happens
+2. **Stores contextual data** - Not just "what" but "why" and "how"
+3. **SQLite database** - Searchable by semantic context, not keywords
+4. **Claude's intelligence queries the data** - No need for another AI to analyze what Claude already understands
+5. **Smart Text To Speech** - Zero extra tokens while giving Claude a meaningful voice
 
 ## Need Help?
 
-**Just ask Claude**: *"Help me troubleshoot smarter-claude"* or *"Show me my recent file changes"*
+Ask Claude: *"Help me troubleshoot smarter-claude"*
+
+Advanced users: **[Getting Started](docs/GETTING_STARTED.md)**
 
 ---
 
-**Transform your Claude Code experience from stateless interactions to intelligent, context-aware development sessions.**
+**Stop losing your development context.**
 
+```bash
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
+```
+
+*The Claude Code breakthrough you've been waiting for.* ⚡
