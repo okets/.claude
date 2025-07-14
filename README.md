@@ -119,4 +119,4 @@ See [![License Details](https://img.shields.io/badge/📄_License-Details-green)
 
 ## 🗂️ Related Projects
 
-Check out [![folder-mcp](https://img.shields.io/badge/📁_folder--mcp-GitHub-blue?logo=github)](https://github.com/hanan/folder-mcp) - A complementary project for enhanced folder management capabilities.
+Check out [![folder-mcp](https://img.shields.io/badge/📁_folder--mcp-GitHub-blue?logo=github)](https://github.com/okets/folder-mcp) - A complementary project for enhanced folder management capabilities.
