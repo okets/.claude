@@ -36,8 +36,14 @@ Every time you restart Claude Code, you lose everything. Your entire development
 This is Claude Code with memory. This is what you've been missing.
 
 ## 📖 The Story
+I came across [This project](https://github.com/disler/claude-code-hooks-mastery) by the brilliant [@indyDevDan](https://www.youtube.com/@indyDevDan), featured in this [a video](https://www.youtube.com/watch?v=J5B9UGTuNoM).
 
-I saw [this demo](https://www.youtube.com/watch?v=J5B9UGTuNoM&t=1547s) by [@indyDevDan](https://www.youtube.com/@indyDevDan) of Claude Code with "long-term memory" and voice that had me thinking for days. Brilliant concept from his [claude-code-hooks-mastery](https://github.com/disler/claude-code-hooks-mastery) project, and I really appreciate the innovation. But the more I thought about it, the less usable it seemed - burning tokens to re-process transcript data that Claude already saves in `~/.claude/` anyway.
+He introduced a fascinating idea: using Claude Code's hooks to create "long-term storage" — a concept that stuck with me for days. I borrowed that idea and deeply appreciate the innovation behind it.
+
+The concept of auto-generating data with hooks and retrieving it via slash commands seemed promising at first. But in practice, the process proved to be heavily human-centric—more like quick shortcuts to manually bring bits of context into the conversation.
+
+What I really wanted was a memory.
+A contextual memory.
 
 So I dove deep: **What exactly does Claude Code give you?** Just hooks. Raw, cryptic lifecycle events. I analyzed massive JSON dumps, deployed sub-agents to reverse-engineer Claude's internals, built scaffolding to connect the dots. 
 
