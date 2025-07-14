@@ -82,32 +82,84 @@ backup_existing() {
     fi
 }
 
-# Install Python dependencies
+# Install Python dependencies and TTS voices
 install_dependencies() {
-    log_info "Installing optional dependencies..."
+    log_info "Installing TTS dependencies and voices..."
     
-    # Check if uv is available for Coqui TTS
-    if command -v uv &> /dev/null; then
-        log_info "Installing Coqui TTS for high-quality voices..."
-        if uv tool install coqui-tts; then
-            log_success "Coqui TTS installed successfully"
-        else
-            log_warning "Coqui TTS installation failed (optional)"
+    # Use the voice manager for comprehensive installation
+    VOICE_MANAGER="$HOME/.claude/.claude/smarter-claude/manage_voices.py"
+    
+    # Install all supported voices automatically
+    if [ -f "$VOICE_MANAGER" ]; then
+        log_info "Using voice manager for automatic installation..."
+        python3 "$VOICE_MANAGER" install-all
+        
+        # Get recommended voice
+        RECOMMENDED=$(python3 "$VOICE_MANAGER" recommend 2>/dev/null | grep "Recommended voice engine:" | cut -d: -f2 | xargs)
+        if [ -n "$RECOMMENDED" ]; then
+            log_success "Recommended voice: $RECOMMENDED"
+            # This will be set in configure_settings()
         fi
     else
-        log_warning "uv not found - skipping Coqui TTS installation"
-        log_info "Install uv to get high-quality TTS: curl -LsSf https://astral.sh/uv/install.sh | sh"
-    fi
-    
-    # Check for ffmpeg (for male voice processing)
-    if command -v ffmpeg &> /dev/null; then
-        log_success "ffmpeg found - male voice processing available"
-    else
-        log_warning "ffmpeg not found - male voice will use basic processing"
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            log_info "Install with: brew install ffmpeg"
-        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            log_info "Install with: sudo apt install ffmpeg  # or equivalent"
+        # Fallback to manual installation
+        log_info "Installing dependencies manually..."
+        
+        # Check if uv is available for Coqui TTS
+        if command -v uv &> /dev/null; then
+            log_info "Installing Coqui TTS for high-quality voices..."
+            if uv tool install coqui-tts; then
+                log_success "Coqui TTS installed successfully"
+            else
+                log_warning "Coqui TTS installation failed (optional)"
+            fi
+        else
+            log_warning "uv not found - attempting to install..."
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if command -v brew &> /dev/null; then
+                    log_info "Installing uv via Homebrew..."
+                    brew install uv && uv tool install coqui-tts
+                else
+                    log_info "Installing uv via curl..."
+                    curl -LsSf https://astral.sh/uv/install.sh | sh
+                    export PATH="$HOME/.local/bin:$PATH"
+                    uv tool install coqui-tts
+                fi
+            else
+                log_info "Installing uv via curl..."
+                curl -LsSf https://astral.sh/uv/install.sh | sh
+                export PATH="$HOME/.local/bin:$PATH"
+                uv tool install coqui-tts
+            fi
+        fi
+        
+        # Install ffmpeg for male voice processing
+        if command -v ffmpeg &> /dev/null; then
+            log_success "ffmpeg found - male voice processing available"
+        else
+            log_info "Installing ffmpeg for male voice processing..."
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                if command -v brew &> /dev/null; then
+                    brew install ffmpeg
+                    log_success "ffmpeg installed via Homebrew"
+                else
+                    log_warning "Homebrew not found - install ffmpeg manually: brew install ffmpeg"
+                fi
+            elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                if command -v apt-get &> /dev/null; then
+                    sudo apt-get update && sudo apt-get install -y ffmpeg
+                    log_success "ffmpeg installed via apt"
+                else
+                    log_warning "Package manager not found - install ffmpeg manually"
+                fi
+            fi
+        fi
+        
+        # Install pyttsx3 as fallback
+        log_info "Installing pyttsx3 fallback voice..."
+        if python3 -m pip install pyttsx3; then
+            log_success "pyttsx3 installed successfully"
+        else
+            log_warning "pyttsx3 installation failed"
         fi
     fi
 }
@@ -133,11 +185,17 @@ install_smarter_claude() {
     log_info "Installing files..."
     cp -r "$TEMP_DIR"/hooks "$CLAUDE_DIR/"
     cp -r "$TEMP_DIR"/docs "$CLAUDE_DIR/"
+    cp -r "$TEMP_DIR"/commands "$CLAUDE_DIR/" 2>/dev/null || log_warning "No commands directory found - slash commands may not be available"
     cp "$TEMP_DIR"/README.md "$CLAUDE_DIR/"
     cp "$TEMP_DIR"/CONTEXTUAL-LOGGING-IMPLEMENTATION-PLAN.md "$CLAUDE_DIR/"
     
-    # Make hooks executable
+    # Create smarter-claude directory and copy voice manager
+    mkdir -p "$CLAUDE_DIR/.claude/smarter-claude"
+    cp "$TEMP_DIR"/.claude/smarter-claude/manage_voices.py "$CLAUDE_DIR/.claude/smarter-claude/" 2>/dev/null || true
+    
+    # Make hooks and scripts executable
     chmod +x "$CLAUDE_DIR"/hooks/*.py
+    chmod +x "$CLAUDE_DIR"/.claude/smarter-claude/*.py 2>/dev/null || true
     
     # Clean up
     rm -rf "$TEMP_DIR"
@@ -150,18 +208,40 @@ configure_settings() {
     log_info "Configuring default settings..."
     
     SETTINGS_SCRIPT="$HOME/.claude/hooks/utils/manage_settings.py"
+    VOICE_MANAGER="$HOME/.claude/.claude/smarter-claude/manage_voices.py"
     
     if [ -f "$SETTINGS_SCRIPT" ]; then
         # Set reasonable defaults
         python3 "$SETTINGS_SCRIPT" set interaction_level concise
         
-        # Set TTS engine based on what's available
-        if command -v tts &> /dev/null; then
-            python3 "$SETTINGS_SCRIPT" set tts_engine coqui-female
-            log_success "Configured to use Coqui female voice"
+        # Set TTS engine based on voice manager recommendation
+        if [ -f "$VOICE_MANAGER" ]; then
+            RECOMMENDED=$(python3 "$VOICE_MANAGER" recommend 2>/dev/null | grep "Recommended voice engine:" | cut -d: -f2 | xargs)
+            if [ -n "$RECOMMENDED" ]; then
+                python3 "$SETTINGS_SCRIPT" set tts_engine "$RECOMMENDED"
+                log_success "Configured to use recommended voice: $RECOMMENDED"
+            else
+                # Fallback to manual detection
+                if command -v tts &> /dev/null; then
+                    python3 "$SETTINGS_SCRIPT" set tts_engine coqui-female
+                    log_success "Configured to use Coqui female voice"
+                elif [[ "$OSTYPE" == "darwin"* ]]; then
+                    python3 "$SETTINGS_SCRIPT" set tts_engine macos-female
+                    log_success "Configured to use macOS female voice"
+                else
+                    python3 "$SETTINGS_SCRIPT" set tts_engine pyttsx3
+                    log_success "Configured to use pyttsx3 voice"
+                fi
+            fi
         else
-            python3 "$SETTINGS_SCRIPT" set tts_engine macos
-            log_success "Configured to use system TTS"
+            # Original fallback logic
+            if command -v tts &> /dev/null; then
+                python3 "$SETTINGS_SCRIPT" set tts_engine coqui-female
+                log_success "Configured to use Coqui female voice"
+            else
+                python3 "$SETTINGS_SCRIPT" set tts_engine macos
+                log_success "Configured to use system TTS"
+            fi
         fi
         
         log_success "Default settings configured"
@@ -192,6 +272,19 @@ test_installation() {
         log_warning "Python import test failed - check Python environment"
     fi
     
+    # Check if slash commands are installed
+    COMMANDS_DIR="$HOME/.claude/commands"
+    if [ -d "$COMMANDS_DIR" ]; then
+        COMMAND_COUNT=$(ls "$COMMANDS_DIR"/*.md 2>/dev/null | wc -l)
+        if [ "$COMMAND_COUNT" -gt 0 ]; then
+            log_success "Slash commands installed ($COMMAND_COUNT commands available)"
+        else
+            log_warning "Commands directory exists but no .md files found"
+        fi
+    else
+        log_warning "Commands directory not found - slash commands not available"
+    fi
+    
     log_success "Installation test completed"
 }
 
@@ -210,8 +303,10 @@ show_next_steps() {
     echo "• TTS engine: ${YELLOW}$(python3 ~/.claude/hooks/utils/manage_settings.py get tts_engine 2>/dev/null || echo 'default')${NC}"
     echo
     echo -e "${BLUE}Customize settings:${NC}"
-    echo "• Change interaction level: ${YELLOW}python ~/.claude/hooks/utils/manage_settings.py set interaction_level verbose${NC}"
-    echo "• Change TTS voice: ${YELLOW}python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-male${NC}"
+    echo "• Change interaction level: ${YELLOW}/smarter-claude_interaction_level verbose${NC}"
+    echo "• Change TTS voice: ${YELLOW}/smarter-claude_voice coqui-male${NC}"
+    echo "• Update smarter-claude: ${YELLOW}/smarter-claude_update${NC}"
+    echo "• Or use CLI: ${YELLOW}python ~/.claude/hooks/utils/manage_settings.py set <key> <value>${NC}"
     echo
     echo -e "${BLUE}Need help?${NC}"
     echo "• Read: ${YELLOW}~/.claude/docs/GETTING_STARTED.md${NC}"

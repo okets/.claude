@@ -20,7 +20,7 @@
 ## 🚀 One-Line Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
 > [!NOTE]
