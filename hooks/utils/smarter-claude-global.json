@@ -1,9 +1,12 @@
 {
-  "interaction_level": "concise",
+  "interaction_level": "verbose",
+  "interaction_level_options": "silent, quiet, concise, verbose",
   "tts_enabled": true,
+  "tts_engine": "macos-female",
+  "tts_engine_options": "macos-female, macos-male, pyttsx3",
   "notification_sounds": true,
   "cleanup_policy": {
-    "retention_cycles": 3,
+    "retention_cycles": 2,
     "auto_cleanup": true
   },
   "database_settings": {

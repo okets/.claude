@@ -32,34 +32,93 @@ except ImportError:
 
 def get_tts_script_path():
     """
-    Determine which TTS script to use based on available API keys.
-    Priority order: ElevenLabs > OpenAI > pyttsx3
+    Determine which TTS script to use based on user settings.
+    Priority order: user preference > macos > pyttsx3
     """
     # Get current script directory and construct utils/tts path
     script_dir = Path(__file__).parent
     tts_dir = script_dir / "utils" / "tts"
     
-    # Check for ElevenLabs API key (highest priority)
-    if os.getenv('ELEVENLABS_API_KEY'):
-        elevenlabs_script = tts_dir / "elevenlabs_tts.py"
-        if elevenlabs_script.exists():
-            return str(elevenlabs_script)
+    # Get user's preferred TTS engine from settings
+    try:
+        sys.path.append(str(script_dir / 'utils'))
+        from settings import get_setting
+        preferred_engine = get_setting("tts_engine", "macos")
+    except ImportError:
+        # Fallback if settings not available
+        preferred_engine = "macos"
     
-    # Check for OpenAI API key (second priority)
-    if os.getenv('OPENAI_API_KEY'):
-        openai_script = tts_dir / "openai_tts.py"
-        if openai_script.exists():
-            return str(openai_script)
+    # Define available engines and their script paths
+    engines = {
+        "macos-female": tts_dir / "macos_female_tts.py",
+        "macos-male": tts_dir / "macos_male_tts.py", 
+        "macos": tts_dir / "macos_native_tts.py",  # Legacy support
+        "pyttsx3": tts_dir / "pyttsx3_tts.py"
+    }
     
-    # Fall back to pyttsx3 (no API key required)
-    pyttsx3_script = tts_dir / "pyttsx3_tts.py"
-    if pyttsx3_script.exists():
-        return str(pyttsx3_script)
+    # Try user's preferred engine first
+    if preferred_engine in engines:
+        preferred_script = engines[preferred_engine]
+        if preferred_script.exists():
+            return str(preferred_script)
+    
+    # Fallback chain: macos > pyttsx3
+    fallback_order = ["macos", "pyttsx3"]
+    for engine in fallback_order:
+        if engine != preferred_engine:  # Skip already tried preference
+            script_path = engines[engine]
+            if script_path.exists():
+                return str(script_path)
     
     return None
 
 
-def announce_subagent_completion():
+def create_manager_style_message(subagent_task, subagent_summary, interaction_level):
+    """Create varied manager-style messages about subagent work."""
+    import random
+    
+    # Extract key info from task/summary
+    task_snippet = (subagent_task[:50] + "...") if len(subagent_task) > 50 else subagent_task
+    
+    if interaction_level == "concise":
+        concise_messages = [
+            f"My agent handled {task_snippet}",
+            f"Subagent completed {task_snippet}",
+            f"Agent finished the work",
+            f"Delegation successful",
+            f"My helper got it done",
+            f"Agent reported back",
+            # Funny options (15%)
+            f"My unpaid intern delivered",
+            f"Bot completed slave labor"
+        ]
+        return random.choice(concise_messages)
+    
+    elif interaction_level == "verbose":
+        verbose_messages = [
+            f"I sent a subagent to handle {task_snippet} and they delivered excellent results",
+            f"My subagent did some digging on {task_snippet} and came back with solid findings",
+            f"Dispatched a specialist agent for {task_snippet} - mission accomplished",
+            f"My agent team completed {task_snippet} with great success",
+            f"Delegated {task_snippet} to a subagent who executed it perfectly",
+            f"My helper agent wrapped up {task_snippet} beautifully",
+            f"Sent out an agent for {task_snippet} and they knocked it out of the park",
+            f"My specialist completed {task_snippet} with impressive efficiency",
+            f"Agent deployment successful - {task_snippet} handled with expertise",
+            f"My subagent tackled {task_snippet} and delivered outstanding work",
+            f"Coordination complete - agent finished {task_snippet} flawlessly",
+            f"My field agent completed {task_snippet} and filed their report",
+            # Funny options (15%)
+            f"Sent my digital minion to do {task_snippet} - they work for free and never complain",
+            f"My robot employee finished {task_snippet} without asking for benefits or vacation time",
+            f"Deployed a bot to handle {task_snippet} - no HR complaints, perfect attendance record"
+        ]
+        return random.choice(verbose_messages)
+    
+    else:  # Default fallback
+        return "Subagent work complete"
+
+def announce_subagent_completion(subagent_task="work", subagent_summary=""):
     """Announce subagent completion using the best available TTS service (controlled by interaction_level)."""
     try:
         # Check interaction level settings
@@ -84,23 +143,16 @@ def announce_subagent_completion():
                     pass  # Fall back to no sound if utility not available
                 return
             
-            # Concise mode: brief announcements
-            if interaction_level == "concise":
-                # Brief subagent completion announcement
-                pass
-            
-            # Verbose mode: detailed announcements (use full message)
-            
         except ImportError:
             # Settings not available, default to announce
-            pass
+            interaction_level = "concise"
         
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available
         
-        # Use fixed message for subagent completion
-        completion_message = "Subagent Complete"
+        # Create manager-style message
+        completion_message = create_manager_style_message(subagent_task, subagent_summary, interaction_level)
         
         # Call the TTS script with the completion message
         subprocess.run([
@@ -246,8 +298,10 @@ def main():
                 ))
                 db.connection.commit()
 
-        # Announce subagent completion via TTS
-        announce_subagent_completion()
+        # Announce subagent completion via TTS with actual task data
+        subagent_task = input_data.get('task', 'work')
+        subagent_summary = input_data.get('summary', '')
+        announce_subagent_completion(subagent_task, subagent_summary)
 
         sys.exit(0)
 

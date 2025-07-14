@@ -23,11 +23,14 @@ class SmarterClaudeSettings:
     
     # Default settings schema
     DEFAULT_SETTINGS = {
-        "interaction_level": "concise",  # silent, quiet, concise, verbose
+        "interaction_level": "verbose",  # silent, quiet, concise, verbose
+        "interaction_level_options": "silent, quiet, concise, verbose",
         "tts_enabled": True,
+        "tts_engine": "coqui",  # coqui, macos, pyttsx3
+        "tts_engine_options": "coqui, macos, pyttsx3",
         "notification_sounds": True,
         "cleanup_policy": {
-            "retention_cycles": 3,
+            "retention_cycles": 2,
             "auto_cleanup": True
         },
         "database_settings": {
@@ -184,11 +187,15 @@ class SmarterClaudeSettings:
             True if successful, False otherwise
         """
         default_project_settings = {
-            "interaction_level": "concise",
+            "interaction_level": "verbose",
+            "interaction_level_options": "silent, quiet, concise, verbose",
+            "tts_engine": "coqui",
+            "tts_engine_options": "coqui, macos, pyttsx3",
             "cleanup_policy": {
-                "retention_cycles": 3
+                "retention_cycles": 2
             },
             "logging_settings": {
+                "speak_hook_logging": False,
                 "debug_logging": False
             }
         }

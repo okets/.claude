@@ -14,6 +14,16 @@ import subprocess
 import random
 from pathlib import Path
 
+def stop_all_tts():
+    """Stop all TTS playback immediately when new user input arrives"""
+    try:
+        # Kill macOS 'say' processes
+        subprocess.run(["pkill", "-f", "say"], capture_output=True, timeout=1)
+        # Kill any afplay processes (audio playback)
+        subprocess.run(["pkill", "-f", "afplay"], capture_output=True, timeout=1)
+    except Exception:
+        pass  # Fail silently
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -23,29 +33,43 @@ except ImportError:
 
 def get_tts_script_path():
     """
-    Determine which TTS script to use based on available API keys.
-    Priority order: ElevenLabs > OpenAI > pyttsx3
+    Determine which TTS script to use based on user settings.
+    Priority order: user preference > coqui > macos > pyttsx3
     """
     # Get current script directory and construct utils/tts path
     script_dir = Path(__file__).parent
     tts_dir = script_dir / "utils" / "tts"
     
-    # Check for ElevenLabs API key (highest priority)
-    if os.getenv('ELEVENLABS_API_KEY'):
-        elevenlabs_script = tts_dir / "elevenlabs_tts.py"
-        if elevenlabs_script.exists():
-            return str(elevenlabs_script)
+    # Get user's preferred TTS engine from settings
+    try:
+        sys.path.append(str(script_dir / 'utils'))
+        from settings import get_setting
+        preferred_engine = get_setting("tts_engine", "macos-female")
+    except ImportError:
+        # Fallback if settings not available
+        preferred_engine = "macos"
     
-    # Check for OpenAI API key (second priority)
-    if os.getenv('OPENAI_API_KEY'):
-        openai_script = tts_dir / "openai_tts.py"
-        if openai_script.exists():
-            return str(openai_script)
+    # Define available engines and their script paths
+    engines = {
+        "macos-female": tts_dir / "macos_female_tts.py",
+        "macos-male": tts_dir / "macos_male_tts.py", 
+        "macos": tts_dir / "macos_native_tts.py",  # Legacy support
+        "pyttsx3": tts_dir / "pyttsx3_tts.py"
+    }
     
-    # Fall back to pyttsx3 (no API key required)
-    pyttsx3_script = tts_dir / "pyttsx3_tts.py"
-    if pyttsx3_script.exists():
-        return str(pyttsx3_script)
+    # Try user's preferred engine first
+    if preferred_engine in engines:
+        preferred_script = engines[preferred_engine]
+        if preferred_script.exists():
+            return str(preferred_script)
+    
+    # Fallback chain: macos-female > macos-male > macos > pyttsx3
+    fallback_order = ["macos-female", "macos-male", "macos", "pyttsx3"]
+    for engine in fallback_order:
+        if engine != preferred_engine:  # Skip already tried preference
+            script_path = engines[engine]
+            if script_path.exists():
+                return str(script_path)
     
     return None
 
@@ -149,7 +173,9 @@ def announce_notification(user_request=None, input_data=None):
                             "Ready to help with your next task",
                             "Standing by for instructions", 
                             "I'm here and ready to assist",
-                            "Awaiting your next request"
+                            "Awaiting your next request",
+                            "At your service, captain!",
+                            "Ready to rock and roll!"
                         ]
                         
                         base_message = random.choice(verbose_fallbacks)
@@ -176,7 +202,10 @@ def announce_notification(user_request=None, input_data=None):
                 "Ready when you are",
                 "How can I help you today?",
                 "Waiting for your next move",
-                "At your service"
+                "At your service",
+                "Ready to rumble!",
+                "What's cooking?",
+                "Let's do this thing!"
             ]
             
             base_message = random.choice(fallback_messages)
@@ -236,6 +265,9 @@ def get_first_user_message_from_transcript(transcript_path):
 
 def main():
     try:
+        # Stop any playing TTS when new notification arrives (new user input)
+        stop_all_tts()
+        
         # Parse command line arguments
         parser = argparse.ArgumentParser()
         parser.add_argument('--notify', action='store_true', help='Enable TTS notifications')

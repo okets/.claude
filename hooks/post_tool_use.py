@@ -231,36 +231,52 @@ def main():
                     
                     completion_announcements = {
                         'Read': [
-                            'Files read', 'Content reviewed', 'Files analyzed', 'Code examined',
-                            'Files checked', 'Content scanned', 'Files explored', 'Data processed'
+                            'Got it', 'All read', 'Done reading', 'Checked it out',
+                            'Had a look', 'Read through', 'All good', 'Seen enough',
+                            'Got the info', 'Read it all', 'Looks good', 'All checked',
+                            'Snooping complete', 'Mystery solved', 'Knowledge acquired'
                         ],
                         'Write': [
-                            'Files written', 'Content saved', 'Files created', 'Code generated',
-                            'Files built', 'Content crafted', 'Files authored', 'Code composed'
+                            'All written', 'Got it down', 'File created', 'Done writing',
+                            'All saved', 'Written up', 'File ready', 'All set',
+                            'Created that', 'All done', 'Saved it', 'Built that',
+                            'Magic happened', 'Masterpiece created', 'Pure genius unleashed'
                         ], 
                         'Edit': [
-                            'Files edited', 'Code modified', 'Files updated', 'Content changed',
-                            'Code refined', 'Files improved', 'Content polished', 'Files adjusted'
+                            'Changes made', 'All updated', 'Fixed up', 'Tweaked it',
+                            'All changed', 'Updated that', 'Polished up', 'All better',
+                            'Modified it', 'Changes done', 'All improved', 'Edited that',
+                            'Surgery successful', 'Patient survived', 'Tweakage complete'
                         ],
                         'Bash': [
-                            'Command completed', 'Script finished', 'Task executed', 'Operation done',
-                            'Process completed', 'Command succeeded', 'Task finished', 'Operation finished'
+                            'Command done', 'All executed', 'Ran successfully', 'That worked',
+                            'Command finished', 'All good', 'Executed fine', 'Done running',
+                            'Script complete', 'All ran', 'Command success', 'Finished that',
+                            'Matrix exited', 'Terminal tamed', 'Shell conquered'
                         ],
                         'Task': [
-                            'Agent finished', 'Helper completed', 'Worker done', 'Task delegated',
-                            'Agent succeeded', 'Assistant finished', 'Specialist completed', 'Agent done'
+                            'Helper done', 'Agent finished', 'Got the help', 'Team work done',
+                            'All delegated', 'Support complete', 'Helper succeeded', 'Backup done',
+                            'Collaboration done', 'Agent complete', 'Help finished', 'Team success',
+                            'Cavalry arrived', 'Minions delivered', 'Squad assembled'
                         ],
                         'Glob': [
-                            'Search completed', 'Files found', 'Search finished', 'Files located',
-                            'Search done', 'Files discovered', 'Search succeeded', 'Files tracked'
+                            'Found them', 'Search done', 'Got the files', 'Hunt complete',
+                            'Files found', 'Search success', 'Located them', 'Found matches',
+                            'Hunt successful', 'All found', 'Search finished', 'Detective work done',
+                            'Treasure located', 'Safari successful', 'Sherlock strikes again'
                         ],
                         'Grep': [
-                            'Search completed', 'Text found', 'Content searched', 'Patterns located',
-                            'Search finished', 'Text discovered', 'Content explored', 'Search done'
+                            'Found it', 'Search done', 'Got matches', 'Pattern found',
+                            'Text located', 'Search complete', 'Found patterns', 'Hunt success',
+                            'Needle found', 'Search finished', 'Got results', 'Pattern hunt done',
+                            'Hide and seek won', 'Archaeology complete', 'Elementary Watson'
                         ],
                         'WebFetch': [
-                            'Data fetched', 'Info retrieved', 'Content downloaded', 'Data collected',
-                            'Info gathered', 'Content obtained', 'Data acquired', 'Info pulled'
+                            'Got web data', 'Downloaded it', 'Web search done', 'Found online',
+                            'Retrieved info', 'Web hunt done', 'Got the data', 'Downloaded that',
+                            'Web success', 'Online data got', 'Fetched it', 'Web search complete',
+                            'Surfboard stowed', 'Adventure complete', 'Cave explored'
                         ]
                     }
                     

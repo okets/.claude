@@ -6,6 +6,7 @@
 import json
 import sys
 import re
+import subprocess
 from pathlib import Path
 
 # Import our cycle utilities
@@ -16,6 +17,16 @@ except ImportError:
     # Fallback if utils not available
     def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
         pass
+
+def stop_all_tts():
+    """Stop all TTS playback immediately when new cycle starts"""
+    try:
+        # Kill macOS 'say' processes
+        subprocess.run(["pkill", "-f", "say"], capture_output=True, timeout=1)
+        # Kill any afplay processes (audio playback)
+        subprocess.run(["pkill", "-f", "afplay"], capture_output=True, timeout=1)
+    except Exception:
+        pass  # Fail silently
 
 
 def get_project_root():
@@ -182,6 +193,9 @@ def main():
                 
                 print("✅ Git command proceeding...", file=sys.stderr)
         
+        # Stop any playing TTS before new cycle starts
+        stop_all_tts()
+        
         # Announce tool usage in verbose mode
         try:
             sys.path.append(str(Path(__file__).parent / 'utils'))
@@ -196,36 +210,52 @@ def main():
                 
                 tool_announcements = {
                     'Read': [
-                        'Reading files', 'Checking files', 'Examining code', 'Looking at files', 
-                        'Opening files', 'Reviewing content', 'Scanning files', 'Analyzing files'
+                        'Taking a look', 'Checking this out', 'Let me see', 'Peeking at files', 
+                        'Having a read', 'Quick look', 'Browsing around', 'Checking what we have',
+                        'Let me check', 'Going through files', 'Looking around', 'Time to read',
+                        'Snooping around', 'Being nosy', 'Detective mode activated'
                     ],
                     'Write': [
-                        'Writing files', 'Creating files', 'Saving content', 'Building files',
-                        'Generating code', 'Crafting files', 'Composing content', 'Authoring files'
+                        'Writing this down', 'Creating something', 'Putting this together', 'Building this',
+                        'Making a file', 'Crafting code', 'Jotting this down', 'Getting this written',
+                        'Time to write', 'Creating content', 'Building something new', 'Putting pen to paper',
+                        'Time to scribble', 'Making magic happen', 'Unleashing creativity'
                     ], 
                     'Edit': [
-                        'Editing files', 'Modifying code', 'Updating files', 'Changing content',
-                        'Refining code', 'Adjusting files', 'Improving content', 'Polishing code'
+                        'Making changes', 'Tweaking this', 'Updating things', 'Quick edit',
+                        'Fixing this up', 'Adjusting code', 'Making improvements', 'Polishing up',
+                        'Time for changes', 'Refining this', 'Making it better', 'Quick touch-up',
+                        'Surgery time', 'Entering edit mode', 'Time for some tweakage'
                     ],
                     'Bash': [
-                        'Running command', 'Executing script', 'Processing command', 'Running task',
-                        'Launching process', 'Starting operation', 'Invoking command', 'Firing up task'
+                        'Running this', 'Firing up command', 'Let me execute this', 'Time to run',
+                        'Launching command', 'Running the script', 'Executing now', 'Starting this up',
+                        'Let me run this', 'Command time', 'Firing this off', 'Getting this going',
+                        'Terminal time', 'Entering the matrix', 'Bash powers activate'
                     ],
                     'Task': [
-                        'Starting agent', 'Launching helper', 'Spawning worker', 'Delegating task',
-                        'Coordinating agent', 'Activating assistant', 'Deploying specialist', 'Engaging agent'
+                        'Getting help', 'Bringing in backup', 'Calling for assistance', 'Team up time',
+                        'Getting an agent', 'Time for delegation', 'Bringing in specialist', 'Getting support',
+                        'Calling in help', 'Time to collaborate', 'Getting extra hands', 'Teamwork mode',
+                        'Calling the cavalry', 'Assembling the crew', 'Summoning minions'
                     ],
                     'Glob': [
-                        'Searching files', 'Finding files', 'Locating content', 'Hunting files',
-                        'Discovering files', 'Seeking matches', 'Exploring files', 'Tracking down files'
+                        'Finding files', 'Hunting around', 'Looking for matches', 'Searching around',
+                        'File hunting', 'Tracking down files', 'On the hunt', 'Finding what we need',
+                        'Search time', 'Looking everywhere', 'File detective work', 'Seeking files',
+                        'Going on a treasure hunt', 'File safari time', 'Becoming file Sherlock'
                     ],
                     'Grep': [
-                        'Searching content', 'Finding text', 'Scanning content', 'Hunting patterns',
-                        'Exploring text', 'Seeking matches', 'Digging through code', 'Parsing content'
+                        'Searching text', 'Digging through code', 'Looking for patterns', 'Text hunting',
+                        'Finding matches', 'Scanning content', 'Hunting patterns', 'Search mode',
+                        'Looking through text', 'Pattern hunting', 'Text detective work', 'Finding needles',
+                        'Playing hide and seek', 'Text archaeology', 'Going full Sherlock'
                     ],
                     'WebFetch': [
-                        'Fetching web data', 'Getting online info', 'Pulling web content', 'Downloading data',
-                        'Retrieving info', 'Accessing web resources', 'Gathering web data', 'Collecting online info'
+                        'Getting web data', 'Pulling from web', 'Fetching online', 'Web browsing',
+                        'Getting info online', 'Downloading content', 'Web search time', 'Online hunting',
+                        'Gathering web data', 'Checking online', 'Web detective work', 'Getting web stuff',
+                        'Surfing the interwebs', 'Going on web adventure', 'Internet spelunking'
                     ]
                 }
                 
