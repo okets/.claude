@@ -37,7 +37,7 @@ Every time you restart Claude Code, you lose everything. Your entire development
 This is Claude Code with memory. This is what you've been missing.
 
 ## 📖 The Story
-I came across [This project](https://github.com/disler/claude-code-hooks-mastery) by the brilliant [@indyDevDan](https://www.youtube.com/@indyDevDan), featured in this [a video](https://www.youtube.com/watch?v=J5B9UGTuNoM).
+I came across [![Original Project](https://img.shields.io/badge/📂_Original-Project-blue)](https://github.com/disler/claude-code-hooks-mastery) by the brilliant [![@indyDevDan](https://img.shields.io/badge/👨‍💻_@indyDevDan-YouTube-red)](https://www.youtube.com/@indyDevDan), featured in this [![Demo Video](https://img.shields.io/badge/🎥_Demo-Video-red)](https://www.youtube.com/watch?v=J5B9UGTuNoM).
 
 He introduced a fascinating idea: using Claude Code's hooks to create "long-term storage" — a concept that stuck with me for days. I borrowed that idea and deeply appreciate the innovation behind it.
 
