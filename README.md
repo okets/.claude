@@ -26,6 +26,8 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 > [!NOTE]
 > This will run over your global .claude directory. But trust me, it's worth it.
 
+**Next:** [![🚀 Get Started](https://img.shields.io/badge/🚀_Get_Started-Complete_Setup_Guide-green?style=for-the-badge)](GETTING_STARTED.md)
+
 ## 🔍 The Problem You Face Daily
 
 Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
