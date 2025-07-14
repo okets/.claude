@@ -43,13 +43,13 @@ except ImportError:
     pass  # dotenv is optional
 
 def get_completion_messages():
-    """Return list of friendly completion messages."""
+    """Return list of simple completion messages."""
     return [
-        "Work complete!",
-        "All done!",
-        "Task finished!",
-        "Job complete!",
-        "Ready for next task!"
+        "Done",
+        "Complete",
+        "Finished",
+        "Task complete",
+        "Ready"
     ]
 
 def get_tts_script_path():
@@ -925,35 +925,71 @@ def main():
                         subagents_used = execution_summary.get("subagents_used", 0)
                         primary_activity = execution_summary.get("primary_activity", "unknown")
                         
-                        # Create meaningful user-facing announcement using rich context
+                        # Smart announcement logic: for short interactions, read actual response
                         try:
-                            from cycle_utils import create_rich_completion_message, create_verbose_completion_message
                             from settings import get_setting
                             
-                            interaction_level = get_setting("interaction_level", "concise")
+                            # Check if this was a simple interaction that should read the actual response
+                            user_intent_short = len(user_intent) < 100
+                            minimal_tools = execution_summary.get("total_edits", 0) <= 2
+                            no_file_changes = files_modified == 0
                             
-                            # Use verbose completion for verbose mode, rich for others
-                            cycle_summary_data = cycle_summary_result
-                            if interaction_level == "verbose":
-                                completion_message = create_verbose_completion_message(user_intent, cycle_summary_data)
+                            if user_intent_short and minimal_tools and no_file_changes:
+                                # Simple Q&A - parse transcript directly to get assistant response
+                                try:
+                                    transcript_path = input_data.get('transcript_path', '')
+                                    if transcript_path:
+                                        # Parse transcript to get assistant responses
+                                        transcript_data = parse_current_request_cycle(transcript_path)
+                                        assistant_responses = transcript_data.get("raw_data", {}).get("assistant_responses", [])
+                                        
+                                        if assistant_responses:
+                                            # Get the last assistant response
+                                            last_response = assistant_responses[-1]
+                                            response_content = last_response.get("content", "")
+                                            
+                                            # Extract text content if it's in structured format
+                                            if isinstance(response_content, list):
+                                                text_parts = []
+                                                for part in response_content:
+                                                    if isinstance(part, dict) and part.get("type") == "text":
+                                                        text_parts.append(part.get("text", ""))
+                                                response_text = " ".join(text_parts).strip()
+                                            else:
+                                                response_text = str(response_content).strip()
+                                            
+                                            # If response is reasonably short and contains actual content, read it
+                                            if response_text and len(response_text) < 300 and len(response_text) > 10:
+                                                announce_user_content(response_text)
+                                            else:
+                                                # Fallback to simple completion message
+                                                announce_user_content("Done")
+                                        else:
+                                            announce_user_content("Done")
+                                    else:
+                                        announce_user_content("Done")
+                                except Exception as e:
+                                    # Debug logging to understand what's available
+                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                        f.write(f"\n{datetime.now()}: Failed to extract response text: {str(e)}\n")
+                                    announce_user_content("Done")
                             else:
-                                completion_message = create_rich_completion_message(user_intent, cycle_summary_data)
-                            
-                            announce_user_content(completion_message)
+                                # Complex interaction - use factual summary without superlatives
+                                if primary_activity == "file_modification" and files_modified > 0:
+                                    if subagents_used > 0:
+                                        announce_user_content(f"Modified {files_modified} files using {subagents_used} agents")
+                                    else:
+                                        announce_user_content(f"Modified {files_modified} files")
+                                elif primary_activity == "code_analysis":
+                                    announce_user_content("Analysis complete")
+                                elif primary_activity == "testing":
+                                    announce_user_content("Tests complete")
+                                else:
+                                    announce_user_content("Task complete")
                             
                         except ImportError:
-                            # Fallback to original logic if utilities not available
-                            if primary_activity == "file_modification" and files_modified > 0:
-                                if subagents_used > 0:
-                                    announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files with {subagents_used} subagents")
-                                else:
-                                    announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files")
-                            elif primary_activity == "code_analysis":
-                                announce_user_content(f"Analysis completed: {user_intent[:50]}")
-                            elif primary_activity == "testing":
-                                announce_user_content(f"Testing completed: {user_intent[:50]}")
-                            else:
-                                announce_user_content(f"Task completed: {user_intent[:50]}")
+                            # Fallback if settings not available
+                            announce_user_content("Done")
                         
                         summary_path = cycle_summary_result.get("summary_file_path", "unknown")
                         

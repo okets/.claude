@@ -210,58 +210,52 @@ def main():
                 
                 tool_announcements = {
                     'Read': [
-                        'Taking a look', 'Checking this out', 'Let me see', 'Peeking at files', 
-                        'Having a read', 'Quick look', 'Browsing around', 'Checking what we have',
-                        'Let me check', 'Going through files', 'Looking around', 'Time to read',
-                        'Snooping around', 'Being nosy', 'Detective mode activated'
+                        'I need to read this', 'I\'m checking this file', 'I\'m looking at this', 'I need to see this',
+                        'I\'m reading through this', 'I\'m examining this', 'I\'m reviewing this file', 'I need to check this',
+                        'I\'m going through this', 'I\'m analyzing this', 'I need to understand this'
                     ],
                     'Write': [
-                        'Writing this down', 'Creating something', 'Putting this together', 'Building this',
-                        'Making a file', 'Crafting code', 'Jotting this down', 'Getting this written',
-                        'Time to write', 'Creating content', 'Building something new', 'Putting pen to paper',
-                        'Time to scribble', 'Making magic happen', 'Unleashing creativity'
+                        'I\'m writing this', 'I\'m creating this file', 'I need to write this', 'I\'m building this',
+                        'I\'m making this file', 'I need to create this', 'I\'m putting this together', 'I\'m generating this',
+                        'I\'m composing this', 'I need to save this', 'I\'m constructing this'
                     ], 
                     'Edit': [
-                        'Making changes', 'Tweaking this', 'Updating things', 'Quick edit',
-                        'Fixing this up', 'Adjusting code', 'Making improvements', 'Polishing up',
-                        'Time for changes', 'Refining this', 'Making it better', 'Quick touch-up',
-                        'Surgery time', 'Entering edit mode', 'Time for some tweakage'
+                        'I\'m updating this', 'I need to modify this', 'I\'m changing this', 'I\'m fixing this',
+                        'I need to edit this', 'I\'m adjusting this', 'I\'m improving this', 'I\'m correcting this',
+                        'I need to update this', 'I\'m revising this', 'I\'m refining this'
                     ],
                     'Bash': [
-                        'Running this', 'Firing up command', 'Let me execute this', 'Time to run',
-                        'Launching command', 'Running the script', 'Executing now', 'Starting this up',
-                        'Let me run this', 'Command time', 'Firing this off', 'Getting this going',
-                        'Terminal time', 'Entering the matrix', 'Bash powers activate'
+                        'I\'m running this', 'I need to execute this', 'I\'m launching this', 'I need to run this',
+                        'I\'m starting this command', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
+                        'I need to start this', 'I\'m executing this', 'I\'m performing this command'
                     ],
                     'Task': [
-                        'Getting help', 'Bringing in backup', 'Calling for assistance', 'Team up time',
-                        'Getting an agent', 'Time for delegation', 'Bringing in specialist', 'Getting support',
-                        'Calling in help', 'Time to collaborate', 'Getting extra hands', 'Teamwork mode',
-                        'Calling the cavalry', 'Assembling the crew', 'Summoning minions'
+                        'I need help with this', 'I\'m getting assistance', 'I need to delegate this', 'I\'m calling for help',
+                        'I need an agent for this', 'I\'m bringing in support', 'I need specialized help', 'I\'m getting backup',
+                        'I need to collaborate on this', 'I\'m requesting assistance', 'I need extra help'
                     ],
                     'Glob': [
-                        'Finding files', 'Hunting around', 'Looking for matches', 'Searching around',
-                        'File hunting', 'Tracking down files', 'On the hunt', 'Finding what we need',
-                        'Search time', 'Looking everywhere', 'File detective work', 'Seeking files',
-                        'Going on a treasure hunt', 'File safari time', 'Becoming file Sherlock'
+                        'I\'m finding files', 'I need to locate files', 'I\'m searching for files', 'I need to find matches',
+                        'I\'m looking for files', 'I need to track down files', 'I\'m hunting for files', 'I\'m seeking files',
+                        'I need to discover files', 'I\'m locating files', 'I\'m identifying files'
                     ],
                     'Grep': [
-                        'Searching text', 'Digging through code', 'Looking for patterns', 'Text hunting',
-                        'Finding matches', 'Scanning content', 'Hunting patterns', 'Search mode',
-                        'Looking through text', 'Pattern hunting', 'Text detective work', 'Finding needles',
-                        'Playing hide and seek', 'Text archaeology', 'Going full Sherlock'
+                        'I\'m searching for this', 'I need to find this pattern', 'I\'m looking for matches', 'I\'m scanning for this',
+                        'I need to locate this text', 'I\'m hunting for this', 'I\'m searching through code', 'I need to find this',
+                        'I\'m looking through text', 'I\'m analyzing patterns', 'I\'m examining content'
                     ],
                     'WebFetch': [
-                        'Getting web data', 'Pulling from web', 'Fetching online', 'Web browsing',
-                        'Getting info online', 'Downloading content', 'Web search time', 'Online hunting',
-                        'Gathering web data', 'Checking online', 'Web detective work', 'Getting web stuff',
-                        'Surfing the interwebs', 'Going on web adventure', 'Internet spelunking'
+                        'I\'m getting web data', 'I need to fetch this', 'I\'m downloading this', 'I need web information',
+                        'I\'m retrieving this data', 'I need to access this online', 'I\'m gathering web data', 'I\'m fetching online content',
+                        'I need to download this', 'I\'m accessing web resources', 'I\'m collecting web data'
                     ]
                 }
                 
-                announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
-                announcement = random.choice(announcements)
-                announce_user_content(announcement, level="verbose")
+                # Skip announcements for TodoWrite - too frequent and annoying
+                if tool_name != 'TodoWrite':
+                    announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                    announcement = random.choice(announcements)
+                    announce_user_content(announcement, level="verbose")
                 
         except ImportError:
             pass  # Settings not available

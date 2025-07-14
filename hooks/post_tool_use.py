@@ -231,58 +231,52 @@ def main():
                     
                     completion_announcements = {
                         'Read': [
-                            'Got it', 'All read', 'Done reading', 'Checked it out',
-                            'Had a look', 'Read through', 'All good', 'Seen enough',
-                            'Got the info', 'Read it all', 'Looks good', 'All checked',
-                            'Snooping complete', 'Mystery solved', 'Knowledge acquired'
+                            'Read completed', 'File processed', 'Content analyzed', 'Read operation finished',
+                            'File contents retrieved', 'Reading successful', 'Content loaded', 'File examined',
+                            'Read task complete', 'File analysis done', 'Content processed', 'Reading finished'
                         ],
                         'Write': [
-                            'All written', 'Got it down', 'File created', 'Done writing',
-                            'All saved', 'Written up', 'File ready', 'All set',
-                            'Created that', 'All done', 'Saved it', 'Built that',
-                            'Magic happened', 'Masterpiece created', 'Pure genius unleashed'
+                            'Write completed', 'File created', 'Content written', 'Write operation finished',
+                            'File saved successfully', 'Writing complete', 'Content generated', 'File built',
+                            'Write task done', 'File creation complete', 'Content saved', 'Writing finished'
                         ], 
                         'Edit': [
-                            'Changes made', 'All updated', 'Fixed up', 'Tweaked it',
-                            'All changed', 'Updated that', 'Polished up', 'All better',
-                            'Modified it', 'Changes done', 'All improved', 'Edited that',
-                            'Surgery successful', 'Patient survived', 'Tweakage complete'
+                            'Edit completed', 'Changes applied', 'File modified', 'Edit operation finished',
+                            'Updates saved', 'Modifications complete', 'File updated', 'Changes processed',
+                            'Edit task done', 'File changes saved', 'Updates applied', 'Editing finished'
                         ],
                         'Bash': [
-                            'Command done', 'All executed', 'Ran successfully', 'That worked',
-                            'Command finished', 'All good', 'Executed fine', 'Done running',
-                            'Script complete', 'All ran', 'Command success', 'Finished that',
-                            'Matrix exited', 'Terminal tamed', 'Shell conquered'
+                            'Command executed', 'Script completed', 'Execution finished', 'Command processed',
+                            'Script run successfully', 'Execution complete', 'Command finished', 'Process completed',
+                            'Shell command done', 'Script execution finished', 'Command successful', 'Execution done'
                         ],
                         'Task': [
-                            'Helper done', 'Agent finished', 'Got the help', 'Team work done',
-                            'All delegated', 'Support complete', 'Helper succeeded', 'Backup done',
-                            'Collaboration done', 'Agent complete', 'Help finished', 'Team success',
-                            'Cavalry arrived', 'Minions delivered', 'Squad assembled'
+                            'Task completed', 'Agent finished', 'Delegation successful', 'Task execution done',
+                            'Agent task complete', 'Collaboration finished', 'Task processed', 'Agent work done',
+                            'Delegation complete', 'Task agent finished', 'Agent execution done', 'Task successful'
                         ],
                         'Glob': [
-                            'Found them', 'Search done', 'Got the files', 'Hunt complete',
-                            'Files found', 'Search success', 'Located them', 'Found matches',
-                            'Hunt successful', 'All found', 'Search finished', 'Detective work done',
-                            'Treasure located', 'Safari successful', 'Sherlock strikes again'
+                            'File search completed', 'Files located', 'Search finished', 'Pattern matching done',
+                            'File discovery complete', 'Search successful', 'Files found', 'Pattern search finished',
+                            'File matching complete', 'Search operation done', 'File lookup finished', 'Search complete'
                         ],
                         'Grep': [
-                            'Found it', 'Search done', 'Got matches', 'Pattern found',
-                            'Text located', 'Search complete', 'Found patterns', 'Hunt success',
-                            'Needle found', 'Search finished', 'Got results', 'Pattern hunt done',
-                            'Hide and seek won', 'Archaeology complete', 'Elementary Watson'
+                            'Text search completed', 'Pattern found', 'Search finished', 'Text matching done',
+                            'Pattern search complete', 'Text scan finished', 'Search successful', 'Pattern matching finished',
+                            'Text analysis complete', 'Search operation done', 'Pattern lookup finished', 'Grep complete'
                         ],
                         'WebFetch': [
-                            'Got web data', 'Downloaded it', 'Web search done', 'Found online',
-                            'Retrieved info', 'Web hunt done', 'Got the data', 'Downloaded that',
-                            'Web success', 'Online data got', 'Fetched it', 'Web search complete',
-                            'Surfboard stowed', 'Adventure complete', 'Cave explored'
+                            'Web fetch completed', 'Data retrieved', 'Download finished', 'Web request done',
+                            'Content downloaded', 'Fetch successful', 'Web data obtained', 'Download complete',
+                            'Web operation finished', 'Data fetch done', 'Web content retrieved', 'Fetch complete'
                         ]
                     }
                     
-                    announcements = completion_announcements.get(tool_name, [f'{tool_name} completed'])
-                    announcement = random.choice(announcements)
-                    announce_user_content(announcement, level="verbose")
+                    # Skip announcements for TodoWrite - too frequent and annoying
+                    if tool_name != 'TodoWrite':
+                        announcements = completion_announcements.get(tool_name, [f'{tool_name} completed'])
+                        announcement = random.choice(announcements)
+                        announce_user_content(announcement, level="verbose")
                 
         except ImportError:
             pass  # Settings not available
