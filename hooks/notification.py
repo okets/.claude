@@ -242,25 +242,37 @@ def announce_notification(user_request=None, input_data=None):
         pass
 
 
-def get_first_user_message_from_transcript(transcript_path):
-    """Extract the first user message from the transcript file."""
+def get_latest_user_message_from_transcript(transcript_path):
+    """Extract the most recent substantial user instruction from transcript."""
     try:
         if not os.path.exists(transcript_path):
             return None
-            
+        
+        user_messages = []
         with open(transcript_path, 'r') as f:
             for line in f:
                 try:
                     entry = json.loads(line.strip())
-                    # Look for first user message (parentUuid is null)
+                    # Look for user messages only (not tool results)
                     if (entry.get('type') == 'user' and 
-                        entry.get('parentUuid') is None and
-                        'message' in entry and
-                        'content' in entry['message']):
-                        return entry['message']['content']
+                        entry.get('message', {}).get('role') == 'user' and
+                        'content' in entry.get('message', {})):
+                        content = entry['message']['content']
+                        # Make sure it's a string, not a list
+                        if isinstance(content, str):
+                            user_messages.append(content)
                 except json.JSONDecodeError:
                     continue
-        return None
+        
+        # Look for the most recent substantial instruction (not just short responses)
+        for msg in reversed(user_messages):
+            msg_clean = msg.strip().lower()
+            # Skip very short messages that are just responses
+            if len(msg) > 10 and not msg_clean.startswith(('ok', 'yes', 'no', 'try again', 'good')):
+                return msg
+        
+        # Fallback to latest message if no substantial one found
+        return user_messages[-1] if user_messages else None
     except Exception:
         return None
 
@@ -285,7 +297,7 @@ def main():
         # Extract actual user request from transcript
         user_request = None
         if transcript_path:
-            user_request = get_first_user_message_from_transcript(transcript_path)
+            user_request = get_latest_user_message_from_transcript(transcript_path)
         
         # Debug: Log input data and extracted user request
         debug_log = Path('/tmp') / 'claude_debug_notification.json'

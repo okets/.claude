@@ -367,7 +367,7 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
 import re
 
 
-def truncate_at_sentence_boundary(text, max_length=40):
+def truncate_at_sentence_boundary(text, max_length=80):
     """Truncate text at sentence boundary, preferring periods over other punctuation."""
     if len(text) <= max_length:
         return text
@@ -398,8 +398,8 @@ def extract_action_and_subject(user_request):
         return "help", f"with: {user_request.strip()}"
     
     # For longer requests, use a more natural truncation
-    # Take first 40 chars and try to end at a word boundary
-    truncated = user_request[:40]
+    # Take first 80 chars and try to end at a word boundary
+    truncated = user_request[:80]
     last_space = truncated.rfind(' ')
     if last_space > 20:  # If we found a reasonable word boundary
         subject = truncated[:last_space]
@@ -546,37 +546,19 @@ def create_concise_notification(user_request, trigger_message=""):
     if not user_request or user_request.strip() == "":
         return get_varied_fallback_message()
     
-    # Detect trigger type
-    if "permission" in trigger_message.lower():
-        # For permission requests, focus on the tool being requested
-        tool_name = extract_tool_from_permission_message(trigger_message)
-        if tool_name:
-            return create_tool_focused_notification(tool_name, user_request, trigger_message)
-        
-        # Fallback to user intent if no tool detected
-        action, subject = extract_action_and_subject(user_request)
-        prefix = get_varied_permission_prefix()
-        if prefix in ["May I", "Should I go ahead and"]:
-            return f"{prefix} {action.lower()} {subject}?"
-        elif prefix in ["Can I proceed with", "Need approval for", "Awaiting permission to", "Ready to proceed with"]:
-            return f"{prefix} {action.lower()}ing {subject}"
+    # Clean up user request - take first sentence if it's long
+    clean_request = user_request.strip()
+    if len(clean_request) > 80:
+        # Find first sentence or truncate at word boundary
+        first_sentence = clean_request.split('.')[0]
+        if len(first_sentence) <= 80:
+            clean_request = first_sentence
         else:
-            return f"{prefix}: {action} {subject}"
+            last_space = clean_request[:80].rfind(' ')
+            clean_request = clean_request[:last_space] if last_space > 40 else clean_request[:80]
     
-    # Regular readiness notification - focus on user intent
-    action, subject = extract_action_and_subject(user_request)
-    prefix = get_varied_readiness_prefix()
-    
-    if subject == "task":
-        if prefix in ["Let me", "I'll"]:
-            return f"{prefix} {action.lower()}"
-        else:
-            return f"{prefix} {action.lower()}"
-    else:
-        if prefix in ["Let me", "I'll"]:
-            return f"{prefix} {action.lower()} {subject}"
-        else:
-            return f"{prefix} {action.lower()}: {subject}"
+    # Use the same clean format for all notifications
+    return f"You instructed me to '{clean_request}'. I need your confirmation to proceed with a subtask related to that."
 
 
 def get_varied_completion_suffix(primary_activity, files_modified=0):
@@ -918,44 +900,23 @@ def get_recent_work_context(session_id, current_cycle_id, lookback_cycles=2):
 
 
 def create_verbose_notification(user_request, trigger_message="", recent_work_context=None):
-    """Create verbose but concise notification - more speaking, not more text."""
+    """Create verbose notification using the same clean format."""
     if not user_request or user_request.strip() == "":
-        # Simple fallback for verbose mode
-        verbose_fallbacks = [
-            "Ready to help with your next task",
-            "Standing by for instructions",
-            "I'm here and ready to assist",
-            "Awaiting your next request"
-        ]
-        import random
-        return random.choice(verbose_fallbacks)
+        return "Ready to help with your next task"
     
-    # Extract meaningful action and subject from user request
-    action, subject = extract_action_and_subject(user_request)
+    # Clean up user request - take first sentence if it's long
+    clean_request = user_request.strip()
+    if len(clean_request) > 80:
+        # Find first sentence or truncate at word boundary
+        first_sentence = clean_request.split('.')[0]
+        if len(first_sentence) <= 80:
+            clean_request = first_sentence
+        else:
+            last_space = clean_request[:80].rfind(' ')
+            clean_request = clean_request[:last_space] if last_space > 40 else clean_request[:80]
     
-    # Add tool-specific context if this is a permission request (brief)
-    if "permission" in trigger_message.lower():
-        tool_name = extract_tool_from_permission_message(trigger_message)
-        if tool_name:
-            tool_contexts = {
-                'Read': "Need to read files",
-                'Write': "Need to write files", 
-                'Edit': "Need to edit files",
-                'Bash': "Need to run commands",
-                'Task': "Need to use agents",
-                'Glob': "Need to search files",
-                'Grep': "Need to search content",
-                'WebFetch': "Need to fetch web data"
-            }
-            
-            context = tool_contexts.get(tool_name, f"Need to use {tool_name}")
-            return f"{context} for: {action.lower()} {subject}"
-    
-    # Regular readiness notification - focus on user intent briefly
-    if subject == "task":
-        return f"Ready to {action.lower()}"
-    else:
-        return f"Ready to {action.lower()}: {subject}"
+    # Use the same clean format as concise mode
+    return f"You instructed me to '{clean_request}'. I need your confirmation to proceed with a subtask related to that."
 
 
 def assess_task_complexity(cycle_summary_data, user_intent):
