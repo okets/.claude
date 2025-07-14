@@ -197,6 +197,7 @@ def is_stop_hook_execution(entry):
     return False
 
 
+
 def extract_user_intent_from_transcript(transcript_path, max_lines_back=50):
     """
     Extract the most recent user message from transcript.
@@ -345,3 +346,570 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
                 f.write(f"\n{datetime.now()}: Error in dump_hook_data: {str(e)}\n")
         except:
             pass
+
+
+# Rule-based text processing utilities for Concise Mode
+import re
+
+
+def truncate_at_sentence_boundary(text, max_length=40):
+    """Truncate text at sentence boundary, preferring periods over other punctuation."""
+    if len(text) <= max_length:
+        return text
+    
+    # Try to find last period within limit
+    truncated = text[:max_length]
+    last_period = truncated.rfind('.')
+    
+    if last_period > max_length * 0.6:  # If period is reasonably far in
+        return truncated[:last_period + 1].strip()
+    
+    # Fall back to word boundary
+    last_space = truncated.rfind(' ')
+    if last_space > max_length * 0.5:
+        return truncated[:last_space].strip() + "..."
+    
+    # Last resort: hard truncation
+    return truncated.strip() + "..."
+
+
+def extract_action_and_subject(user_request):
+    """Extract main action and subject from user request using rule-based patterns."""
+    if not user_request:
+        return "help", "with task"
+    
+    # Clean up common prefixes
+    clean_request = re.sub(
+        r'^(i am|help me|can you|please|could you|i want to|i need to)\s+', 
+        '', 
+        user_request.lower(), 
+        flags=re.IGNORECASE
+    ).strip()
+    
+    # Action patterns with their clean versions (order matters - more specific first)
+    action_patterns = {
+        r'run.*test|test.*run|testing|check.*test|verify.*test': 'Test',
+        r'trying to find|looking for|find|search for': 'Find',
+        r'fix|debug|resolve|solve': 'Fix',
+        r'refactor|clean up|optimize|improve': 'Refactor',
+        r'implement|add|create|build|make': 'Implement', 
+        r'test|check|verify|validate': 'Test',
+        r'commit|git': 'Git operation'
+    }
+    
+    # Find matching action
+    action = "Help"
+    for pattern, clean_action in action_patterns.items():
+        if re.search(pattern, clean_request, re.IGNORECASE):
+            action = clean_action
+            break
+    
+    # Extract subject (simplified - take next significant words)
+    # Remove the action part and get the subject
+    matched_pattern = None
+    for pattern in action_patterns.keys():
+        if re.search(pattern, clean_request, re.IGNORECASE):
+            matched_pattern = pattern
+            break
+    
+    if matched_pattern:
+        clean_request = re.sub(matched_pattern, '', clean_request, flags=re.IGNORECASE).strip()
+    
+    # Clean up connecting words
+    clean_request = re.sub(r'^(the|a|an|with|for|in|on)\s+', '', clean_request).strip()
+    
+    # Get first few significant words as subject
+    words = clean_request.split()
+    subject_words = [w for w in words[:4] if len(w) > 2]  # Skip short words
+    subject = " ".join(subject_words) if subject_words else "task"
+    
+    return action, subject
+
+
+def get_varied_fallback_message():
+    """Get a varied fallback message when user intent is unknown."""
+    import random
+    
+    messages = [
+        "I need your input please",
+        "Your input is needed",
+        "Waiting for your guidance",
+        "Ready for your next instruction", 
+        "What would you like me to do next?",
+        "Awaiting your command",
+        "I'm listening for your next request",
+        "How can I help you today?"
+    ]
+    
+    return random.choice(messages)
+
+
+def get_varied_permission_prefix():
+    """Get varied permission request prefix."""
+    import random
+    
+    prefixes = [
+        "Permission needed",
+        "May I",
+        "Can I proceed with",
+        "Requesting permission to",
+        "Need approval for",
+        "Should I go ahead and",
+        "Awaiting permission to",
+        "Ready to proceed with"
+    ]
+    
+    return random.choice(prefixes)
+
+
+def get_varied_readiness_prefix():
+    """Get varied readiness prefix."""
+    import random
+    
+    prefixes = [
+        "Ready to",
+        "Set to",
+        "Standing by to", 
+        "Prepared to",
+        "Let me",
+        "I'll",
+        "Time to",
+        "About to"
+    ]
+    
+    return random.choice(prefixes)
+
+
+def extract_tool_from_permission_message(trigger_message):
+    """Extract the tool name from permission message."""
+    if not trigger_message:
+        return None
+    
+    # Look for patterns like "Claude needs your permission to use [TOOL]"
+    import re
+    
+    # Pattern: "Claude needs your permission to use TOOL"
+    match = re.search(r'permission to use (\w+)', trigger_message, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    
+    # Pattern: "Claude needs permission for TOOL"  
+    match = re.search(r'permission for (\w+)', trigger_message, re.IGNORECASE)
+    if match:
+        return match.group(1)
+        
+    return None
+
+
+
+
+def create_tool_focused_notification(tool_name, user_request=None, input_data=None):
+    """Create notification focused on the tool being requested."""
+    if not tool_name:
+        return get_varied_fallback_message()
+    
+    # Tool-specific messages
+    tool_messages = {
+        'Read': ['read files', 'access files', 'view files', 'check files'],
+        'Write': ['write files', 'create files', 'save files'],
+        'Edit': ['edit files', 'modify files', 'update files'],
+        'Bash': ['run commands', 'execute commands', 'run bash'],
+        'Task': ['create subtasks', 'spawn agents', 'delegate work'],
+        'Glob': ['search files', 'find files', 'locate files'],
+        'Grep': ['search content', 'find text', 'search files'],
+        'WebFetch': ['fetch web content', 'access websites', 'get web data']
+    }
+    
+    import random
+    
+    # Get tool-specific action
+    actions = tool_messages.get(tool_name, [f'use {tool_name}'])
+    action = random.choice(actions)
+    
+    # Get varied permission prefix
+    prefix = get_varied_permission_prefix()
+    
+    if prefix in ["May I", "Should I go ahead and"]:
+        return f"{prefix} {action}?"
+    elif prefix in ["Can I proceed with", "Need approval for"]:
+        return f"{prefix} {action}"
+    elif prefix in ["Awaiting permission to", "Ready to proceed with"]:
+        return f"{prefix} {action}"
+    else:
+        return f"{prefix}: {action}"
+
+
+def create_concise_notification(user_request, trigger_message=""):
+    """Create concise notification message based on user request and trigger type."""
+    if not user_request or user_request.strip() == "":
+        return get_varied_fallback_message()
+    
+    # Detect trigger type
+    if "permission" in trigger_message.lower():
+        # For permission requests, focus on the tool being requested
+        tool_name = extract_tool_from_permission_message(trigger_message)
+        if tool_name:
+            return create_tool_focused_notification(tool_name, user_request, trigger_message)
+        
+        # Fallback to user intent if no tool detected
+        action, subject = extract_action_and_subject(user_request)
+        prefix = get_varied_permission_prefix()
+        if prefix in ["May I", "Should I go ahead and"]:
+            return f"{prefix} {action.lower()} {subject}?"
+        elif prefix in ["Can I proceed with", "Need approval for", "Awaiting permission to", "Ready to proceed with"]:
+            return f"{prefix} {action.lower()}ing {subject}"
+        else:
+            return f"{prefix}: {action} {subject}"
+    
+    # Regular readiness notification - focus on user intent
+    action, subject = extract_action_and_subject(user_request)
+    prefix = get_varied_readiness_prefix()
+    
+    if subject == "task":
+        if prefix in ["Let me", "I'll"]:
+            return f"{prefix} {action.lower()}"
+        else:
+            return f"{prefix} {action.lower()}"
+    else:
+        if prefix in ["Let me", "I'll"]:
+            return f"{prefix} {action.lower()} {subject}"
+        else:
+            return f"{prefix} {action.lower()}: {subject}"
+
+
+def get_varied_completion_suffix(primary_activity, files_modified=0):
+    """Get varied completion suffix based on activity type."""
+    import random
+    
+    if primary_activity == "file_modification" and files_modified > 0:
+        file_word = "file" if files_modified == 1 else "files"
+        variations = [
+            f"{files_modified} {file_word} updated",
+            f"{files_modified} {file_word} modified", 
+            f"{files_modified} {file_word} changed",
+            f"updated {files_modified} {file_word}",
+            f"modified {files_modified} {file_word}",
+            f"{files_modified} {file_word} edited"
+        ]
+        return random.choice(variations)
+    
+    elif primary_activity == "testing":
+        variations = [
+            "testing complete",
+            "tests finished",
+            "testing done", 
+            "all tests run",
+            "testing passed"
+        ]
+        return random.choice(variations)
+    
+    elif primary_activity == "git-operation":
+        variations = [
+            "git operations complete",
+            "git commands finished",
+            "git work done",
+            "repository updated",
+            "git tasks complete"
+        ]
+        return random.choice(variations)
+    
+    else:
+        variations = [
+            "complete",
+            "done",
+            "finished", 
+            "all set",
+            "task complete",
+            "wrapped up"
+        ]
+        return random.choice(variations)
+
+
+def get_varied_completion_connector():
+    """Get varied connector for completion messages."""
+    import random
+    
+    connectors = ["-", "—", "·", "•", "|"]
+    return f" {random.choice(connectors)} "
+
+
+def create_concise_completion(user_intent, files_modified=0, primary_activity="unknown"):
+    """Create concise task completion message."""
+    if not user_intent:
+        fallback_completions = [
+            "Task complete",
+            "All done", 
+            "Finished",
+            "Work complete",
+            "Task finished"
+        ]
+        import random
+        return random.choice(fallback_completions)
+    
+    action, subject = extract_action_and_subject(user_intent)
+    
+    # Create base summary
+    if subject == "task":
+        summary = action
+    else:
+        summary = f"{action} {subject}"
+    
+    # Add contextual completion info with varied format
+    suffix = get_varied_completion_suffix(primary_activity, files_modified)
+    connector = get_varied_completion_connector()
+    
+    return f"{summary}{connector}{suffix}"
+
+
+def extract_meaningful_context_from_summary(cycle_summary_data):
+    """Extract meaningful context from cycle summary for enhanced notifications."""
+    if not cycle_summary_data:
+        return {}
+    
+    context = {}
+    
+    # Get user intent and file activities
+    context['user_intent'] = cycle_summary_data.get('user_intent', '')
+    context['files_modified'] = cycle_summary_data.get('execution_summary', {}).get('files_modified', 0)
+    context['total_edits'] = cycle_summary_data.get('execution_summary', {}).get('total_edits', 0)
+    context['primary_activity'] = cycle_summary_data.get('execution_summary', {}).get('primary_activity', 'unknown')
+    context['subagents_used'] = cycle_summary_data.get('execution_summary', {}).get('subagents_used', 0)
+    
+    # Extract file names and operations
+    file_activities = cycle_summary_data.get('file_activities', {})
+    context['files_worked_on'] = []
+    context['operation_types'] = set()
+    
+    for file_path, activities in file_activities.items():
+        file_name = file_path.split('/')[-1]  # Get just filename
+        context['files_worked_on'].append(file_name)
+        
+        # Get operations from main agent
+        main_agent_data = activities.get('main_agent', {})
+        operations = main_agent_data.get('operations', [])
+        context['operation_types'].update(operations)
+    
+    # Get workflow insights
+    workflow_insights = cycle_summary_data.get('workflow_insights', {})
+    context['task_complexity'] = workflow_insights.get('task_complexity', {}).get('level', 'unknown')
+    context['collaboration_type'] = workflow_insights.get('agent_collaboration', {}).get('collaboration_type', 'none')
+    
+    return context
+
+
+def get_complexity_celebration(complexity_level, files_modified=0, subagents_used=0):
+    """Get varied celebration messages based on task complexity."""
+    import random
+    
+    celebrations = {
+        "simple": [
+            "That was a nice and easy one!",
+            "Quick and smooth - just how I like it!",
+            "Simple task, clean execution!",
+            "That went really smoothly!",
+            "Easy peasy!",
+            "Straightforward and done!"
+        ],
+        "moderate": [
+            "That was a solid piece of work!",
+            "Good challenge, well executed!",
+            "That required some thinking, but we got it!",
+            "Nice work on that one!",
+            "That was a decent challenge!",
+            "A good workout for the brain!"
+        ],
+        "complex": [
+            "Wow, that was a really challenging one!",
+            "That was quite the complex task!",
+            "Phew! That was a tough nut to crack!",
+            "That was seriously challenging work!",
+            "What a complex puzzle that was!",
+            "That was no joke - really complex stuff!"
+        ]
+    }
+    
+    # Get base celebration
+    base_celebrations = celebrations.get(complexity_level, celebrations["simple"])
+    celebration = random.choice(base_celebrations)
+    
+    # Add context-specific enthusiasm
+    if subagents_used > 2:
+        team_additions = [
+            " Great teamwork with all those agents!",
+            " Love how the team came together on this!",
+            " Excellent collaboration across the board!"
+        ]
+        celebration += random.choice(team_additions)
+    elif files_modified > 5:
+        file_additions = [
+            " Lots of files touched - comprehensive work!",
+            " Really thorough changes across the codebase!",
+            " Great coverage across multiple files!"
+        ]
+        celebration += random.choice(file_additions)
+    
+    return celebration
+
+
+def create_detailed_work_summary(context):
+    """Create detailed summary of work performed."""
+    work_parts = []
+    
+    # File work details
+    if context['files_modified'] > 0:
+        if len(context['files_worked_on']) == 1:
+            filename = context['files_worked_on'][0]
+            if context['total_edits'] > 1:
+                work_parts.append(f"I updated {filename} with {context['total_edits']} careful edits")
+            else:
+                work_parts.append(f"I updated {filename}")
+        elif len(context['files_worked_on']) <= 3:
+            files_list = ", ".join(context['files_worked_on'])
+            work_parts.append(f"I modified {files_list}")
+        else:
+            work_parts.append(f"I modified {context['files_modified']} files across the codebase")
+    
+    # Subagent collaboration
+    if context['subagents_used'] > 0:
+        if context['subagents_used'] == 1:
+            work_parts.append("working with 1 specialized agent")
+        else:
+            work_parts.append(f"coordinating with {context['subagents_used']} specialized agents")
+    
+    # Operation types
+    if context['operation_types']:
+        ops = list(context['operation_types'])
+        if len(ops) == 1:
+            work_parts.append(f"focused on {ops[0]} operations")
+        elif len(ops) == 2:
+            work_parts.append(f"handling {ops[0]} and {ops[1]} operations")
+        else:
+            work_parts.append(f"performing {len(ops)} different types of operations")
+    
+    return work_parts
+
+
+def create_rich_completion_message(user_intent, cycle_summary_data=None):
+    """Create rich, celebratory completion message using cycle summary context."""
+    if not cycle_summary_data:
+        # Fallback to basic completion
+        return create_concise_completion(user_intent, 0, "unknown")
+    
+    context = extract_meaningful_context_from_summary(cycle_summary_data)
+    
+    # Start with user intent reminder
+    if user_intent and len(user_intent.strip()) > 10:
+        # Clean up the user intent for speaking
+        clean_intent = user_intent.strip()
+        if len(clean_intent) > 80:
+            clean_intent = clean_intent[:77] + "..."
+        
+        # Remove quotes if they wrap the entire intent
+        if clean_intent.startswith('"') and clean_intent.endswith('"'):
+            clean_intent = clean_intent[1:-1]
+        
+        intro = f"You asked: {clean_intent}. "
+    else:
+        intro = "Task completed! "
+    
+    # Get work summary details
+    work_summary = create_detailed_work_summary(context)
+    
+    if work_summary:
+        work_text = ", ".join(work_summary)
+        middle = f"Done! {work_text}. "
+    else:
+        middle = "All finished! "
+    
+    # Get complexity celebration
+    complexity = context.get('task_complexity', 'simple')
+    celebration = get_complexity_celebration(
+        complexity, 
+        context['files_modified'], 
+        context['subagents_used']
+    )
+    
+    # Combine all parts
+    full_message = intro + middle + celebration
+    
+    return full_message
+
+
+def create_context_aware_notification(user_request, trigger_message="", recent_work_context=None):
+    """Create notification with awareness of recent work patterns."""
+    base_notification = create_concise_notification(user_request, trigger_message)
+    
+    # If we have context about recent work, enhance the notification
+    if recent_work_context and user_request:
+        action, subject = extract_action_and_subject(user_request)
+        
+        # If this request seems to continue previous work, mention it
+        if recent_work_context.get('files_worked_on'):
+            recent_files = recent_work_context['files_worked_on']
+            
+            # Check if request mentions similar files or concepts
+            for filename in recent_files:
+                file_base = filename.replace('.py', '').replace('.js', '').replace('.ts', '')
+                if file_base.lower() in user_request.lower():
+                    prefix = get_varied_readiness_prefix()
+                    return f"{prefix} continue work on {filename}: {action.lower()} {subject}"
+        
+        # If this is a testing request after file modifications
+        if (action.lower() == 'test' and 
+            recent_work_context.get('primary_activity') == 'file_modification' and
+            recent_work_context.get('files_modified', 0) > 0):
+            prefix = get_varied_readiness_prefix()
+            return f"{prefix} test the recent changes: {recent_work_context['files_modified']} files modified"
+    
+    return base_notification
+
+
+def get_recent_work_context(session_id, current_cycle_id, lookback_cycles=2):
+    """Get context from recent cycles to inform notifications."""
+    try:
+        import json
+        
+        logs_dir = get_project_smarter_claude_logs_dir()
+        recent_context = {
+            'files_worked_on': [],
+            'primary_activity': 'unknown',
+            'files_modified': 0,
+            'operation_types': set()
+        }
+        
+        # Look at the last few cycles
+        for cycle_offset in range(1, lookback_cycles + 1):
+            previous_cycle = current_cycle_id - cycle_offset
+            if previous_cycle < 1:
+                continue
+                
+            session_short = session_id[:8] if session_id else "unknown"
+            summary_file = logs_dir / f"session_{session_short}_cycle_{previous_cycle}_summary.json"
+            
+            if summary_file.exists():
+                try:
+                    with open(summary_file, 'r') as f:
+                        cycle_data = json.load(f)
+                    
+                    context = extract_meaningful_context_from_summary(cycle_data)
+                    
+                    # Accumulate information from recent cycles
+                    recent_context['files_worked_on'].extend(context.get('files_worked_on', []))
+                    recent_context['files_modified'] += context.get('files_modified', 0)
+                    recent_context['operation_types'].update(context.get('operation_types', set()))
+                    
+                    # Use the most recent primary activity
+                    if cycle_offset == 1:
+                        recent_context['primary_activity'] = context.get('primary_activity', 'unknown')
+                        
+                except (json.JSONDecodeError, Exception):
+                    continue
+        
+        # Remove duplicates from files list
+        recent_context['files_worked_on'] = list(set(recent_context['files_worked_on']))
+        recent_context['operation_types'] = list(recent_context['operation_types'])
+        
+        return recent_context
+        
+    except Exception:
+        return None

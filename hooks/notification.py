@@ -50,7 +50,7 @@ def get_tts_script_path():
     return None
 
 
-def announce_notification():
+def announce_notification(user_request=None, input_data=None):
     """Announce that the agent needs user input (controlled by interaction_level)."""
     try:
         # Check interaction level settings
@@ -89,19 +89,108 @@ def announce_notification():
         # Get engineer name if available
         engineer_name = os.getenv('ENGINEER_NAME', '').strip()
         
-        # Create notification message with 30% chance to include name
-        if engineer_name and random.random() < 0.3:
-            notification_message = f"{engineer_name}, I need your input please"
-        else:
-            notification_message = "I need your input please"
+        # Create notification message based on interaction level
+        try:
+            sys.path.append(str(Path(__file__).parent / 'utils'))
+            from settings import get_setting
+            from cycle_utils import create_concise_notification
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            if interaction_level == "concise":
+                # Use concise, contextual notification - simplified for debugging
+                try:
+                    from cycle_utils import create_concise_notification
+                    
+                    notification_message = create_concise_notification(user_request, input_data.get('message', ''))
+                    
+                    # Debug: Write to file to confirm we got here
+                    with open('/tmp/notification_debug.log', 'a') as f:
+                        f.write(f"CONCISE: Generated message: {notification_message}\n")
+                        
+                except Exception as e:
+                    # Debug: Log any errors
+                    with open('/tmp/notification_debug.log', 'a') as f:
+                        f.write(f"ERROR in concise notification: {e}\n")
+                    
+                    # Fallback to simple message
+                    notification_message = "Ready to help"
+                
+                # Add engineer name occasionally for concise mode
+                if engineer_name and random.random() < 0.2:
+                    notification_message = f"{engineer_name}, {notification_message.lower()}"
+                    
+            else:
+                # Verbose mode: use traditional approach with more detail
+                if user_request:
+                    # Extract first 60 chars for verbose context
+                    context = user_request[:60] + "..." if len(user_request) > 60 else user_request
+                    if engineer_name and random.random() < 0.3:
+                        notification_message = f"{engineer_name}, ready to help with: {context}"
+                    else:
+                        notification_message = f"Ready to help with: {context}"
+                else:
+                    # Fallback to varied generic messages
+                    fallback_messages = [
+                        "I need your input please",
+                        "Your input is needed", 
+                        "Waiting for your guidance",
+                        "Ready for your next instruction",
+                        "What would you like me to do next?",
+                        "Awaiting your command",
+                        "Ready to help with your next task"
+                    ]
+                    
+                    base_message = random.choice(fallback_messages)
+                    
+                    if engineer_name and random.random() < 0.3:
+                        notification_message = f"{engineer_name}, {base_message.lower()}"
+                    else:
+                        notification_message = base_message
+                        
+        except ImportError:
+            # Fallback if concise utilities not available - use varied messages
+            fallback_messages = [
+                "I need your input please",
+                "Your input is needed",
+                "Waiting for your guidance", 
+                "Ready for your next instruction",
+                "I'm here when you need me",
+                "What would you like me to do next?",
+                "Awaiting your command",
+                "Ready to help with your next task",
+                "I'm listening for your next request",
+                "What can I assist you with?",
+                "Standing by for instructions",
+                "Ready when you are",
+                "How can I help you today?",
+                "Waiting for your next move",
+                "At your service"
+            ]
+            
+            base_message = random.choice(fallback_messages)
+            
+            if engineer_name and random.random() < 0.3:
+                notification_message = f"{engineer_name}, {base_message.lower()}"
+            else:
+                notification_message = base_message
+        
+        # Debug: Log TTS attempt
+        with open('/tmp/notification_debug.log', 'a') as f:
+            f.write(f"TTS: Calling script {tts_script} with message: {notification_message}\n")
         
         # Call the TTS script with the notification message
-        subprocess.run([
+        result = subprocess.run([
             "uv", "run", tts_script, notification_message
         ], 
-        capture_output=True,  # Suppress output
-        timeout=10  # 10-second timeout
+        capture_output=True,  # Capture to log any errors
+        timeout=10,  # 10-second timeout
+        text=True
         )
+        
+        # Debug: Log result
+        with open('/tmp/notification_debug.log', 'a') as f:
+            f.write(f"TTS Result: exit_code={result.returncode}, stdout={result.stdout}, stderr={result.stderr}\n")
         
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
         # Fail silently if TTS encounters issues
@@ -221,7 +310,7 @@ def main():
         # Announce notification via TTS only if --notify flag is set
         # Skip TTS for the generic "Claude is waiting for your input" message
         if args.notify and input_data.get('message') != 'Claude is waiting for your input':
-            announce_notification()
+            announce_notification(user_request, input_data)
         
         sys.exit(0)
         

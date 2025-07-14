@@ -925,18 +925,29 @@ def main():
                         subagents_used = execution_summary.get("subagents_used", 0)
                         primary_activity = execution_summary.get("primary_activity", "unknown")
                         
-                        # Create meaningful user-facing announcement
-                        if primary_activity == "file_modification" and files_modified > 0:
-                            if subagents_used > 0:
-                                announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files with {subagents_used} subagents")
+                        # Create meaningful user-facing announcement using rich context
+                        try:
+                            from cycle_utils import create_rich_completion_message
+                            
+                            # Use rich completion with full cycle summary data
+                            cycle_summary_data = cycle_summary_result
+                            completion_message = create_rich_completion_message(user_intent, cycle_summary_data)
+                            
+                            announce_user_content(completion_message)
+                            
+                        except ImportError:
+                            # Fallback to original logic if utilities not available
+                            if primary_activity == "file_modification" and files_modified > 0:
+                                if subagents_used > 0:
+                                    announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files with {subagents_used} subagents")
+                                else:
+                                    announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files")
+                            elif primary_activity == "code_analysis":
+                                announce_user_content(f"Analysis completed: {user_intent[:50]}")
+                            elif primary_activity == "testing":
+                                announce_user_content(f"Testing completed: {user_intent[:50]}")
                             else:
-                                announce_user_content(f"Task completed: {user_intent[:50]} - Modified {files_modified} files")
-                        elif primary_activity == "code_analysis":
-                            announce_user_content(f"Analysis completed: {user_intent[:50]}")
-                        elif primary_activity == "testing":
-                            announce_user_content(f"Testing completed: {user_intent[:50]}")
-                        else:
-                            announce_user_content(f"Task completed: {user_intent[:50]}")
+                                announce_user_content(f"Task completed: {user_intent[:50]}")
                         
                         summary_path = cycle_summary_result.get("summary_file_path", "unknown")
                         
