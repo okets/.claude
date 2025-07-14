@@ -56,7 +56,7 @@ ls .claude/smarter-claude/
 
 **Example usage:**
 ```bash
-/smarter-claude_voice coqui-female
+/smarter-claude_voice [optional: macos-male]
 /smarter-claude_interaction_level 2
 ```
 
