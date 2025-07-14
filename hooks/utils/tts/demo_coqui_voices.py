@@ -40,7 +40,7 @@ def main():
     
     voices = [
         ("coqui_tts.py", "Coqui Female VITS (High Quality)"),
-        ("coqui_simple_male_tts.py", "Coqui Male Voice (VITS-based)"),
+        ("coqui_male_tts.py", "Coqui Male Voice (Natural Processing)"),
     ]
     
     for script, description in voices:
@@ -50,7 +50,7 @@ def main():
     print("\n🎉 Voice showcase complete!")
     print("\nTo switch voices:")
     print("• Edit /Users/hanan/.claude/.claude/smarter-claude/smarter-claude.json")
-    print("• Change 'tts_engine' to 'coqui' or 'coqui-male'")
+    print("• Change 'tts_engine' to 'coqui-female' or 'coqui-male'")
 
 if __name__ == "__main__":
     main()

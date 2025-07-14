@@ -74,6 +74,7 @@ def get_tts_script_path():
     # Define available engines and their script paths
     engines = {
         "coqui-female": tts_dir / "coqui_tts.py",  # High-quality neural TTS
+        "coqui-male": tts_dir / "coqui_male_tts.py",  # High-quality male neural TTS
         "macos-female": tts_dir / "macos_female_tts.py",
         "macos-male": tts_dir / "macos_male_tts.py", 
         "macos": tts_dir / "macos_native_tts.py",  # Legacy support
@@ -86,8 +87,8 @@ def get_tts_script_path():
         if preferred_script.exists():
             return str(preferred_script)
     
-    # Fallback chain: coqui-female > macos-female > macos-male > macos > pyttsx3
-    fallback_order = ["coqui-female", "macos-female", "macos-male", "macos", "pyttsx3"]
+    # Fallback chain: coqui-female > coqui-male > macos-female > macos-male > macos > pyttsx3
+    fallback_order = ["coqui-female", "coqui-male", "macos-female", "macos-male", "macos", "pyttsx3"]
     for engine in fallback_order:
         if engine != preferred_engine:  # Skip already tried preference
             script_path = engines[engine]
@@ -1077,7 +1078,7 @@ def main():
                                 
                                 # Configurable retention from settings (keep last N cycles as backup)
                                 try:
-                                    from settings import get_setting
+                                    from utils.settings import get_setting
                                     retention_cycles = get_setting("cleanup_policy.retention_cycles", 3)
                                 except ImportError:
                                     retention_cycles = 3  # Fallback default
@@ -1101,6 +1102,20 @@ def main():
                                         if old_summary_file.exists():
                                             old_summary_file.unlink()
                                             files_cleaned.append(f"cycle_{old_cycle_id}_summary.json")
+                                
+                                # Cross-session cleanup: Remove files from old sessions (older than 1 day)
+                                import time
+                                one_day_ago = time.time() - (24 * 60 * 60)  # 24 hours ago
+                                
+                                for log_file in logs_dir.glob("session_*_cycle_*.json"):
+                                    if log_file.stat().st_mtime < one_day_ago:
+                                        log_file.unlink()
+                                        files_cleaned.append(f"old_session_{log_file.name}")
+                                
+                                for log_file in logs_dir.glob("session_*_cycle_*.jsonl"):
+                                    if log_file.stat().st_mtime < one_day_ago:
+                                        log_file.unlink()
+                                        files_cleaned.append(f"old_session_{log_file.name}")
                                 
                                 # Infrastructure cleanup - no TTS announcement needed
                                 if files_cleaned:

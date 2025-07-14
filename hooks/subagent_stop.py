@@ -51,6 +51,7 @@ def get_tts_script_path():
     # Define available engines and their script paths
     engines = {
         "coqui-female": tts_dir / "coqui_tts.py",  # High-quality neural TTS
+        "coqui-male": tts_dir / "coqui_male_tts.py",  # High-quality male neural TTS
         "macos-female": tts_dir / "macos_female_tts.py",
         "macos-male": tts_dir / "macos_male_tts.py", 
         "macos": tts_dir / "macos_native_tts.py",  # Legacy support
@@ -63,8 +64,8 @@ def get_tts_script_path():
         if preferred_script.exists():
             return str(preferred_script)
     
-    # Fallback chain: coqui-female > macos-female > macos-male > macos > pyttsx3
-    fallback_order = ["coqui-female", "macos-female", "macos-male", "macos", "pyttsx3"]
+    # Fallback chain: coqui-female > coqui-male > macos-female > macos-male > macos > pyttsx3
+    fallback_order = ["coqui-female", "coqui-male", "macos-female", "macos-male", "macos", "pyttsx3"]
     for engine in fallback_order:
         if engine != preferred_engine:  # Skip already tried preference
             script_path = engines[engine]
