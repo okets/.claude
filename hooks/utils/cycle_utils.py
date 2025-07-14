@@ -81,7 +81,7 @@ def get_tts_script_path():
     # Get user's preferred TTS engine from settings
     try:
         from settings import get_setting
-        preferred_engine = get_setting("tts_engine", "macos-female")
+        preferred_engine = get_setting("tts_engine", "macos")
     except ImportError:
         # Fallback if settings not available
         preferred_engine = "macos"
@@ -102,8 +102,8 @@ def get_tts_script_path():
         if preferred_script.exists():
             return str(preferred_script)
     
-    # Fallback chain: coqui-female > coqui-male > macos-female > macos-male > macos > pyttsx3
-    fallback_order = ["coqui-female", "coqui-male", "macos-female", "macos-male", "macos", "pyttsx3"]
+    # Fallback chain: prioritize reliable engines (macos native > coqui > pyttsx3)
+    fallback_order = ["macos-female", "macos-male", "macos", "coqui-female", "coqui-male", "pyttsx3"]
     for engine in fallback_order:
         if engine != preferred_engine:  # Skip already tried preference
             script_path = engines[engine]

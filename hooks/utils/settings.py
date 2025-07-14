@@ -26,8 +26,8 @@ class SmarterClaudeSettings:
         "interaction_level": "verbose",  # silent, quiet, concise, verbose
         "interaction_level_options": "silent, quiet, concise, verbose",
         "tts_enabled": True,
-        "tts_engine": "coqui",  # coqui, macos, pyttsx3
-        "tts_engine_options": "coqui, macos, pyttsx3",
+        "tts_engine": "macos",  # coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3
+        "tts_engine_options": "coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3",
         "notification_sounds": True,
         "cleanup_policy": {
             "retention_cycles": 2,
@@ -189,8 +189,8 @@ class SmarterClaudeSettings:
         default_project_settings = {
             "interaction_level": "verbose",
             "interaction_level_options": "silent, quiet, concise, verbose",
-            "tts_engine": "coqui",
-            "tts_engine_options": "coqui, macos, pyttsx3",
+            "tts_engine": "macos",
+            "tts_engine_options": "coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3",
             "cleanup_policy": {
                 "retention_cycles": 2
             },
