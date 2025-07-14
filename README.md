@@ -37,7 +37,7 @@ This is Claude Code with memory. This is what you've been missing.
 
 ## 📖 The Story
 
-I saw [this demo](https://www.youtube.com/watch?v=J5B9UGTuNoM&t=1547s) of Claude Code with "long-term memory" and voice that had me thinking for days. Brilliant concept, and I really appreciate the innovation. But the more I thought about it, the less usable it seemed - burning tokens to re-process transcript data that Claude already saves in `~/.claude/` anyway.
+I saw [this demo](https://www.youtube.com/watch?v=J5B9UGTuNoM&t=1547s) by [@indyDevDan](https://www.youtube.com/@indyDevDan) of Claude Code with "long-term memory" and voice that had me thinking for days. Brilliant concept from his [claude-code-hooks-mastery](https://github.com/disler/claude-code-hooks-mastery) project, and I really appreciate the innovation. But the more I thought about it, the less usable it seemed - burning tokens to re-process transcript data that Claude already saves in `~/.claude/` anyway.
 
 So I dove deep: **What exactly does Claude Code give you?** Just hooks. Raw, cryptic lifecycle events. I analyzed massive JSON dumps, deployed sub-agents to reverse-engineer Claude's internals, built scaffolding to connect the dots. 
 
