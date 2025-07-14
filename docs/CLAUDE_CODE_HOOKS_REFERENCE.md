@@ -1,26 +1,50 @@
-# Claude Code Hooks Reference
+# 🔌 Claude Code Hooks Reference
 
-## Overview
+> **Complete technical reference for Claude Code's hook system**
 
-Claude Code hooks are user-defined shell commands that execute at specific points in Claude Code's lifecycle. They provide deterministic control over Claude's behavior and execute with full user permissions. Hooks receive input via stdin as JSON and can return structured responses to control Claude's behavior.
+[![Hook System](https://img.shields.io/badge/🔌_Hook-System-purple)](../README.md)
+[![JSON Input](https://img.shields.io/badge/📋_JSON-Input-blue)](../README.md)
+[![Shell Commands](https://img.shields.io/badge/💻_Shell-Commands-green)](../README.md)
+[![Full Control](https://img.shields.io/badge/🎛️_Full-Control-orange)](../README.md)
 
-## Hook System Architecture
+## 🎯 What Are Hooks?
 
-- **Input Method**: JSON data passed via stdin
-- **Output Method**: Exit codes and/or JSON responses
-- **Execution Context**: Full user permissions
-- **Timeout**: 60 seconds default
-- **Configuration**: Via settings files using matchers
+**User-defined shell commands that execute at specific points in Claude Code's lifecycle:**
 
-## Hook Types
+- **🎛️ Deterministic control** over Claude's behavior  
+- **💻 Full user permissions** for complete system access
+- **📋 JSON input/output** for structured data exchange
+- **🔌 Lifecycle integration** at key execution points
 
-### 1. PreToolUse Hook
+## ⚙️ Hook System Architecture
 
-**Purpose**: Runs after Claude creates tool parameters but before processing the tool call. Allows approval or blocking of tool usage.
+[![JSON stdin](https://img.shields.io/badge/📥_JSON-stdin-blue)](../README.md)
+[![Exit Codes](https://img.shields.io/badge/🚦_Exit-Codes-green)](../README.md)
+[![60s Timeout](https://img.shields.io/badge/⏱️_60s-Timeout-orange)](../README.md)
+[![Matcher Config](https://img.shields.io/badge/🎯_Matcher-Config-purple)](../README.md)
 
-**When Triggered**: Before any tool execution
+- **📥 Input Method**: JSON data passed via stdin
+- **📤 Output Method**: Exit codes and/or JSON responses
+- **🔑 Execution Context**: Full user permissions
+- **⏱️ Timeout**: 60 seconds default
+- **🎯 Configuration**: Via settings files using matchers
 
-**Common Matchers**: Task, Bash, Glob, Grep, Read, Edit, Write, WebFetch
+## 🔧 Hook Types
+
+[![PreToolUse](https://img.shields.io/badge/🔐_PreToolUse-Approval_Gate-red)](../README.md)
+[![PostToolUse](https://img.shields.io/badge/📊_PostToolUse-Result_Logging-blue)](../README.md)
+[![Notification](https://img.shields.io/badge/🔔_Notification-User_Alerts-yellow)](../README.md)
+[![Stop](https://img.shields.io/badge/🛑_Stop-Session_End-gray)](../README.md)
+[![SubagentStop](https://img.shields.io/badge/🤖_SubagentStop-Agent_Completion-green)](../README.md)
+[![PreCompact](https://img.shields.io/badge/🗜️_PreCompact-History_Cleanup-purple)](../README.md)
+
+### 🔐 1. PreToolUse Hook
+
+**🎯 Purpose**: Runs after Claude creates tool parameters but before processing the tool call. Allows approval or blocking of tool usage.
+
+**⚡ When Triggered**: Before any tool execution
+
+**🎯 Common Matchers**: Task, Bash, Glob, Grep, Read, Edit, Write, WebFetch
 
 **JSON Input Structure**:
 ```json
@@ -64,13 +88,13 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - Must validate and sanitize all inputs
 - Can prevent potentially harmful operations
 
-### 2. PostToolUse Hook
+### 📊 2. PostToolUse Hook
 
-**Purpose**: Runs immediately after a tool completes successfully. Allows retrospective feedback or blocking.
+**🎯 Purpose**: Runs immediately after a tool completes successfully. Allows retrospective feedback or blocking.
 
-**When Triggered**: After successful tool execution
+**⚡ When Triggered**: After successful tool execution
 
-**Common Matchers**: Same as PreToolUse (Task, Bash, Glob, Grep, Read, Edit, Write, WebFetch)
+**🎯 Common Matchers**: Same as PreToolUse (Task, Bash, Glob, Grep, Read, Edit, Write, WebFetch)
 
 **JSON Input Structure**:
 ```json
@@ -97,13 +121,13 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - Can provide feedback about completed operations
 - Can block retrospectively if needed
 
-### 3. Notification Hook
+### 🔔 3. Notification Hook
 
-**Purpose**: Handles custom notifications when Claude needs permission or when there's extended idle time.
+**🎯 Purpose**: Handles custom notifications when Claude needs permission or when there's extended idle time.
 
-**When Triggered**:
-- When Claude needs permission to use a tool
-- When prompt input has been idle for 60+ seconds
+**⚡ When Triggered**:
+- 🔐 When Claude needs permission to use a tool
+- ⏰ When prompt input has been idle for 60+ seconds
 
 **JSON Input Structure**:
 ```json
@@ -130,11 +154,11 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - Allows custom notification handling
 - Can integrate with external notification systems
 
-### 4. Stop Hook
+### 🛑 4. Stop Hook
 
-**Purpose**: Runs when the main agent finishes responding. Can prevent stopping with specific reasons.
+**🎯 Purpose**: Runs when the main agent finishes responding. Can prevent stopping with specific reasons.
 
-**When Triggered**: When Claude completes its response
+**⚡ When Triggered**: When Claude completes its response
 
 **JSON Input Structure**:
 ```json
@@ -158,11 +182,11 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - Can prevent Claude from stopping
 - Must be careful to avoid infinite loops
 
-### 5. SubagentStop Hook
+### 🤖 5. SubagentStop Hook
 
-**Purpose**: Runs when a subagent finishes responding.
+**🎯 Purpose**: Runs when a subagent finishes responding.
 
-**When Triggered**: When a subagent completes its task
+**⚡ When Triggered**: When a subagent completes its task
 
 **JSON Input Structure**:
 ```json
@@ -179,15 +203,15 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - Similar to Stop hook, plus:
 - `subagent_id`: Identifier for the specific subagent
 
-### 6. PreCompact Hook
+### 🗜️ 6. PreCompact Hook
 
-**Purpose**: Runs before compact operations that reduce conversation history.
+**🎯 Purpose**: Runs before compact operations that reduce conversation history.
 
-**When Triggered**: Before compacting the conversation
+**⚡ When Triggered**: Before compacting the conversation
 
-**Matchers**:
-- `"manual"`: Triggered by `/compact` command
-- `"auto"`: Triggered when context window is full
+**🎯 Matchers**:
+- **📝 "manual"**: Triggered by `/compact` command
+- **🤖 "auto"**: Triggered when context window is full
 
 **JSON Input Structure**:
 ```json
@@ -205,48 +229,61 @@ Claude Code hooks are user-defined shell commands that execute at specific point
 - `hook_event_name`: Always "PreCompact"
 - `compact_type`: "manual" or "auto"
 
-## Data Flow Between Hooks
+## 🔄 Data Flow Between Hooks
 
-1. **PreToolUse** → Tool Execution → **PostToolUse**
-2. **Notification** hooks can trigger independently
-3. **Stop/SubagentStop** hooks execute at conversation endpoints
-4. **PreCompact** hooks execute before history reduction
+[![Sequential Flow](https://img.shields.io/badge/🔄_Sequential-Flow-blue)](../README.md)
+[![Independent](https://img.shields.io/badge/🔔_Independent-Triggers-yellow)](../README.md)
+[![Endpoints](https://img.shields.io/badge/🛑_Conversation-Endpoints-gray)](../README.md)
 
-## Data NOT Available
+1. **🔐 PreToolUse** → 🔧 Tool Execution → **📊 PostToolUse**
+2. **🔔 Notification** hooks can trigger independently
+3. **🛑 Stop/SubagentStop** hooks execute at conversation endpoints
+4. **🗜️ PreCompact** hooks execute before history reduction
 
-Based on the documentation, the following data is typically NOT available in hooks:
+## ❌ Data NOT Available
 
-- **Tool execution details during PreToolUse**: The tool hasn't run yet
-- **Real-time tool progress**: Only pre/post execution data
-- **User input history**: Only current tool parameters
-- **Claude's internal reasoning**: Only the final tool parameters
-- **Other concurrent sessions**: Each hook only sees its own session
-- **Future tool calls**: Only current tool information
+[![Limitations](https://img.shields.io/badge/⚠️_Known-Limitations-red)](../README.md)
+[![Security](https://img.shields.io/badge/🔒_Security-Boundaries-orange)](../README.md)
+[![Isolation](https://img.shields.io/badge/🔐_Session-Isolation-blue)](../README.md)
 
-## Best Practices
+**The following data is typically NOT available in hooks:**
 
-### Security
-- **Validate and sanitize all inputs** from hook JSON
-- **Use absolute paths** to prevent directory traversal
-- **Quote shell variables** to prevent injection
-- **Block path traversal attempts** (../, etc.)
-- **Avoid modifying sensitive files** without explicit approval
+- **🔐 Tool execution details during PreToolUse**: The tool hasn't run yet
+- **📊 Real-time tool progress**: Only pre/post execution data
+- **📝 User input history**: Only current tool parameters
+- **🧠 Claude's internal reasoning**: Only the final tool parameters
+- **🔒 Other concurrent sessions**: Each hook only sees its own session
+- **🔮 Future tool calls**: Only current tool information
 
-### Performance
-- **Keep hooks lightweight** (60-second timeout)
-- **Cache expensive operations** when possible
-- **Use appropriate exit codes** for simple decisions
+## 🛡️ Best Practices
 
-### Reliability
-- **Handle JSON parsing errors** gracefully
-- **Provide meaningful error messages** in responses
-- **Test hooks thoroughly** before deployment
-- **Use `stop_hook_active`** to prevent infinite loops
+[![Security](https://img.shields.io/badge/🛡️_Security-First-red)](../README.md)
+[![Performance](https://img.shields.io/badge/⚡_Performance-Optimized-green)](../README.md)
+[![Reliability](https://img.shields.io/badge/🔒_Reliability-Focus-blue)](../README.md)
+[![Configuration](https://img.shields.io/badge/⚙️_Smart-Configuration-purple)](../README.md)
 
-### Configuration
-- **Use specific matchers** rather than catching all tools
-- **Organize hooks by purpose** (security, logging, etc.)
-- **Document hook behavior** for team members
+### 🛡️ Security
+- **🔍 Validate and sanitize all inputs** from hook JSON
+- **📁 Use absolute paths** to prevent directory traversal
+- **💬 Quote shell variables** to prevent injection
+- **🚫 Block path traversal attempts** (../, etc.)
+- **🔐 Avoid modifying sensitive files** without explicit approval
+
+### ⚡ Performance
+- **⏱️ Keep hooks lightweight** (60-second timeout)
+- **💾 Cache expensive operations** when possible
+- **🚦 Use appropriate exit codes** for simple decisions
+
+### 🔒 Reliability
+- **🛠️ Handle JSON parsing errors** gracefully
+- **💬 Provide meaningful error messages** in responses
+- **🧪 Test hooks thoroughly** before deployment
+- **🔄 Use `stop_hook_active`** to prevent infinite loops
+
+### ⚙️ Configuration
+- **🎯 Use specific matchers** rather than catching all tools
+- **📂 Organize hooks by purpose** (security, logging, etc.)
+- **📖 Document hook behavior** for team members
 
 ## Example Hook Implementation
 
@@ -299,4 +336,13 @@ exit 0
 }
 ```
 
-This reference provides the complete data structures and capabilities available through Claude Code hooks, enabling precise control over Claude's behavior and comprehensive monitoring of its operations.
+## 📚 Navigation
+
+[![Getting Started](https://img.shields.io/badge/📖_Getting-Started-blue)](GETTING_STARTED.md)
+[![Database Schema](https://img.shields.io/badge/📊_Database-Schema-green)](DATABASE_SCHEMA.md)
+[![Troubleshooting](https://img.shields.io/badge/🔧_Troubleshooting-orange)](TROUBLESHOOTING.md)
+[![Back to README](https://img.shields.io/badge/🏠_Back_to-README-purple)](../README.md)
+
+---
+
+**This reference provides the complete data structures and capabilities available through Claude Code hooks, enabling precise control over Claude's behavior and comprehensive monitoring of its operations.**
