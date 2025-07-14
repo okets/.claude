@@ -93,7 +93,6 @@ Ask Claude after install:
 > Ask Claude: *"Help me troubleshoot smarter-claude"*
 
 [![Getting Started](https://img.shields.io/badge/📖_Getting_Started-Complete_Setup_Guide-blue)](GETTING_STARTED.md)
-[![Troubleshooting](https://img.shields.io/badge/🔧_Troubleshooting-Fix_Issues_with_Claude-orange)](GETTING_STARTED.md#troubleshooting)
 [![Database Schema](https://img.shields.io/badge/📊_Database_Schema-Query_Patterns_&_Examples-green)](developer-docs/DATABASE_SCHEMA.md)
 
 ---
