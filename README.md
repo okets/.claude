@@ -112,4 +112,4 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 
 MIT License - Build upon this, share improvements, and help make AI development workflows more intelligent.
 
-See [LICENSE](LICENSE) for full details.
+See [![License Details](https://img.shields.io/badge/📄_License-Details-green)](LICENSE) for full details.
