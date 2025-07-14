@@ -204,7 +204,19 @@ def main():
             
             interaction_level = get_setting("interaction_level", "concise")
             
-            if interaction_level == "verbose":
+            # Announce TodoWrite in both concise and verbose modes (planning is important)
+            if tool_name == 'TodoWrite' and interaction_level in ["concise", "verbose"]:
+                import random
+                planning_announcements = [
+                    'Planning this task', 'Planning approach', 'Organizing work', 'Setting up plan',
+                    'Structuring this task', 'Planning next steps', 'Breaking down work',
+                    'Organizing approach', 'Planning implementation', 'Mapping out tasks',
+                    'Creating task plan', 'Setting up workflow', 'Planning strategy'
+                ]
+                announcement = random.choice(planning_announcements)
+                announce_user_content(announcement, level="concise")
+            
+            elif interaction_level == "verbose":
                 # Announce tool usage with varied messages
                 import random
                 
@@ -251,7 +263,7 @@ def main():
                     ]
                 }
                 
-                # Skip announcements for TodoWrite - too frequent and annoying
+                # TodoWrite already handled above, skip it here
                 if tool_name != 'TodoWrite':
                     announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
                     announcement = random.choice(announcements)
