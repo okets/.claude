@@ -101,7 +101,7 @@ Ask Claude after install:
 ## 🚀 Stop losing your development context.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh 
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡
