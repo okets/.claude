@@ -147,7 +147,7 @@ for file_ctx in recent_files:
     print(f"{file_ctx['file_path']}: {file_ctx['change_reason']}")
 ```
 
-## 🛠 Troubleshooting
+## 🛠 Troubleshooting, my advice? Utilize Claude code to solve them for you.
 
 **Most issues can be solved by Claude itself. Try asking:**
 
