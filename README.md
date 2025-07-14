@@ -20,7 +20,7 @@
 ## 🚀 One-Line Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
 > [!NOTE]
@@ -101,7 +101,7 @@ Ask Claude after install:
 ## 🚀 Stop losing your development context.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh 
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh  | bash
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡
