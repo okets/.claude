@@ -165,57 +165,60 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - ✅ **Hybrid intent extraction** - TodoWrite progression (priority) + transcript parsing (fallback)
 - ✅ **Multi-agent tracking** - SubagentStop hooks capture delegation completion
 
-### Phase 6: Cleanup and Low Signature 🧹 READY
+### Phase 6: Cleanup and Low Signature 🧹 ✅ COMPLETED
 **Goal**: Clean up logs and JSON files after database ingestion
 **Vision**: Keep minimal footprint - database contains everything, temporary files cleaned up
 
-#### Task 6.1: Automatic Log Cleanup
-- Delete JSONL and JSON summary files after successful database ingestion
-- Keep only the database file for long-term storage
-- Implement cleanup in stop.py after auto-ingestion completes
-- Add error handling to preserve files if database ingestion fails
+#### Task 6.1: Automatic Log Cleanup ✅ COMPLETED
+- ✅ Delete JSONL and JSON summary files after successful database ingestion
+- ✅ Keep only the database file for long-term storage
+- ✅ Implement cleanup in stop.py after auto-ingestion completes
+- ✅ Add error handling to preserve files if database ingestion fails
+- ✅ Fixed critical import bug: `from settings import get_setting` → `from utils.settings import get_setting`
+- ✅ Added cross-session cleanup for files older than 24 hours
 
 #### Task 6.2: File Retention Strategy ✅ COMPLETED
 - ✅ Retain current cycle files until next cycle completes
 - ✅ Clean up previous cycle files only after confirming new cycle data is safely in database
-- ✅ Configurable 3-cycle retention for backup safety
+- ✅ Configurable retention_cycles: 2 setting properly implemented
+- ✅ Cross-session cleanup prevents accumulation from old sessions
 
-### Phase 6.5: Fix Project Isolation 🚨 CRITICAL
+### Phase 6.5: Fix Project Isolation 🚨 ✅ COMPLETED
 **Goal**: Fix critical bug where all projects share global smarter-claude folder
 **Issue**: Working in `/Projects/demo-project` but saving to global `~/.claude/.claude/smarter-claude/`
 
-#### Task 6.5.1: Project Directory Detection
-- Add function to detect current project root directory
-- Look for `.claude` directory or git root as project boundary
-- Fallback to current working directory if no project markers found
+#### Task 6.5.1: Project Directory Detection ✅ COMPLETED
+- ✅ Added `detect_project_root()` function to detect current project root directory
+- ✅ Look for `.claude` directory or git root as project boundary
+- ✅ Fallback to current working directory if no project markers found
 
-#### Task 6.5.2: Dynamic Path Resolution
-- Replace all hardcoded `/Users/hanan/.claude/.claude/smarter-claude/` paths
-- Use `<project-root>/.claude/smarter-claude/` for project-specific data
-- Maintain global location only for global hooks configuration
+#### Task 6.5.2: Dynamic Path Resolution ✅ COMPLETED
+- ✅ Replaced all hardcoded `/Users/hanan/.claude/.claude/smarter-claude/` paths
+- ✅ Use `<project-root>/.claude/smarter-claude/` for project-specific data
+- ✅ Maintain global location only for global hooks configuration
 
-#### Task 6.5.3: Update All Hook Utilities
-- cycle_utils.py: Dynamic output directory
-- contextual_db.py: Project-specific database path
-- hook_parser.py: Project-specific logs directory
-- data_collector.py: Project-specific session logs
-- stop.py: Project-specific cleanup paths
+#### Task 6.5.3: Update All Hook Utilities ✅ COMPLETED
+- ✅ cycle_utils.py: Dynamic output directory with `get_project_smarter_claude_dir()`
+- ✅ contextual_db.py: Project-specific database path
+- ✅ hook_parser.py: Project-specific logs directory
+- ✅ data_collector.py: Project-specific session logs
+- ✅ stop.py: Project-specific cleanup paths
 
-#### Task 6.5.4: Ensure Project Isolation
-- Each project gets own: `<project>/.claude/smarter-claude/smarter-claude.db`
-- Each project gets own: `<project>/.claude/smarter-claude/logs/`
-- Test: Working in different projects creates separate databases
-- Verify: No cross-project data contamination
+#### Task 6.5.4: Ensure Project Isolation ✅ COMPLETED
+- ✅ Each project gets own: `<project>/.claude/smarter-claude/smarter-claude.db`
+- ✅ Each project gets own: `<project>/.claude/smarter-claude/logs/`
+- ✅ Test: Working in different projects creates separate databases
+- ✅ Verify: No cross-project data contamination
 
-### Phase 7: Rebrand as "smarter-claude" 🎯 PARTIALLY COMPLETED
+### Phase 7: Rebrand as "smarter-claude" 🎯 ✅ COMPLETED
 **Goal**: Professional branding and organized file structure
 **Vision**: Clean, branded system with intuitive folder organization
 
-#### Task 7.1: Folder Structure Redesign
-- Rename `session_logs` → `smarter-claude`
-- Move database to `smarter-claude/smarter-claude.db`
-- Create `smarter-claude/logs/` for temporary JSON/JSONL files
-- Update all paths in hook utilities
+#### Task 7.1: Folder Structure Redesign ✅ COMPLETED
+- ✅ Renamed `session_logs` → `smarter-claude`
+- ✅ Move database to `smarter-claude/smarter-claude.db`
+- ✅ Create `smarter-claude/logs/` for temporary JSON/JSONL files
+- ✅ Update all paths in hook utilities
 
 #### Task 7.2: Per-Project Settings System ✅ COMPLETED
 - ✅ Created `settings.py` module with hierarchical settings system
@@ -227,16 +230,16 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - ✅ Integrated settings into TTS announcements and retention cleanup
 - ✅ Supports dot notation for nested settings (e.g., "cleanup_policy.retention_cycles")
 
-### Phase 8: Interaction Levels 🔊 READY
+### Phase 8: Interaction Levels 🔊 ✅ COMPLETED
 **Goal**: Four levels of user interaction with TTS and notifications
 **Vision**: Customizable experience from silent to verbose
 
-#### Task 8.1: Settings Infrastructure
-- Implement settings loader with project/global hierarchy
-- Default interaction level: "concise"
-- Settings schema: interaction_level, tts_enabled, notification_sounds
+#### Task 8.1: Settings Infrastructure ✅ COMPLETED
+- ✅ Implement settings loader with project/global hierarchy
+- ✅ Default interaction level: "concise"
+- ✅ Settings schema: interaction_level, tts_enabled, notification_sounds
 
-#### Task 8.2: Interaction Levels Implementation
+#### Task 8.2: Interaction Levels Implementation ✅ COMPLETED
 **Silent Mode** ✅ COMPLETED:
 - ✅ No TTS announcements
 - ✅ No notification sounds  
@@ -249,30 +252,55 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - ✅ Sound files copied to hooks/utils/resources/sounds/
 - ✅ Uses afplay on macOS for minimal audio feedback
 
-**Concise Mode (Default)**:
-- TTS for notification hooks with short attention description
-- Brief cycle summary: task type, file changes, subagent usage
-- Completion chime with summary
+**Concise Mode (Default)** ✅ COMPLETED:
+- ✅ TTS for notification hooks with short attention description
+- ✅ Brief cycle summary: task type, file changes, subagent usage
+- ✅ Completion chime with summary
+- ✅ Integrated Coqui TTS as default high-quality voice engine
 
-**Verbose Mode**:
-- Everything in concise mode
-- SubagentStop TTS notifications with task summary
-- PreToolUse/PostToolUse announcements with details
-- Detailed workflow narration
+**Verbose Mode** ✅ COMPLETED:
+- ✅ Everything in concise mode
+- ✅ SubagentStop TTS notifications with task summary
+- ✅ PreToolUse/PostToolUse announcements with details
+- ✅ Detailed workflow narration with "I" statements
+- ✅ Use of "now" for immediacy in pre-tool announcements
 
-### Phase 9: Update Claude.md Integration 📝 READY
+#### Task 8.3: TTS Engine Diversification ✅ COMPLETED
+**High-Quality Local TTS Implementation**:
+- ✅ Installed Coqui TTS via `uv tool install coqui-tts`
+- ✅ Created `coqui_tts.py` for high-quality female voice using VITS model
+- ✅ Created `coqui_male_tts.py` for masculine voice with audio processing
+- ✅ Implemented ffmpeg-based pitch shifting (4 semitones lower) for natural male voice
+- ✅ Performance: Real-time factor ~0.156, extremely fast processing
+- ✅ Updated settings to include "coqui-female" and "coqui-male" as TTS engines
+- ✅ Enhanced TTS engine selection logic with proper fallback chains
+
+#### Task 8.4: TTS Human-like Improvements ✅ COMPLETED
+**Announcement Quality Enhancement**:
+- ✅ Removed superlatives and "jokey" content from TTS messages
+- ✅ Implemented "I" statements for pre-tool announcements ("I need to read this now")
+- ✅ Added "now" for immediacy in pre-tool announcements
+- ✅ Made post-tool announcements factual without "I" statements
+- ✅ TodoWrite announcements silenced to reduce spam while maintaining todo feedback
+- ✅ Short interaction responses read actual content instead of meta-commentary
+
+### Phase 9: Update Claude.md Integration 📝 ✅ COMPLETED
 **Goal**: Inform Claude about the new contextual memory system
 **Vision**: Claude understands its own memory capabilities and schema
 
-#### Task 9.1: Claude.md Schema Documentation
-- Document 4-table database schema in Claude.md
-- Explain query patterns for context retrieval
-- Provide example queries for common use cases
+#### Task 9.1: Claude.md Schema Documentation ✅ COMPLETED
+- ✅ Document 4-table database schema in Claude.md
+- ✅ Explain query patterns for context retrieval
+- ✅ Provide example queries for common use cases
+- ✅ Complete database schema documentation with SQL examples
+- ✅ Context retrieval patterns for recent activity, file history, task complexity
 
-#### Task 9.2: Context System Instructions
-- Inform Claude about automatic memory capture
-- Explain user intent tracking and file change context
-- Document how to query its own contextual memory
+#### Task 9.2: Context System Instructions ✅ COMPLETED
+- ✅ Inform Claude about automatic memory capture
+- ✅ Explain user intent tracking and file change context
+- ✅ Document how to query its own contextual memory
+- ✅ Usage instructions for Claude to provide context-aware responses
+- ✅ Integration documentation with TTS system and settings
 
 ### Phase 10: Cleanup Unused Components 🗑️ READY
 **Goal**: Remove obsolete files and unused features
@@ -369,13 +397,17 @@ sqlite3 [database_path] "SELECT * FROM [table];"
 # Should see: all contextual data properly stored
 ```
 
-## Success Criteria
+## Success Criteria ✅ ALL ACHIEVED
 
-1. **Complete Context Capture**: Every tool use and file change tracked
-2. **User Intent Preserved**: Original request linked to all actions
-3. **Subagent Hierarchy**: Full delegation tree captured
-4. **Clean Temp Files**: No leftover JSONs after storage
-5. **TTS Feedback**: Clear indication of what's happening
+1. **Complete Context Capture**: ✅ Every tool use and file change tracked
+2. **User Intent Preserved**: ✅ Original request linked to all actions
+3. **Subagent Hierarchy**: ✅ Full delegation tree captured
+4. **Clean Temp Files**: ✅ No leftover JSONs after storage (retention_cycles: 2)
+5. **TTS Feedback**: ✅ Clear indication of what's happening with high-quality Coqui voices
+6. **Project Isolation**: ✅ Each project maintains separate databases and logs
+7. **Human-like Announcements**: ✅ Natural "I" statements, removed superlatives
+8. **Advanced TTS Options**: ✅ Both male and female Coqui voices with audio processing
+9. **Branch Management**: ✅ Working version successfully made new main branch
 
 ## Notes
 
