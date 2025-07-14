@@ -300,10 +300,10 @@ def main():
                 ))
                 db.connection.commit()
 
-        # Announce subagent completion via TTS with actual task data
-        subagent_task = input_data.get('task', 'work')
-        subagent_summary = input_data.get('summary', '')
-        announce_subagent_completion(subagent_task, subagent_summary)
+        # Skip TTS announcement to avoid interfering with stop hook TTS
+        # subagent_task = input_data.get('task', 'work')
+        # subagent_summary = input_data.get('summary', '')
+        # announce_subagent_completion(subagent_task, subagent_summary)
 
         sys.exit(0)
 
