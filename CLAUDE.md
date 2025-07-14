@@ -208,6 +208,77 @@ Contextual memory behavior is controlled through project settings at:
 }
 ```
 
+## When to Query the Database
+
+Claude should query the contextual memory database in these scenarios:
+
+- **User asks about previous work**: "what did we work on recently?", "what was the last thing we did?"
+- **File modification history unclear**: Working on files without clear context of why they were previously changed
+- **User references earlier conversations**: "like we discussed before", "the bug we fixed yesterday"
+- **Complex multi-step tasks**: Need to understand project progression and dependencies
+- **Cross-session continuity**: When user resumes work after time gap
+- **Error context**: Understanding why certain approaches were tried/abandoned
+
+## Fallback Behavior
+
+If the contextual database is unavailable or corrupted:
+- Continue normal operation without context queries
+- Capture what information is possible for future sessions
+- Inform user that historical context is limited
+- Rely on immediate conversation context and file inspection
+
+## Query Performance Guidelines
+
+For optimal performance on large projects:
+- **Limit results**: Use `LIMIT 50` for cycles queries to avoid overwhelming context
+- **Time boundaries**: Default to last 7 days unless user specifies otherwise
+- **File path matching**: Use exact paths when possible; `LIKE` patterns only when necessary
+- **Indexed fields**: Prefer queries on `timestamp`, `file_path`, and `cycle_id` for faster results
+
+## Data Validation
+
+Valid database entries should have:
+- **Non-empty user_intent**: Essential for understanding request context
+- **Valid file_paths**: Must exist or have existed in the project
+- **Meaningful change_reason**: Explains WHY not just WHAT was changed
+- **Consistent timestamps**: All times in UTC format
+- **Valid status values**: Only predefined statuses (completed, failed, in_progress)
+
+## Cross-Session Behavior
+
+The contextual memory system maintains continuity across multiple Claude sessions:
+- **Session isolation**: Each conversation gets unique session_id
+- **Persistent context**: Previous sessions remain queryable
+- **Progressive understanding**: Context builds over time across sessions
+- **Intent linking**: Related requests across sessions can be identified
+
+## Real-World Examples
+
+### Example 1: User asks "What was that bug we fixed yesterday?"
+```sql
+SELECT c.user_intent, fc.change_reason, fc.file_path, c.start_time
+FROM cycles c
+JOIN file_contexts fc ON c.cycle_id = fc.cycle_id
+WHERE c.start_time > datetime('now', '-2 days') 
+  AND (c.user_intent LIKE '%bug%' OR fc.change_reason LIKE '%fix%')
+ORDER BY c.start_time DESC;
+```
+
+**Expected result**: Shows specific bug description, which files were changed, and why they were modified.
+
+### Example 2: User resumes work on feature after weekend
+```sql
+SELECT c.user_intent, c.primary_activity, fc.file_path, c.start_time
+FROM cycles c
+LEFT JOIN file_contexts fc ON c.cycle_id = fc.cycle_id
+WHERE c.start_time > datetime('now', '-7 days')
+  AND c.user_intent LIKE '%feature%'
+ORDER BY c.start_time DESC
+LIMIT 10;
+```
+
+**Expected result**: Recent work on features with context about what was accomplished.
+
 ## Usage Instructions for Claude
 
 When users ask about previous work or context:
@@ -217,5 +288,6 @@ When users ask about previous work or context:
 3. **Reference timestamps** to give temporal context
 4. **Explain WHY changes were made** using change_reason data
 5. **Mention delegation patterns** if subagents were involved
+6. **Handle missing data gracefully** - explain what context is available vs. missing
 
 This contextual memory system enables Claude to maintain coherent, context-aware conversations across multiple sessions and provide meaningful continuity for ongoing projects.
