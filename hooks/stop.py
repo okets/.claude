@@ -54,29 +54,45 @@ def get_completion_messages():
 
 def get_tts_script_path():
     """
-    Determine which TTS script to use based on available API keys.
-    Priority order: ElevenLabs > OpenAI > pyttsx3
+    Determine which TTS script to use based on user settings.
+    Priority order: user preference > coqui > macos > pyttsx3
     """
     # Get current script directory and construct utils/tts path
     script_dir = Path(__file__).parent
     tts_dir = script_dir / "utils" / "tts"
     
-    # Check for ElevenLabs API key (highest priority)
-    if os.getenv('ELEVENLABS_API_KEY'):
-        elevenlabs_script = tts_dir / "elevenlabs_tts.py"
-        if elevenlabs_script.exists():
-            return str(elevenlabs_script)
+    # Get user's preferred TTS engine from settings
+    try:
+        import sys
+        sys.path.append(str(script_dir / 'utils'))
+        from settings import get_setting
+        preferred_engine = get_setting("tts_engine", "coqui-female")
+    except ImportError:
+        # Fallback if settings not available
+        preferred_engine = "coqui-female"
     
-    # Check for OpenAI API key (second priority)
-    if os.getenv('OPENAI_API_KEY'):
-        openai_script = tts_dir / "openai_tts.py"
-        if openai_script.exists():
-            return str(openai_script)
+    # Define available engines and their script paths
+    engines = {
+        "coqui-female": tts_dir / "coqui_tts.py",  # High-quality neural TTS
+        "macos-female": tts_dir / "macos_female_tts.py",
+        "macos-male": tts_dir / "macos_male_tts.py", 
+        "macos": tts_dir / "macos_native_tts.py",  # Legacy support
+        "pyttsx3": tts_dir / "pyttsx3_tts.py"
+    }
     
-    # Fall back to pyttsx3 (no API key required)
-    pyttsx3_script = tts_dir / "pyttsx3_tts.py"
-    if pyttsx3_script.exists():
-        return str(pyttsx3_script)
+    # Try user's preferred engine first
+    if preferred_engine in engines:
+        preferred_script = engines[preferred_engine]
+        if preferred_script.exists():
+            return str(preferred_script)
+    
+    # Fallback chain: coqui-female > macos-female > macos-male > macos > pyttsx3
+    fallback_order = ["coqui-female", "macos-female", "macos-male", "macos", "pyttsx3"]
+    for engine in fallback_order:
+        if engine != preferred_engine:  # Skip already tried preference
+            script_path = engines[engine]
+            if script_path.exists():
+                return str(script_path)
     
     return None
 
@@ -925,6 +941,38 @@ def main():
                         subagents_used = execution_summary.get("subagents_used", 0)
                         primary_activity = execution_summary.get("primary_activity", "unknown")
                         
+                        # Extract todo status from this cycle for announcement
+                        todo_summary = ""
+                        try:
+                            # Parse transcript to get TodoWrite tool calls for this cycle
+                            transcript_path = input_data.get('transcript_path', '')
+                            if transcript_path:
+                                transcript_data = parse_current_request_cycle(transcript_path)
+                                tools_used = transcript_data.get("raw_data", {}).get("tools_used", [])
+                                
+                                # Find TodoWrite calls and extract todo status
+                                todo_calls = [t for t in tools_used if t.get('tool_name') == 'TodoWrite']
+                                if todo_calls:
+                                    # Get the last TodoWrite call to see final todo state
+                                    last_todo_call = todo_calls[-1]
+                                    todos = last_todo_call.get('input', {}).get('todos', [])
+                                    
+                                    if todos:
+                                        pending = len([t for t in todos if t.get('status') == 'pending'])
+                                        in_progress = len([t for t in todos if t.get('status') == 'in_progress'])
+                                        completed = len([t for t in todos if t.get('status') == 'completed'])
+                                        
+                                        if completed > 0:
+                                            todo_summary = f"{completed} todos completed"
+                                        elif in_progress > 0:
+                                            todo_summary = f"{in_progress} todos in progress"
+                                        elif pending > 0:
+                                            todo_summary = f"{pending} todos pending"
+                        except Exception as e:
+                            # Don't fail the whole announcement if todo parsing fails
+                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                f.write(f"\n{datetime.now()}: Todo parsing failed: {str(e)}\n")
+                        
                         # Smart announcement logic: for short interactions, read actual response
                         try:
                             from settings import get_setting
@@ -960,14 +1008,27 @@ def main():
                                             
                                             # If response is reasonably short and contains actual content, read it
                                             if response_text and len(response_text) < 300 and len(response_text) > 10:
-                                                announce_user_content(response_text)
+                                                # Add todo summary if available
+                                                if todo_summary:
+                                                    announce_user_content(f"{response_text}. {todo_summary}")
+                                                else:
+                                                    announce_user_content(response_text)
                                             else:
-                                                # Fallback to simple completion message
+                                                # Fallback to simple completion message with todo summary
+                                                if todo_summary:
+                                                    announce_user_content(f"Done. {todo_summary}")
+                                                else:
+                                                    announce_user_content("Done")
+                                        else:
+                                            if todo_summary:
+                                                announce_user_content(f"Done. {todo_summary}")
+                                            else:
                                                 announce_user_content("Done")
+                                    else:
+                                        if todo_summary:
+                                            announce_user_content(f"Done. {todo_summary}")
                                         else:
                                             announce_user_content("Done")
-                                    else:
-                                        announce_user_content("Done")
                                 except Exception as e:
                                     # Debug logging to understand what's available
                                     with open('/tmp/stop_hook_debug.log', 'a') as f:
@@ -975,21 +1036,31 @@ def main():
                                     announce_user_content("Done")
                             else:
                                 # Complex interaction - use factual summary without superlatives
+                                base_message = ""
                                 if primary_activity == "file_modification" and files_modified > 0:
                                     if subagents_used > 0:
-                                        announce_user_content(f"Modified {files_modified} files using {subagents_used} agents")
+                                        base_message = f"Modified {files_modified} files using {subagents_used} agents"
                                     else:
-                                        announce_user_content(f"Modified {files_modified} files")
+                                        base_message = f"Modified {files_modified} files"
                                 elif primary_activity == "code_analysis":
-                                    announce_user_content("Analysis complete")
+                                    base_message = "Analysis complete"
                                 elif primary_activity == "testing":
-                                    announce_user_content("Tests complete")
+                                    base_message = "Tests complete"
                                 else:
-                                    announce_user_content("Task complete")
+                                    base_message = "Task complete"
+                                
+                                # Add todo summary to complex interactions too
+                                if todo_summary:
+                                    announce_user_content(f"{base_message}. {todo_summary}")
+                                else:
+                                    announce_user_content(base_message)
                             
                         except ImportError:
                             # Fallback if settings not available
-                            announce_user_content("Done")
+                            if todo_summary:
+                                announce_user_content(f"Done. {todo_summary}")
+                            else:
+                                announce_user_content("Done")
                         
                         summary_path = cycle_summary_result.get("summary_file_path", "unknown")
                         

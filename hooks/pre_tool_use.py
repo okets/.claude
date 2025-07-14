@@ -210,44 +210,44 @@ def main():
                 
                 tool_announcements = {
                     'Read': [
-                        'I need to read this', 'I\'m checking this file', 'I\'m looking at this', 'I need to see this',
-                        'I\'m reading through this', 'I\'m examining this', 'I\'m reviewing this file', 'I need to check this',
-                        'I\'m going through this', 'I\'m analyzing this', 'I need to understand this'
+                        'I need to read this now', 'I\'m checking this file', 'I\'m looking at this', 'I need to see this',
+                        'I\'m reading through this now', 'I\'m examining this', 'I\'m reviewing this file', 'I need to check this',
+                        'I\'m going through this', 'I\'m analyzing this now', 'I need to understand this'
                     ],
                     'Write': [
-                        'I\'m writing this', 'I\'m creating this file', 'I need to write this', 'I\'m building this',
-                        'I\'m making this file', 'I need to create this', 'I\'m putting this together', 'I\'m generating this',
-                        'I\'m composing this', 'I need to save this', 'I\'m constructing this'
+                        'I\'m writing this now', 'I\'m creating this file', 'I need to write this', 'I\'m building this',
+                        'I\'m making this file', 'I need to create this now', 'I\'m putting this together', 'I\'m generating this',
+                        'I\'m composing this', 'I need to save this', 'I\'m constructing this now'
                     ], 
                     'Edit': [
-                        'I\'m updating this', 'I need to modify this', 'I\'m changing this', 'I\'m fixing this',
-                        'I need to edit this', 'I\'m adjusting this', 'I\'m improving this', 'I\'m correcting this',
-                        'I need to update this', 'I\'m revising this', 'I\'m refining this'
+                        'I\'m updating this now', 'I need to modify this', 'I\'m changing this', 'I\'m fixing this',
+                        'I need to edit this', 'I\'m adjusting this now', 'I\'m improving this', 'I\'m correcting this',
+                        'I need to update this', 'I\'m revising this', 'I\'m refining this now'
                     ],
                     'Bash': [
-                        'I\'m running this', 'I need to execute this', 'I\'m launching this', 'I need to run this',
-                        'I\'m starting this command', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
-                        'I need to start this', 'I\'m executing this', 'I\'m performing this command'
+                        'I\'m running this now', 'I need to execute this', 'I\'m launching this', 'I need to run this',
+                        'I\'m starting this command now', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
+                        'I need to start this', 'I\'m executing this now', 'I\'m performing this command'
                     ],
                     'Task': [
-                        'I need help with this', 'I\'m getting assistance', 'I need to delegate this', 'I\'m calling for help',
-                        'I need an agent for this', 'I\'m bringing in support', 'I need specialized help', 'I\'m getting backup',
-                        'I need to collaborate on this', 'I\'m requesting assistance', 'I need extra help'
+                        'I need help with this now', 'I\'m getting assistance', 'I need to delegate this', 'I\'m calling for help',
+                        'I need an agent for this', 'I\'m bringing in support now', 'I need specialized help', 'I\'m getting backup',
+                        'I need to collaborate on this', 'I\'m requesting assistance now', 'I need extra help'
                     ],
                     'Glob': [
-                        'I\'m finding files', 'I need to locate files', 'I\'m searching for files', 'I need to find matches',
-                        'I\'m looking for files', 'I need to track down files', 'I\'m hunting for files', 'I\'m seeking files',
-                        'I need to discover files', 'I\'m locating files', 'I\'m identifying files'
+                        'I\'m finding files now', 'I need to locate files', 'I\'m searching for files', 'I need to find matches',
+                        'I\'m looking for files', 'I need to track down files now', 'I\'m hunting for files', 'I\'m seeking files',
+                        'I need to discover files', 'I\'m locating files now', 'I\'m identifying files'
                     ],
                     'Grep': [
-                        'I\'m searching for this', 'I need to find this pattern', 'I\'m looking for matches', 'I\'m scanning for this',
-                        'I need to locate this text', 'I\'m hunting for this', 'I\'m searching through code', 'I need to find this',
-                        'I\'m looking through text', 'I\'m analyzing patterns', 'I\'m examining content'
+                        'I\'m searching for this now', 'I need to find this pattern', 'I\'m looking for matches', 'I\'m scanning for this',
+                        'I need to locate this text', 'I\'m hunting for this now', 'I\'m searching through code', 'I need to find this',
+                        'I\'m looking through text', 'I\'m analyzing patterns now', 'I\'m examining content'
                     ],
                     'WebFetch': [
-                        'I\'m getting web data', 'I need to fetch this', 'I\'m downloading this', 'I need web information',
-                        'I\'m retrieving this data', 'I need to access this online', 'I\'m gathering web data', 'I\'m fetching online content',
-                        'I need to download this', 'I\'m accessing web resources', 'I\'m collecting web data'
+                        'I\'m getting web data now', 'I need to fetch this', 'I\'m downloading this', 'I need web information',
+                        'I\'m retrieving this data', 'I need to access this online now', 'I\'m gathering web data', 'I\'m fetching online content',
+                        'I need to download this', 'I\'m accessing web resources now', 'I\'m collecting web data'
                     ]
                 }
                 
