@@ -114,3 +114,9 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh  | bas
 MIT License - Build upon this, share improvements, and help make AI development workflows more intelligent.
 
 See [![License Details](https://img.shields.io/badge/📄_License-Details-green)](LICENSE) for full details.
+
+---
+
+## 🗂️ Related Projects
+
+Check out [![folder-mcp](https://img.shields.io/badge/📁_folder--mcp-GitHub-blue?logo=github)](https://github.com/hanan/folder-mcp) - A complementary project for enhanced folder management capabilities.
