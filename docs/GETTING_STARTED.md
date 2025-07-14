@@ -14,7 +14,12 @@ Smarter-Claude transforms Claude Code from a stateless assistant into a context-
 **The easiest way to install smarter-claude:**
 
 ```bash
+# When repo is public:
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
+
+# For now, download and run locally:
+git clone https://github.com/okets/.claude
+cd .claude && ./install.sh
 ```
 
 That's it! The script will:

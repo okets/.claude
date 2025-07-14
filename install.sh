@@ -115,7 +115,7 @@ install_smarter_claude() {
     
     # Clone the repository to temp directory
     log_info "Downloading from GitHub..."
-    if git clone https://github.com/okets/smarter-claude.git "$TEMP_DIR"; then
+    if git clone https://github.com/okets/.claude.git "$TEMP_DIR"; then
         log_success "Download completed"
     else
         log_error "Failed to download smarter-claude"

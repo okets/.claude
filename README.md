@@ -63,10 +63,21 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 
 ## 🚀 Quick Installation
 
-**One-line install (recommended):**
+**One-line install (when repo is public):**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/smarter-claude/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
+```
+
+**For now, download and run locally:**
+
+```bash
+# Download the repository
+git clone https://github.com/okets/.claude
+cd .claude
+
+# Run the installation script
+./install.sh
 ```
 
 The script automatically:
