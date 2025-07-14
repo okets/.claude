@@ -1,13 +1,18 @@
-# Database Schema Reference
+# 📊 Database Schema Reference
 
-## Overview
+> **4-table SQLite schema optimized for lightning-fast context retrieval**
 
-Smarter-Claude uses a 4-table SQLite schema optimized for fast context retrieval. The design focuses on answering key questions:
+[![SQLite](https://img.shields.io/badge/📊_SQLite-Database-blue)](https://sqlite.org)
+[![Zero Tokens](https://img.shields.io/badge/💰_Zero-Tokens-orange)](../README.md)
+[![Local Storage](https://img.shields.io/badge/🏠_Local-Storage-green)](../README.md)
+[![Fast Queries](https://img.shields.io/badge/⚡_Fast-Queries-purple)](../README.md)
 
-- What was the user's intent?
-- Why were files changed?
-- How do tasks relate to outcomes?
-- What patterns emerge across sessions?
+## 🎯 Key Questions Answered
+
+- **🎯 What was the user's intent?** - Every action linked to original request
+- **📝 Why were files changed?** - Context behind every modification
+- **🔗 How do tasks relate to outcomes?** - Complete workflow tracking
+- **📈 What patterns emerge?** - Development insights across sessions
 
 ## Core Tables
 
@@ -324,4 +329,12 @@ file_history = db.get_file_context("notification.py", limit=10)
 phase_context = db.get_phase_task_context(phase_number=8)
 ```
 
-This schema enables powerful context-aware development workflows while maintaining fast query performance and clear data relationships.
+## 📚 Navigation
+
+[![Getting Started](https://img.shields.io/badge/📖_Getting-Started-blue)](GETTING_STARTED.md)
+[![Troubleshooting](https://img.shields.io/badge/🔧_Troubleshooting-orange)](TROUBLESHOOTING.md)
+[![Back to README](https://img.shields.io/badge/🏠_Back_to-README-green)](../README.md)
+
+---
+
+**This schema enables powerful context-aware development workflows while maintaining fast query performance and clear data relationships.**

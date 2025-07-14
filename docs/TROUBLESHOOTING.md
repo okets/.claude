@@ -1,8 +1,14 @@
-# Troubleshooting Smarter-Claude
+# 🔧 Troubleshooting Smarter-Claude
 
-## 🤖 Troubleshoot with Claude Code!
+> **Ask Claude to fix it! No manual debugging needed.**
 
-**The easiest way to fix smarter-claude issues is to ask Claude directly.** Just copy and paste the prompts below into your Claude Code session.
+[![Claude Powered](https://img.shields.io/badge/🤖_Claude-Powered_Fixes-purple)](../README.md)
+[![Zero Friction](https://img.shields.io/badge/⚡_Zero-Friction-green)](../README.md)
+[![Manual Backup](https://img.shields.io/badge/🛠️_Manual-Commands_Available-gray)](#manual-troubleshooting)
+
+## 🤖 The Claude Way
+
+**Just copy and paste these prompts into your Claude Code session:**
 
 💡 **Need manual commands?** Jump to [Manual Troubleshooting](#manual-troubleshooting) at the bottom.
 
@@ -173,11 +179,15 @@ I need to completely reset smarter-claude to a fresh state. Can you backup my cu
 
 📖 [Manual steps](#reset-everything-manual)
 
-## Still Need Help?
+## 🆘 Still Need Help?
 
-If Claude can't fix your issue, check the [GitHub Issues](https://github.com/okets/.claude/issues) page or create a new issue.
+[![GitHub Issues](https://img.shields.io/badge/🐛_GitHub-Issues-red)](https://github.com/okets/.claude/issues)
+[![Bug Report](https://img.shields.io/badge/📝_Bug-Report_Helper-blue)](#bug-report-helper)
+[![Getting Started](https://img.shields.io/badge/📖_Getting-Started-green)](GETTING_STARTED.md)
 
-**Pro tip**: Ask Claude to gather diagnostic information for you:
+### Bug Report Helper
+
+**Ask Claude to gather diagnostic info:**
 ```
 I need to file a bug report for smarter-claude. Can you collect my system information, Claude Code version, recent error logs, and format them for a GitHub issue?
 ```

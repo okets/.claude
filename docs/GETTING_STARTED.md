@@ -1,13 +1,18 @@
-# Getting Started with Smarter-Claude
+# 🚀 Getting Started with Smarter-Claude
 
-## What is Smarter-Claude?
+> **Transform Claude Code from stateless to context-aware in 30 seconds**
 
-Smarter-Claude transforms Claude Code from a stateless assistant into a context-aware development partner by providing:
+[![Memory](https://img.shields.io/badge/🧠_Long_Term-Memory-purple)](../README.md)
+[![Intent Tracking](https://img.shields.io/badge/🎯_Intent-Tracking-green)](../README.md)
+[![Smart TTS](https://img.shields.io/badge/🔊_Smart-Notifications-blue)](../README.md)
+[![Zero Tokens](https://img.shields.io/badge/💰_Zero-Tokens-orange)](../README.md)
 
-- **Long-term memory**: Every interaction is stored in a SQLite database
-- **Intent tracking**: Why each file was changed, not just what changed
-- **Context-aware assistance**: Query your development history
-- **Smart notifications**: Customizable TTS announcements
+## What Smarter-Claude Does
+
+- **🧠 Remembers everything** - SQLite database stores every interaction with context
+- **🎯 Tracks intent** - Know WHY files changed, not just what changed
+- **🔊 Smart notifications** - Customizable TTS that actually helps
+- **💰 Zero tokens** - All processing happens locally
 
 ## 🚀 One-Line Installation
 
@@ -87,27 +92,19 @@ ls .claude/smarter-claude/
 I just installed smarter-claude but it's not working. Can you check my installation and fix any issues?
 ```
 
-## Understanding Interaction Levels
+## 🔊 Interaction Levels
 
-### Silent Mode
-- No audio feedback
-- Database logging only
-- Perfect for shared environments
+[![Silent](https://img.shields.io/badge/🔇_Silent-Database_Only-gray)](../README.md)
+[![Quiet](https://img.shields.io/badge/🔉_Quiet-Subtle_Sounds-blue)](../README.md)
+[![Concise](https://img.shields.io/badge/🔊_Concise-Brief_TTS-green)](../README.md)
+[![Verbose](https://img.shields.io/badge/📢_Verbose-Full_Narration-orange)](../README.md)
 
-### Quiet Mode  
-- Subtle notification sounds
-- No verbal announcements
-- Minimal but present feedback
+**Choose your feedback level:**
 
-### Concise Mode (Default)
-- Brief TTS announcements for key actions
-- Task completion summaries
-- Balanced feedback level
-
-### Verbose Mode
-- Detailed narration of all actions
-- Pre-tool and post-tool announcements
-- Full workflow commentary
+- **🔇 Silent** - Database logging only, perfect for shared environments
+- **🔉 Quiet** - Subtle notification sounds, no verbal announcements  
+- **🔊 Concise (Default)** - Brief TTS announcements and task summaries
+- **📢 Verbose** - Detailed narration of all actions and workflow commentary
 
 ## Your First Query
 
@@ -132,11 +129,11 @@ for file_ctx in recent_files:
     print(f"{file_ctx['file_path']}: {file_ctx['change_reason']}")
 ```
 
-## Next Steps
+## 📚 Next Steps
 
-- Read the [Database Schema Guide](DATABASE_SCHEMA.md) to understand query patterns
-- Explore [Advanced Usage](ADVANCED_USAGE.md) for complex workflows
-- Check the [Troubleshooting Guide](TROUBLESHOOTING.md) if you encounter issues
+[![Database Schema](https://img.shields.io/badge/📊_Database_Schema-Query_Patterns-green)](DATABASE_SCHEMA.md)
+[![Troubleshooting](https://img.shields.io/badge/🔧_Troubleshooting-Fix_Issues-orange)](TROUBLESHOOTING.md)
+[![Back to README](https://img.shields.io/badge/🏠_Back_to-README-blue)](../README.md)
 
 ## Common Use Cases
 
