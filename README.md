@@ -15,6 +15,7 @@
 [![Zero Tokens](https://img.shields.io/badge/Zero-Tokens-orange?logo=coin)](https://github.com/okets/.claude)
 [![macOS](https://img.shields.io/badge/macOS-Compatible-black?logo=apple)](https://github.com/okets/.claude)
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
+[![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## 🚀 One-Line Install
 
@@ -104,3 +105,11 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡
+
+---
+
+## 📄 License
+
+MIT License - Build upon this, share improvements, and help make AI development workflows more intelligent.
+
+See [LICENSE](LICENSE) for full details.
