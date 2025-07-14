@@ -25,7 +25,8 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 That's it! The script will:
 - ✅ Check if Claude Code is installed
 - ✅ Download and install smarter-claude
-- ✅ Install optional TTS engines (Coqui)
+- ✅ **Auto-install all TTS voices** (Coqui, ffmpeg, pyttsx3)
+- ✅ **Configure optimal voice** for your platform
 - ✅ Configure sensible defaults
 - ✅ Test the installation
 
@@ -92,6 +93,30 @@ ls .claude/smarter-claude/
 I just installed smarter-claude but it's not working. Can you check my installation and fix any issues?
 ```
 
+## 🔊 TTS Voice Configuration
+
+**Automatic voice installation and management:**
+
+```bash
+# Set your preferred voice (auto-installs if needed)
+/smarter-claude_voice coqui-female
+
+# Available voices:
+/smarter-claude_voice coqui-male     # High-quality male neural voice
+/smarter-claude_voice macos-female   # macOS Samantha voice  
+/smarter-claude_voice macos-male     # macOS Alex voice
+/smarter-claude_voice pyttsx3        # Cross-platform fallback
+
+# Check voice installation status
+/smarter-claude_voice
+```
+
+**Voice features:**
+- **🚀 Auto-installation** - Missing dependencies installed automatically
+- **🔍 Smart detection** - Best voice recommended for your platform
+- **✅ Validation** - Voices tested before activation
+- **📊 Status display** - See which voices are available
+
 ## 🔊 Interaction Levels
 
 [![Silent](https://img.shields.io/badge/🔇_Silent-Database_Only-gray)](../README.md)
@@ -100,6 +125,14 @@ I just installed smarter-claude but it's not working. Can you check my installat
 [![Verbose](https://img.shields.io/badge/📢_Verbose-Full_Narration-orange)](../README.md)
 
 **Choose your feedback level:**
+
+```bash
+# Set interaction level
+/smarter-claude_interaction_level 0   # Silent
+/smarter-claude_interaction_level 1   # Quiet  
+/smarter-claude_interaction_level 2   # Concise (Default)
+/smarter-claude_interaction_level 3   # Verbose
+```
 
 - **🔇 Silent** - Database logging only, perfect for shared environments
 - **🔉 Quiet** - Subtle notification sounds, no verbal announcements  
