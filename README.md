@@ -61,51 +61,110 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 }
 ```
 
-## 🛠 Installation
+## 🚀 Quick Installation
 
-### Prerequisites
+**One-line install (recommended):**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/okets/smarter-claude/main/install.sh | bash
+```
+
+The script automatically:
+- ✅ Installs smarter-claude to `~/.claude/`
+- ✅ Installs optional TTS engines (Coqui)
+- ✅ Configures sensible defaults
+- ✅ Tests the installation
+
+**That's it!** Start using Claude Code - smarter-claude is now active.
+
+### Manual Installation
+
+<details>
+<summary>If you prefer manual setup</summary>
+
+#### Prerequisites
 - Claude Code CLI installed and configured
 - Python 3.8+ with standard libraries
 - SQLite3 (included with Python)
+- Optional: ffmpeg for enhanced male TTS voice
 
-### Setup
+#### Setup
 1. **Clone to your global Claude directory:**
    ```bash
    cd ~/.claude
-   git clone <this-repo> .
+   git clone https://github.com/okets/smarter-claude .
    ```
 
-2. **Hooks are automatically active** - Claude Code will start using them immediately
-
-3. **Verify installation:**
+2. **Install optional TTS engines:**
    ```bash
-   # Check if hooks are working
-   ls ~/.claude/.claude/session_logs/
+   # For high-quality Coqui TTS (recommended)
+   uv tool install coqui-tts
    
-   # Should see: session_*_cycle_*_hooks.jsonl and *_summary.json files
+   # Verify installation
+   tts --help
    ```
+
+3. **Configure settings:**
+   ```bash
+   # Set interaction level (silent, quiet, concise, verbose)
+   python ~/.claude/hooks/utils/manage_settings.py set interaction_level concise
+   
+   # Set TTS engine (macos, coqui-female, coqui-male, pyttsx3)
+   python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-female
+   ```
+
+4. **Verify installation:**
+   ```bash
+   # Check if hooks are working (after running Claude Code once)
+   ls .claude/smarter-claude/
+   
+   # Should see: smarter-claude.db and logs/ directory
+   ```
+
+</details>
 
 ## 🔧 Usage
 
-### Basic Queries
+### Interaction Levels
+Configure how much feedback you receive:
+
+- **Silent**: Database logging only, no sounds or announcements
+- **Quiet**: Subtle audio notifications, no speech
+- **Concise** (default): Brief TTS announcements for key actions
+- **Verbose**: Detailed narration of all actions
+
+```bash
+# Change interaction level
+python ~/.claude/hooks/utils/manage_settings.py set interaction_level verbose
+```
+
+### TTS Engine Options
+Choose your preferred text-to-speech voice:
+
+- **macos**: System default voice
+- **coqui-female**: High-quality female voice (recommended)
+- **coqui-male**: High-quality male voice with pitch processing
+- **pyttsx3**: Cross-platform fallback
+
+```bash
+# Set TTS engine
+python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-female
+```
+
+### Database Queries
 ```python
-from contextual_db import ContextualDB
+from hooks.utils.contextual_db import ContextualDB
 
 db = ContextualDB()
-db.connect()
 
 # What was my last request?
-cursor = db.conn.execute("SELECT user_intent FROM cycles ORDER BY cycle_id DESC LIMIT 1")
+cursor = db.connection.execute("SELECT user_intent FROM cycles ORDER BY cycle_id DESC LIMIT 1")
 print(cursor.fetchone()[0])
 
 # What files were edited recently?
-cursor = db.conn.execute("""
-    SELECT file_path, change_reason 
-    FROM file_contexts 
-    WHERE cycle_id >= (SELECT MAX(cycle_id) - 5 FROM cycles)
-""")
-for row in cursor.fetchall():
-    print(f"{row[0]}: {row[1]}")
+recent_files = db.get_file_context("", limit=10)
+for file_ctx in recent_files:
+    print(f"{file_ctx['file_path']}: {file_ctx['change_reason']}")
 ```
 
 ### Advanced Analysis
