@@ -10,25 +10,28 @@
 
 ## **100% local. Zero tokens. Cloud-level context. And yes, it speaks.**
 
-**One line install:**
+🐍 Python • 🏠 Local • ☁️ Cloud • 🍎 macOS  • 🐧 Linux
+
+## 🚀 One-Line Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-*\* This will run over your global .claude directory. But trust me, it's worth it.*
+> [!NOTE]
+> This will run over your global .claude directory. But trust me, it's worth it.
 
-## The Problem You Face Daily
+## 🔍 The Problem You Face Daily
 
 Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
 
 **What if Claude remembered?**
 
-**It actually knows.** Your entire development journey, queryable by context, stored locally, zero tokens wasted.
+**It actually knows.** Your entire development journey, queryable by context, stored locally, **zero tokens** wasted.
 
 This is Claude Code with memory. This is what you've been missing.
 
-## The Story
+## 📖 The Story
 
 I saw [this demo](https://www.youtube.com/watch?v=J5B9UGTuNoM&t=1547s) of Claude Code with "long-term memory" and voice that had me thinking for days. Brilliant concept, and I really appreciate the innovation. But the more I thought about it, the less usable it seemed - burning tokens to re-process transcript data that Claude already saves in `~/.claude/` anyway.
 
@@ -36,9 +39,9 @@ So I dove deep: **What exactly does Claude Code give you?** Just hooks. Raw, cry
 
 I started methodically piecing together how Claude thinks, how it processes, how it remembers. Claude and I spent 48 hours trying to make him remember useful information. Then it clicked! The context was there all along, hidden in the lifecycle. I just had to know how to catch it.
 
-The result: A contextual system that uses **zero tokens** and honestly, should have been BAKED INTO CLAUDE to begin with.
+The result: A contextual system that uses **zero tokens** and honestly, should have been **BAKED INTO CLAUDE** to begin with.
 
-## What I Built
+## 🛠️ What I Built
 
 **Real contextual memory that actually works:**
 
@@ -48,7 +51,7 @@ So I capture all contextual data Claude generates and store it locally. Now Clau
 
 **Bottom line: It gives long context that works on any machine and doesn't consume tokens.**
 
-## Try This Right Now
+## 🎯 Try This Right Now
 
 Ask Claude after install:
 ```
@@ -60,7 +63,7 @@ Ask Claude after install:
 
 **It knows. It actually knows.** 🤯
 
-## How It Actually Works
+## ⚙️ How It Actually Works
 
 1. **Hooks into Claude Code lifecycle** - Captures everything as it happens
 2. **Stores contextual data** - Not just "what" but "why" and "how"
@@ -68,15 +71,16 @@ Ask Claude after install:
 4. **Claude's intelligence queries the data** - No need for another AI to analyze what Claude already understands
 5. **Smart Text To Speech** - Zero extra tokens while giving Claude a meaningful voice
 
-## Need Help?
+## ⚡ Need Help?
 
-Ask Claude: *"Help me troubleshoot smarter-claude"*
+> [!TIP]
+> Ask Claude: *"Help me troubleshoot smarter-claude"*
 
-Advanced users: **[Getting Started](docs/GETTING_STARTED.md)**
+**Advanced users:** [Getting Started](docs/GETTING_STARTED.md)
 
 ---
 
-**Stop losing your development context.**
+## 🚀 Stop losing your development context.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
