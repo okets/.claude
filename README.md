@@ -67,6 +67,11 @@ Ask Claude after install:
 
 **It knows. It actually knows.** 🤯
 
+[![Contextual Memory](https://img.shields.io/badge/🧠_Contextual-Memory-purple)](docs/DATABASE_SCHEMA.md)
+[![Smart TTS](https://img.shields.io/badge/🔊_Smart-TTS-blue)](docs/GETTING_STARTED.md#tts-engine-options)
+[![Intent Tracking](https://img.shields.io/badge/🎯_Intent-Tracking-green)](docs/DATABASE_SCHEMA.md#intent-and-workflow-queries)
+[![Multi-Agent](https://img.shields.io/badge/🤖_Multi-Agent_Support-orange)](docs/DATABASE_SCHEMA.md#subagent-tasks)
+
 ## ⚙️ How It Actually Works
 
 1. **Hooks into Claude Code lifecycle** - Captures everything as it happens
