@@ -10,7 +10,11 @@
 
 ## **100% local. Zero tokens. Cloud-level context. And yes, it speaks.**
 
-🐍 Python • 🏠 Local • 🍎 macOS  • 🐧 Linux
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)](https://python.org)
+[![Local](https://img.shields.io/badge/100%25-Local-green?logo=home)](https://github.com/okets/.claude)
+[![Zero Tokens](https://img.shields.io/badge/Zero-Tokens-orange?logo=coin)](https://github.com/okets/.claude)
+[![macOS](https://img.shields.io/badge/macOS-Compatible-black?logo=apple)](https://github.com/okets/.claude)
+[![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 
 ## 🚀 One-Line Install
 
