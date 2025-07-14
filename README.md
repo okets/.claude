@@ -10,7 +10,7 @@
 
 ## **100% local. Zero tokens. Cloud-level context. And yes, it speaks.**
 
-🐍 Python • 🏠 Local • ☁️ Cloud • 🍎 macOS  • 🐧 Linux
+🐍 Python • 🏠 Local • 🍎 macOS  • 🐧 Linux
 
 ## 🚀 One-Line Install
 
