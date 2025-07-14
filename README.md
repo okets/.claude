@@ -1,323 +1,71 @@
-# Claude Code Global Hooks with Contextual Memory System
+# Smarter-Claude
 
-A comprehensive hook system for Claude Code that provides **long-term contextual memory** and **intent-driven logging** for AI development workflows.
+> **Give Claude Code long-term memory and context awareness**
 
-## 🧠 What This Gives You
+<div align="center">
 
-**Transform Claude Code from a stateless assistant into a context-aware development partner:**
-
-- **Remember every interaction**: "What was my last request?" answered from database, not memory
-- **Track user intent**: Why each file was changed, not just what changed
-- **Query development history**: "Show me all changes to hooks/stop.py and the user intents behind them"
-- **Context-aware assistance**: Future integration with Claude.md for intelligent context retrieval
-- **Full workflow capture**: File modifications, subagent delegations, and task progressions
-
-## 🚀 Key Features
-
-### Contextual Memory Database
-- **4-table SQLite schema** optimized for fast context queries
-- **Automatic database ingestion** - every cycle immediately available
-- **Intent-driven organization** - every change linked to user goals
-- **Multi-agent tracking** - main agent and subagent work fully captured
-
-### Intelligent Hook System
-- **Universal logging** - Pre/Post tool use, Stop hooks, Subagent completions
-- **Smart intent extraction** - TodoWrite progression for structured tasks, transcript parsing for read-only tasks
-- **Rich timeline data** - Complete audit trail of every development session
-- **TTS announcements** - Real-time feedback on hook execution
-
-### Query Interface
-```python
-# Query what files were edited and why
-db.execute("SELECT file_path, change_reason FROM file_contexts WHERE cycle_id = ?")
-
-# Find user intents for a specific phase
-db.execute("SELECT user_intent FROM cycles WHERE primary_activity = 'file_modification'")
-
-# Track subagent work patterns
-db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id = ?")
-```
-
-## 📊 Database Schema
-
-### Core Tables
-- **`cycles`** - User intent, timing, primary activity per development cycle
-- **`file_contexts`** - File changes with WHY context, not just WHAT changed  
-- **`llm_summaries`** - Generated insights and workflow analysis
-- **`subagent_tasks`** - Delegation context and completion tracking
-
-### Sample Data
-```json
-{
-  "user_intent": "Add transcript parsing to extract user intent in all hooks",
-  "file_activities": {
-    "/hooks/utils/cycle_utils.py": {
-      "change_reason": "Added extract_user_intent_from_transcript() function",
-      "operations": ["edit"],
-      "edit_count": 3
-    }
-  },
-  "primary_activity": "file_modification"
-}
-```
-
-## 🚀 Quick Installation
-
-**One-line install (when repo is public):**
+# 🚀 One-Line Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-**For now, download and run locally:**
+**That's it!** Claude Code now remembers everything.
 
-```bash
-# Download the repository
-git clone https://github.com/okets/.claude
-cd .claude
+</div>
 
-# Run the installation script
-./install.sh
+## What It Does
+
+- **Remembers every interaction** - "What was my last request?" gets a real answer
+- **Tracks WHY files changed** - Not just what, but the intent behind every edit  
+- **Smart notifications** - Customizable TTS announcements that actually help
+- **Query your history** - Ask Claude about your past work and decisions
+
+## How It Works
+
+1. **Install once** - The script sets up everything automatically
+2. **Use Claude Code normally** - Every interaction gets recorded with context
+3. **Query when needed** - Ask Claude about your development history
+
+```python
+# Ask Claude: "What files did I change yesterday and why?"
+# Or query directly:
+from hooks.utils.contextual_db import ContextualDB
+db = ContextualDB()
+recent_files = db.get_file_context("", limit=10)
 ```
 
-The script automatically:
-- ✅ Installs smarter-claude to `~/.claude/`
-- ✅ Installs optional TTS engines (Coqui)
-- ✅ Configures sensible defaults
-- ✅ Tests the installation
+## Features
 
-**That's it!** Start using Claude Code - smarter-claude is now active.
+- **Contextual database** - 4-table SQLite schema tracks everything
+- **TTS notifications** - Choose from silent, quiet, concise, or verbose modes
+- **Intent tracking** - Every file change linked to your original request
+- **Multi-agent support** - Tracks both main Claude and subagent work
+- **Easy queries** - Ask Claude about your development history
 
-### Manual Installation
-
-<details>
-<summary>If you prefer manual setup</summary>
-
-#### Prerequisites
-- Claude Code CLI installed and configured
-- Python 3.8+ with standard libraries
-- SQLite3 (included with Python)
-- Optional: ffmpeg for enhanced male TTS voice
-
-#### Setup
-1. **Clone to your global Claude directory:**
-   ```bash
-   cd ~/.claude
-   git clone https://github.com/okets/smarter-claude .
-   ```
-
-2. **Install optional TTS engines:**
-   ```bash
-   # For high-quality Coqui TTS (recommended)
-   uv tool install coqui-tts
-   
-   # Verify installation
-   tts --help
-   ```
-
-3. **Configure settings:**
-   ```bash
-   # Set interaction level (silent, quiet, concise, verbose)
-   python ~/.claude/hooks/utils/manage_settings.py set interaction_level concise
-   
-   # Set TTS engine (macos, coqui-female, coqui-male, pyttsx3)
-   python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-female
-   ```
-
-4. **Verify installation:**
-   ```bash
-   # Check if hooks are working (after running Claude Code once)
-   ls .claude/smarter-claude/
-   
-   # Should see: smarter-claude.db and logs/ directory
-   ```
-
-</details>
-
-## 🔧 Usage
-
-### Interaction Levels
-Configure how much feedback you receive:
-
-- **Silent**: Database logging only, no sounds or announcements
-- **Quiet**: Subtle audio notifications, no speech
-- **Concise** (default): Brief TTS announcements for key actions
-- **Verbose**: Detailed narration of all actions
+## Configuration
 
 ```bash
-# Change interaction level
+# Change notification level
 python ~/.claude/hooks/utils/manage_settings.py set interaction_level verbose
-```
 
-### TTS Engine Options
-Choose your preferred text-to-speech voice:
-
-- **macos**: System default voice
-- **coqui-female**: High-quality female voice (recommended)
-- **coqui-male**: High-quality male voice with pitch processing
-- **pyttsx3**: Cross-platform fallback
-
-```bash
-# Set TTS engine
+# Switch TTS voice  
 python ~/.claude/hooks/utils/manage_settings.py set tts_engine coqui-female
 ```
 
-### Database Queries
-```python
-from hooks.utils.contextual_db import ContextualDB
+**Or just ask Claude**: *"Make my notifications more verbose"* or *"Switch to the male voice"*
 
-db = ContextualDB()
+## Documentation
 
-# What was my last request?
-cursor = db.connection.execute("SELECT user_intent FROM cycles ORDER BY cycle_id DESC LIMIT 1")
-print(cursor.fetchone()[0])
+- **[Getting Started](docs/GETTING_STARTED.md)** - Complete setup guide
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Fix issues with Claude's help  
+- **[Database Schema](docs/DATABASE_SCHEMA.md)** - Query patterns and examples
 
-# What files were edited recently?
-recent_files = db.get_file_context("", limit=10)
-for file_ctx in recent_files:
-    print(f"{file_ctx['file_path']}: {file_ctx['change_reason']}")
-```
+## Need Help?
 
-### Advanced Analysis
-```python
-# Find all contextual logging implementations
-cursor = db.conn.execute("""
-    SELECT c.user_intent, f.file_path, f.change_reason
-    FROM cycles c 
-    JOIN file_contexts f ON c.cycle_id = f.cycle_id
-    WHERE c.user_intent LIKE '%contextual%'
-""")
-```
-
-## 🎯 Use Cases
-
-### Development Workflow Memory
-- **"Why did I change this file?"** - Query change reasons for any file
-- **"What was I working on last session?"** - Review recent user intents
-- **"How did I solve similar problems?"** - Search historical patterns
-
-### Code Review Assistance  
-- **Intent-driven diffs** - See WHY changes were made, not just WHAT
-- **Workflow context** - Understand the full story behind file modifications
-- **Collaboration history** - Track main agent vs subagent contributions
-
-### Project Knowledge Base
-- **Context-aware assistance** - Future Claude.md integration will provide relevant context automatically
-- **Pattern recognition** - Identify recurring development workflows
-- **Knowledge transfer** - Share development context with team members
-
-## 📁 File Structure
-
-```
-~/.claude/
-├── hooks/
-│   ├── pre_tool_use.py       # Captures tool execution intent
-│   ├── post_tool_use.py      # Logs tool results and file changes  
-│   ├── stop.py               # Generates cycle summaries and database ingestion
-│   └── utils/
-│       ├── cycle_utils.py    # Core hook utilities and transcript parsing
-│       ├── hook_parser.py    # Timeline analysis and intent extraction
-│       ├── contextual_db.py  # Database schema and operations
-│       └── data_collector.py # JSONL to database pipeline
-├── session_logs/
-│   ├── session_*_cycle_*_hooks.jsonl     # Raw hook timeline data
-│   ├── session_*_cycle_*_summary.json    # Rich contextual summaries
-│   └── contextual_context.db             # SQLite database
-└── README.md
-```
-
-## 🔍 How It Works
-
-### Hook Execution Flow
-```
-User Request
-    ↓
-PreToolUse Hook → Extract user intent from transcript
-    ↓
-Tool Execution (Edit, Read, Bash, etc.)
-    ↓  
-PostToolUse Hook → Log file changes with context
-    ↓
-Stop Hook → Generate cycle summary → Auto-ingest to database
-```
-
-### Intent Extraction Strategy
-1. **TodoWrite progression** (structured tasks) - Highest priority
-2. **Transcript parsing** (read-only tasks) - Fallback for unstructured queries  
-3. **Tool pattern analysis** - Command descriptions and usage patterns
-
-### Data Processing Pipeline
-```
-Raw Hook Events → Timeline Analysis → Intent Extraction → Summary Generation → Database Storage
-```
-
-## 🎉 Success Stories
-
-### Before: Limited Context
-```json
-{
-  "user_intent": "Unknown task",
-  "file_activities": {},
-  "primary_activity": "general_assistance"
-}
-```
-
-### After: Rich Context Memory
-```json
-{
-  "user_intent": "Add transcript parsing to extract user intent in all hooks",
-  "file_activities": {
-    "cycle_utils.py": {
-      "change_reason": "Added extract_user_intent_from_transcript() for read-only task context",
-      "edit_count": 3
-    }
-  },
-  "primary_activity": "file_modification",
-  "timeline_metadata": {
-    "total_hook_events": 12,
-    "duration": "2 minutes 15 seconds"
-  }
-}
-```
-
-## 🛣 Roadmap
-
-### Phase 5 Complete ✅
-- [x] 4-table database schema
-- [x] Automatic database ingestion
-- [x] Transcript parsing for read-only tasks
-- [x] Intent-driven logging system
-
-### Future Enhancements
-- [ ] Claude.md integration for context-aware assistance
-- [ ] Web interface for browsing development history
-- [ ] Advanced analytics and pattern recognition
-- [ ] Export capabilities for documentation generation
-- [ ] Cross-session project memory
-- [ ] Integration with git for commit message generation
-
-## 🤝 Contributing
-
-This system captures the complete development workflow - including how it was built! Check the database for the full implementation story:
-
-```python
-# See how this system was developed
-cursor = db.conn.execute("""
-    SELECT user_intent, file_path, change_reason 
-    FROM cycles c JOIN file_contexts f ON c.cycle_id = f.cycle_id 
-    WHERE f.file_path LIKE '%contextual%' 
-    ORDER BY c.cycle_id
-""")
-```
-
-## 📄 License
-
-MIT License - Build upon this, share improvements, and help make AI development workflows more intelligent.
-
-## 🙏 Acknowledgments
-
-Built with Claude Code CLI - this system is a testament to the power of AI-assisted development with proper contextual memory.
+**Just ask Claude**: *"Help me troubleshoot smarter-claude"* or *"Show me my recent file changes"*
 
 ---
 
 **Transform your Claude Code experience from stateless interactions to intelligent, context-aware development sessions.**
+
