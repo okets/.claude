@@ -59,19 +59,25 @@ check_claude_directory() {
 backup_existing() {
     CLAUDE_DIR="$HOME/.claude"
     
-    if [ -f "$CLAUDE_DIR/hooks/stop.py" ]; then
-        log_warning "Existing smarter-claude installation detected"
+    # Check for any existing files in ~/.claude
+    if [ -d "$CLAUDE_DIR" ] && [ "$(ls -A "$CLAUDE_DIR" 2>/dev/null)" ]; then
+        log_warning "Existing files found in ~/.claude directory"
+        log_info "This installation will overwrite your existing Claude Code configuration"
         BACKUP_DIR="$CLAUDE_DIR/backup_$(date +%Y%m%d_%H%M%S)"
         
-        read -p "Create backup? (y/N): " -n 1 -r
+        echo -e "${YELLOW}⚠️  WARNING: This will overwrite your ~/.claude folder${NC}"
+        echo -e "${BLUE}But it's worth it! This is the Claude you need. 🤖✨${NC}"
+        echo
+        read -p "Create backup and continue? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "Creating backup at $BACKUP_DIR..."
             mkdir -p "$BACKUP_DIR"
-            cp -r "$CLAUDE_DIR/hooks" "$BACKUP_DIR/" 2>/dev/null || true
-            cp -r "$CLAUDE_DIR/docs" "$BACKUP_DIR/" 2>/dev/null || true
-            cp "$CLAUDE_DIR/README.md" "$BACKUP_DIR/" 2>/dev/null || true
-            log_success "Backup created"
+            cp -r "$CLAUDE_DIR"/* "$BACKUP_DIR/" 2>/dev/null || true
+            log_success "Backup created - your old files are safe!"
+        else
+            log_info "Installation cancelled. Your files are unchanged."
+            exit 0
         fi
     fi
 }

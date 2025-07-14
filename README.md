@@ -10,7 +10,10 @@
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-**That's it!** Claude Code now remembers everything.
+⚠️ **This installs to your `~/.claude/` folder and may overwrite existing hooks.** 
+
+**But it's worth it! This is the Claude you need!** 🤖✨
+
 
 </div>
 
