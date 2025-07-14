@@ -98,21 +98,13 @@ def announce_notification(user_request=None, input_data=None):
             interaction_level = get_setting("interaction_level", "concise")
             
             if interaction_level == "concise":
-                # Use concise, contextual notification - simplified for debugging
+                # Use concise, contextual notification
                 try:
                     from cycle_utils import create_concise_notification
                     
                     notification_message = create_concise_notification(user_request, input_data.get('message', ''))
-                    
-                    # Debug: Write to file to confirm we got here
-                    with open('/tmp/notification_debug.log', 'a') as f:
-                        f.write(f"CONCISE: Generated message: {notification_message}\n")
                         
                 except Exception as e:
-                    # Debug: Log any errors
-                    with open('/tmp/notification_debug.log', 'a') as f:
-                        f.write(f"ERROR in concise notification: {e}\n")
-                    
                     # Fallback to simple message
                     notification_message = "Ready to help"
                 
@@ -121,32 +113,51 @@ def announce_notification(user_request=None, input_data=None):
                     notification_message = f"{engineer_name}, {notification_message.lower()}"
                     
             else:
-                # Verbose mode: use traditional approach with more detail
-                if user_request:
-                    # Extract first 60 chars for verbose context
-                    context = user_request[:60] + "..." if len(user_request) > 60 else user_request
-                    if engineer_name and random.random() < 0.3:
-                        notification_message = f"{engineer_name}, ready to help with: {context}"
-                    else:
-                        notification_message = f"Ready to help with: {context}"
-                else:
-                    # Fallback to varied generic messages
-                    fallback_messages = [
-                        "I need your input please",
-                        "Your input is needed", 
-                        "Waiting for your guidance",
-                        "Ready for your next instruction",
-                        "What would you like me to do next?",
-                        "Awaiting your command",
-                        "Ready to help with your next task"
-                    ]
+                # Verbose mode: use rich, contextual notifications with work history
+                try:
+                    from cycle_utils import create_verbose_notification, get_recent_work_context, get_current_cycle_id
                     
-                    base_message = random.choice(fallback_messages)
+                    # Get recent work context for enhanced verbose notifications
+                    session_id = input_data.get('session_id', '')
+                    transcript_path = input_data.get('transcript_path', '')
+                    current_cycle_id = get_current_cycle_id(session_id, transcript_path)
+                    recent_work_context = get_recent_work_context(session_id, current_cycle_id, lookback_cycles=3)
                     
+                    # Create verbose notification with full context
+                    notification_message = create_verbose_notification(
+                        user_request, 
+                        input_data.get('message', ''),
+                        recent_work_context
+                    )
+                    
+                    # Add engineer name occasionally for verbose mode
                     if engineer_name and random.random() < 0.3:
-                        notification_message = f"{engineer_name}, {base_message.lower()}"
+                        notification_message = f"{engineer_name}, " + notification_message.lower()
+                        
+                except Exception as e:
+                    # Fallback to simple verbose message
+                    if user_request:
+                        # Extract first 40 chars for verbose context
+                        context = user_request[:40] + "..." if len(user_request) > 40 else user_request
+                        if engineer_name and random.random() < 0.3:
+                            notification_message = f"{engineer_name}, ready to help with: {context}"
+                        else:
+                            notification_message = f"Ready to help with: {context}"
                     else:
-                        notification_message = base_message
+                        # Simple fallback messages for verbose mode
+                        verbose_fallbacks = [
+                            "Ready to help with your next task",
+                            "Standing by for instructions", 
+                            "I'm here and ready to assist",
+                            "Awaiting your next request"
+                        ]
+                        
+                        base_message = random.choice(verbose_fallbacks)
+                        
+                        if engineer_name and random.random() < 0.3:
+                            notification_message = f"{engineer_name}, {base_message.lower()}"
+                        else:
+                            notification_message = base_message
                         
         except ImportError:
             # Fallback if concise utilities not available - use varied messages

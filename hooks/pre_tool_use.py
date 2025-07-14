@@ -182,6 +182,59 @@ def main():
                 
                 print("✅ Git command proceeding...", file=sys.stderr)
         
+        # Announce tool usage in verbose mode
+        try:
+            sys.path.append(str(Path(__file__).parent / 'utils'))
+            from settings import get_setting
+            from cycle_utils import announce_user_content
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            if interaction_level == "verbose":
+                # Announce tool usage with varied messages
+                import random
+                
+                tool_announcements = {
+                    'Read': [
+                        'Reading files', 'Checking files', 'Examining code', 'Looking at files', 
+                        'Opening files', 'Reviewing content', 'Scanning files', 'Analyzing files'
+                    ],
+                    'Write': [
+                        'Writing files', 'Creating files', 'Saving content', 'Building files',
+                        'Generating code', 'Crafting files', 'Composing content', 'Authoring files'
+                    ], 
+                    'Edit': [
+                        'Editing files', 'Modifying code', 'Updating files', 'Changing content',
+                        'Refining code', 'Adjusting files', 'Improving content', 'Polishing code'
+                    ],
+                    'Bash': [
+                        'Running command', 'Executing script', 'Processing command', 'Running task',
+                        'Launching process', 'Starting operation', 'Invoking command', 'Firing up task'
+                    ],
+                    'Task': [
+                        'Starting agent', 'Launching helper', 'Spawning worker', 'Delegating task',
+                        'Coordinating agent', 'Activating assistant', 'Deploying specialist', 'Engaging agent'
+                    ],
+                    'Glob': [
+                        'Searching files', 'Finding files', 'Locating content', 'Hunting files',
+                        'Discovering files', 'Seeking matches', 'Exploring files', 'Tracking down files'
+                    ],
+                    'Grep': [
+                        'Searching content', 'Finding text', 'Scanning content', 'Hunting patterns',
+                        'Exploring text', 'Seeking matches', 'Digging through code', 'Parsing content'
+                    ],
+                    'WebFetch': [
+                        'Fetching web data', 'Getting online info', 'Pulling web content', 'Downloading data',
+                        'Retrieving info', 'Accessing web resources', 'Gathering web data', 'Collecting online info'
+                    ]
+                }
+                
+                announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                announcement = random.choice(announcements)
+                announce_user_content(announcement, level="verbose")
+                
+        except ImportError:
+            pass  # Settings not available
         
         sys.exit(0)
         

@@ -927,11 +927,17 @@ def main():
                         
                         # Create meaningful user-facing announcement using rich context
                         try:
-                            from cycle_utils import create_rich_completion_message
+                            from cycle_utils import create_rich_completion_message, create_verbose_completion_message
+                            from settings import get_setting
                             
-                            # Use rich completion with full cycle summary data
+                            interaction_level = get_setting("interaction_level", "concise")
+                            
+                            # Use verbose completion for verbose mode, rich for others
                             cycle_summary_data = cycle_summary_result
-                            completion_message = create_rich_completion_message(user_intent, cycle_summary_data)
+                            if interaction_level == "verbose":
+                                completion_message = create_verbose_completion_message(user_intent, cycle_summary_data)
+                            else:
+                                completion_message = create_rich_completion_message(user_intent, cycle_summary_data)
                             
                             announce_user_content(completion_message)
                             

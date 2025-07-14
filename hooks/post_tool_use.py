@@ -216,6 +216,60 @@ def main():
                     change_summary = "Modified notebook"
                 
         
+        # Announce tool completion in verbose mode
+        try:
+            sys.path.append(str(Path(__file__).parent / 'utils'))
+            from settings import get_setting
+            from cycle_utils import announce_user_content
+            
+            interaction_level = get_setting("interaction_level", "concise")
+            
+            if interaction_level == "verbose":
+                # Announce tool completion with varied messages
+                if success:
+                    import random
+                    
+                    completion_announcements = {
+                        'Read': [
+                            'Files read', 'Content reviewed', 'Files analyzed', 'Code examined',
+                            'Files checked', 'Content scanned', 'Files explored', 'Data processed'
+                        ],
+                        'Write': [
+                            'Files written', 'Content saved', 'Files created', 'Code generated',
+                            'Files built', 'Content crafted', 'Files authored', 'Code composed'
+                        ], 
+                        'Edit': [
+                            'Files edited', 'Code modified', 'Files updated', 'Content changed',
+                            'Code refined', 'Files improved', 'Content polished', 'Files adjusted'
+                        ],
+                        'Bash': [
+                            'Command completed', 'Script finished', 'Task executed', 'Operation done',
+                            'Process completed', 'Command succeeded', 'Task finished', 'Operation finished'
+                        ],
+                        'Task': [
+                            'Agent finished', 'Helper completed', 'Worker done', 'Task delegated',
+                            'Agent succeeded', 'Assistant finished', 'Specialist completed', 'Agent done'
+                        ],
+                        'Glob': [
+                            'Search completed', 'Files found', 'Search finished', 'Files located',
+                            'Search done', 'Files discovered', 'Search succeeded', 'Files tracked'
+                        ],
+                        'Grep': [
+                            'Search completed', 'Text found', 'Content searched', 'Patterns located',
+                            'Search finished', 'Text discovered', 'Content explored', 'Search done'
+                        ],
+                        'WebFetch': [
+                            'Data fetched', 'Info retrieved', 'Content downloaded', 'Data collected',
+                            'Info gathered', 'Content obtained', 'Data acquired', 'Info pulled'
+                        ]
+                    }
+                    
+                    announcements = completion_announcements.get(tool_name, [f'{tool_name} completed'])
+                    announcement = random.choice(announcements)
+                    announce_user_content(announcement, level="verbose")
+                
+        except ImportError:
+            pass  # Settings not available
         
         sys.exit(0)
         

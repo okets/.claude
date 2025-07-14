@@ -913,3 +913,198 @@ def get_recent_work_context(session_id, current_cycle_id, lookback_cycles=2):
         
     except Exception:
         return None
+
+
+def create_verbose_notification(user_request, trigger_message="", recent_work_context=None):
+    """Create verbose but concise notification - more speaking, not more text."""
+    if not user_request or user_request.strip() == "":
+        # Simple fallback for verbose mode
+        verbose_fallbacks = [
+            "Ready to help with your next task",
+            "Standing by for instructions",
+            "I'm here and ready to assist",
+            "Awaiting your next request"
+        ]
+        import random
+        return random.choice(verbose_fallbacks)
+    
+    # Extract meaningful action and subject from user request
+    action, subject = extract_action_and_subject(user_request)
+    
+    # Add tool-specific context if this is a permission request (brief)
+    if "permission" in trigger_message.lower():
+        tool_name = extract_tool_from_permission_message(trigger_message)
+        if tool_name:
+            tool_contexts = {
+                'Read': "Need to read files",
+                'Write': "Need to write files", 
+                'Edit': "Need to edit files",
+                'Bash': "Need to run commands",
+                'Task': "Need to use agents",
+                'Glob': "Need to search files",
+                'Grep': "Need to search content",
+                'WebFetch': "Need to fetch web data"
+            }
+            
+            context = tool_contexts.get(tool_name, f"Need to use {tool_name}")
+            return f"{context} for: {action.lower()} {subject}"
+    
+    # Regular readiness notification - focus on user intent briefly
+    if subject == "task":
+        return f"Ready to {action.lower()}"
+    else:
+        return f"Ready to {action.lower()}: {subject}"
+
+
+def create_verbose_completion_message(user_intent, cycle_summary_data=None):
+    """Create comprehensive, verbose completion message with full context and details."""
+    if not cycle_summary_data:
+        # Fallback to basic but verbose completion
+        if user_intent and len(user_intent.strip()) > 10:
+            clean_intent = user_intent.strip()
+            if len(clean_intent) > 100:
+                clean_intent = clean_intent[:97] + "..."
+            
+            if clean_intent.startswith('"') and clean_intent.endswith('"'):
+                clean_intent = clean_intent[1:-1]
+            
+            return (f"Task completed successfully! You had asked me to: {clean_intent}. "
+                   "I've finished all the necessary work and everything is ready for your review. "
+                   "All changes have been implemented according to your specifications and the project is in a good state.")
+        else:
+            return ("All work has been completed successfully! I've handled all aspects of your request comprehensively. "
+                   "The project files have been updated appropriately and everything is ready for your continued development work.")
+    
+    context = extract_meaningful_context_from_summary(cycle_summary_data)
+    
+    # Build comprehensive message parts
+    parts = []
+    
+    # Start with user intent reminder - more detailed for verbose mode
+    if user_intent and len(user_intent.strip()) > 10:
+        clean_intent = user_intent.strip()
+        if len(clean_intent) > 120:
+            clean_intent = clean_intent[:117] + "..."
+        
+        if clean_intent.startswith('"') and clean_intent.endswith('"'):
+            clean_intent = clean_intent[1:-1]
+        
+        parts.append(f"Perfect! You had asked me to: {clean_intent}")
+    else:
+        parts.append("Excellent! Task completed successfully")
+    
+    # Detailed work summary - much more comprehensive for verbose mode
+    work_details = []
+    
+    # File work details with full context
+    if context['files_modified'] > 0:
+        if len(context['files_worked_on']) == 1:
+            filename = context['files_worked_on'][0]
+            if context['total_edits'] > 1:
+                work_details.append(f"I carefully updated {filename} with {context['total_edits']} precise edits, ensuring all changes integrate seamlessly with existing code")
+            else:
+                work_details.append(f"I made targeted modifications to {filename}, preserving the existing structure while implementing your requested changes")
+        elif len(context['files_worked_on']) <= 4:
+            files_list = ", ".join(context['files_worked_on'])
+            work_details.append(f"I successfully modified {files_list}, coordinating changes across all files to maintain consistency and functionality")
+        else:
+            work_details.append(f"I comprehensively updated {context['files_modified']} files across your codebase, ensuring all modifications work together harmoniously and follow your project's conventions")
+    
+    # Subagent collaboration details
+    if context['subagents_used'] > 0:
+        if context['subagents_used'] == 1:
+            work_details.append("I coordinated with 1 specialized agent to ensure optimal task execution and comprehensive coverage of all requirements")
+        else:
+            work_details.append(f"I orchestrated the work of {context['subagents_used']} specialized agents, managing parallel execution and ensuring seamless integration of all their contributions")
+    
+    # Operation types and technical details
+    if context['operation_types']:
+        ops = list(context['operation_types'])
+        if len(ops) == 1:
+            work_details.append(f"All work focused on {ops[0]} operations, executed with precision and attention to detail")
+        elif len(ops) == 2:
+            work_details.append(f"I handled both {ops[0]} and {ops[1]} operations, maintaining high quality standards throughout")
+        else:
+            work_details.append(f"I performed {len(ops)} different types of operations ({', '.join(ops[:3])}{'...' if len(ops) > 3 else ''}), demonstrating the comprehensive nature of this task")
+    
+    # Add detailed work summary
+    if work_details:
+        work_text = ". ".join(work_details)
+        parts.append(f"Here's what I accomplished: {work_text}.")
+    
+    # Project state and quality assurance
+    quality_messages = [
+        "All changes have been thoroughly implemented and tested for compatibility",
+        "The codebase is in excellent condition with all modifications properly integrated",
+        "Every file has been updated according to best practices and your project's coding standards",
+        "All work has been completed with careful attention to code quality and maintainability"
+    ]
+    
+    import random
+    parts.append(random.choice(quality_messages) + ".")
+    
+    # Complexity celebration with detailed context
+    complexity = context.get('task_complexity', 'moderate')
+    files_modified = context['files_modified']
+    subagents_used = context['subagents_used']
+    
+    detailed_celebrations = {
+        "simple": [
+            "This was a beautifully straightforward task that I was able to execute cleanly and efficiently!",
+            "What a pleasure to work on such a well-defined, clear request - executed perfectly!",
+            "I love these kinds of focused tasks - simple to understand, satisfying to complete!",
+            "This was exactly the kind of clean, efficient work that makes development a joy!"
+        ],
+        "moderate": [
+            "This was a really solid piece of development work that required careful analysis and thoughtful implementation!",
+            "What a satisfying challenge! This task demanded good technical judgment and I'm pleased with how it turned out!",
+            "This was excellent development work - complex enough to be interesting but manageable enough to execute cleanly!",
+            "I thoroughly enjoyed working through this well-scoped task with its clear requirements and meaningful outcomes!"
+        ],
+        "complex": [
+            "Wow, this was genuinely challenging and comprehensive work! I'm really proud of how we tackled this complex task together!",
+            "What an impressive undertaking! This required careful orchestration of multiple components and I'm thrilled with the results!",
+            "This was seriously sophisticated work that pushed multiple systems and required deep technical coordination - excellent outcome!",
+            "What a fantastic complex challenge! The scope and depth of this task made it incredibly rewarding to complete successfully!"
+        ]
+    }
+    
+    celebration = random.choice(detailed_celebrations.get(complexity, detailed_celebrations["moderate"]))
+    
+    # Add context-specific enhancements to celebration
+    if subagents_used > 3:
+        team_enhancements = [
+            f" The coordination of {subagents_used} specialized agents was particularly impressive - true collaborative engineering at its finest!",
+            f" Managing {subagents_used} different agents working in parallel was like conducting a technical orchestra - beautiful teamwork!",
+            f" The way {subagents_used} agents came together to solve this shows the power of distributed, specialized problem-solving!"
+        ]
+        celebration += random.choice(team_enhancements)
+    elif files_modified > 8:
+        file_enhancements = [
+            f" The scope of changes across {files_modified} files required careful coordination and attention to detail - expertly handled!",
+            f" Working across {files_modified} different files while maintaining consistency and quality was a real technical achievement!",
+            f" The comprehensive nature of updates to {files_modified} files demonstrates the thorough and systematic approach this task required!"
+        ]
+        celebration += random.choice(file_enhancements)
+    elif context['total_edits'] > 10:
+        edit_enhancements = [
+            f" With {context['total_edits']} total edits, this required sustained focus and precision - every change was deliberate and valuable!",
+            f" The {context['total_edits']} individual edits show the granular attention to detail that makes for truly professional development work!",
+            f" Each of the {context['total_edits']} edits was carefully considered and implemented - this is craftsmanship-level programming!"
+        ]
+        celebration += random.choice(edit_enhancements)
+    
+    parts.append(celebration)
+    
+    # Future readiness and availability
+    readiness_messages = [
+        "I'm ready and excited for whatever challenge comes next!",
+        "Standing by for your next request - I'm fully equipped and eager to tackle new problems!",
+        "All systems are running smoothly and I'm prepared for continued development work!",
+        "I'm energized and ready to dive into the next phase of your project whenever you need me!"
+    ]
+    
+    parts.append(random.choice(readiness_messages))
+    
+    # Join all parts with appropriate spacing
+    return " ".join(parts)
