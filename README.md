@@ -32,7 +32,7 @@ This is Claude Code with memory. This is what you've been missing.
 ## 🚀 One-Line Install (Experimental)
 > [!WARNING]
 > This will copy this project over your global .claude directory.
-> In case you already wrote your own customizations there, custom slash commands are not effected, but hooks will be ran over.
+> **In case you already wrote your own customizations** in the global .claude directory- custom slash commands are not effected, but **hooks will be ran over**.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
