@@ -17,6 +17,18 @@
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
+## 🤔 What is smarter-claude?
+
+Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
+
+**🧠 What if Claude remembered?**
+
+**It actually knows.** Your entire development journey, queryable by context, stored locally, **zero tokens** wasted.
+
+This is Claude Code with memory. This is what you've been missing.
+
+**🔊 Plus, it speaks!** Claude narrates what it's doing while working, perfect for running in the background while you listen to its progress without being glued to the terminal screen waiting for textual responses. You can multitask while staying informed about Claude's workflow.
+
 ## 🚀 One-Line Install (Experimental)
 
 ```bash
@@ -44,16 +56,6 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 > This will run over your global .claude directory. But trust me, it's worth it.
 
 **Next:** [![🚀 Get Started](https://img.shields.io/badge/🚀_Get_Started-Complete_Setup_Guide-green?style=for-the-badge)](GETTING_STARTED.md)
-
-## 🔍 The Problem You Face Daily
-
-Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
-
-**What if Claude remembered?**
-
-**It actually knows.** Your entire development journey, queryable by context, stored locally, **zero tokens** wasted.
-
-This is Claude Code with memory. This is what you've been missing.
 
 ## 📖 The Story
 I came across [![Original Project](https://img.shields.io/badge/📂_Original-Project-blue)](https://github.com/disler/claude-code-hooks-mastery) by the brilliant [![@indyDevDan](https://img.shields.io/badge/👨‍💻_@indyDevDan-YouTube-red)](https://www.youtube.com/@indyDevDan), featured in this [![Demo Video](https://img.shields.io/badge/🎥_Demo-Video-red)](https://www.youtube.com/watch?v=J5B9UGTuNoM).
