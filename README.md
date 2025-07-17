@@ -30,15 +30,16 @@ This is Claude Code with memory. This is what you've been missing.
 **🗣️ Plus, it speaks!** Claude narrates what it's doing while working, perfect for running in the background while you listen to its progress without being glued to the terminal screen waiting for textual responses. You can multitask while staying informed about Claude's workflow.
 
 ## 🚀 One-Line Install (Experimental)
+> [!WARNING]
+> This will copy this project over your global .claude directory.
+> In case you already wrote your own customizations there, custom slash commands are not effected, but hooks will be ran over.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-> [!WARNING]
+> [!NOTE]
 > This experimental install method hasn't been tested on a wide variety of machine configurations yet. If it fails, use the manual installation below as a fallback.
-
-> [!TIP]
 > **Tried the experimental install?** Please share your experience! Open an [issue](https://github.com/okets/.claude/issues) and let us know if it worked, what OS you're using, and any problems you encountered. Your feedback helps improve the installation process for everyone.
 
 ### Manual Installation
@@ -51,10 +52,6 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
    ```bash
    cp -r .claude/.claude ~/
    ```
-
-> [!NOTE]
-> This will run over your global .claude directory. But trust me, it's worth it.
-
 **Next:** [![🚀 Get Started](https://img.shields.io/badge/🚀_Get_Started-Complete_Setup_Guide-green?style=for-the-badge)](GETTING_STARTED.md)
 
 ## 📖 The Story
