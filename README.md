@@ -30,10 +30,10 @@ This is Claude Code with memory. This is what you've been missing.
 **🗣️ Plus, it speaks!** Claude narrates what it's doing while working, perfect for running in the background while you listen to its progress without being glued to the terminal screen waiting for textual responses. You can multitask while staying informed about Claude's workflow.
 
 **In short:**
-- 🎧 Hear what Claude is doing while it works
-- 🚶‍♂️ Step away from your desk without losing track
-- 🔄 Seamlessly continue from where you left off
-- 💰 Zero extra tokens on top of what Claude Code already uses
+- 🎧 **Hear** what Claude is doing while it works
+- 🚶‍♂️ **Step away from your desk** without losing track
+- 🔄 **Seamlessly continue** from where you left off
+- 💰 **Zero extra tokens** on top of what Claude Code already uses
 
 ## 🚀 One-Line Install (Experimental)
 > [!WARNING]
