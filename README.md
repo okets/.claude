@@ -27,7 +27,7 @@ Every time you restart Claude Code, you lose everything. Your entire development
 
 This is Claude Code with memory. This is what you've been missing.
 
-**🔊 Plus, it speaks!** Claude narrates what it's doing while working, perfect for running in the background while you listen to its progress without being glued to the terminal screen waiting for textual responses. You can multitask while staying informed about Claude's workflow.
+**🗣️ Plus, it speaks!** Claude narrates what it's doing while working, perfect for running in the background while you listen to its progress without being glued to the terminal screen waiting for textual responses. You can multitask while staying informed about Claude's workflow.
 
 ## 🚀 One-Line Install (Experimental)
 
