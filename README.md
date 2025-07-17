@@ -17,11 +17,28 @@
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-## 🚀 One-Line Install
+## 🚀 One-Line Install (Experimental)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
+
+> [!WARNING]
+> This experimental install method hasn't been tested on a wide variety of machine configurations yet. If it fails, use the manual installation below as a fallback.
+
+> [!TIP]
+> **Tried the experimental install?** Please share your experience! Open an [issue](https://github.com/okets/.claude/issues) and let us know if it worked, what OS you're using, and any problems you encountered. Your feedback helps improve the installation process for everyone.
+
+### Manual Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/okets/.claude.git
+   ```
+2. Copy the `.claude` folder to your user directory:
+   ```bash
+   cp -r .claude/.claude ~/
+   ```
 
 > [!NOTE]
 > This will run over your global .claude directory. But trust me, it's worth it.
@@ -101,8 +118,15 @@ Ask Claude after install:
 
 ## 🚀 Stop losing your development context.
 
+**One-Line Install (Experimental):**
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh  | bash
+```
+
+**Manual Install:**
+```bash
+# Clone the repo and copy to your home directory
+cp -r .claude ~/
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡
