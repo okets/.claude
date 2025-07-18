@@ -1087,9 +1087,10 @@ def main():
                                 cleanup_before_cycle = cycle_id - retention_cycles
                                 files_cleaned = []
                                 
+                                # Use project-specific logs directory (needed for both cleanup types)
+                                logs_dir = get_project_smarter_claude_logs_dir()
+                                
                                 if cleanup_before_cycle > 0:
-                                    # Use project-specific logs directory
-                                    logs_dir = get_project_smarter_claude_logs_dir()
                                     # Clean up files for cycles before the retention window
                                     for old_cycle_id in range(max(1, cleanup_before_cycle - 5), cleanup_before_cycle):
                                         old_hooks_file = logs_dir / f"session_{session_short}_cycle_{old_cycle_id}_hooks.jsonl"
