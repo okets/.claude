@@ -1104,17 +1104,17 @@ def main():
                                             old_summary_file.unlink()
                                             files_cleaned.append(f"cycle_{old_cycle_id}_summary.json")
                                 
-                                # Cross-session cleanup: Remove files from old sessions (older than 1 day)
+                                # Cross-session cleanup: Remove files from old sessions (older than 1 hour)
                                 import time
-                                one_day_ago = time.time() - (24 * 60 * 60)  # 24 hours ago
+                                one_hour_ago = time.time() - (60 * 60)  # 1 hour ago
                                 
                                 for log_file in logs_dir.glob("session_*_cycle_*.json"):
-                                    if log_file.stat().st_mtime < one_day_ago:
+                                    if log_file.stat().st_mtime < one_hour_ago:
                                         log_file.unlink()
                                         files_cleaned.append(f"old_session_{log_file.name}")
                                 
                                 for log_file in logs_dir.glob("session_*_cycle_*.jsonl"):
-                                    if log_file.stat().st_mtime < one_day_ago:
+                                    if log_file.stat().st_mtime < one_hour_ago:
                                         log_file.unlink()
                                         files_cleaned.append(f"old_session_{log_file.name}")
                                 
