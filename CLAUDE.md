@@ -2,6 +2,32 @@
 
 This file documents Claude's enhanced contextual memory capabilities through the **smarter-claude** system.
 
+## Project Context Check
+
+Before starting any task, run:
+`ls -la .claude/smarter-claude/smarter-claude.db`
+
+If this file exists, you have access to rich contextual memory.
+
+## CRITICAL: Database-First Policy
+
+BEFORE using git log, git show, or any historical analysis:
+1. ALWAYS check if `.claude/smarter-claude/smarter-claude.db` exists
+2. If it exists, query it FIRST for file changes and context
+3. Only use git as a fallback or for verification
+
+**Trigger phrases that MUST use database first:**
+- "what files were changed"
+- "what did we work on"
+- "recent changes"
+- "which files were modified"
+- "what was the last thing we did"
+- "what did we work on recently"
+- "recent activity"
+- "previous work"
+- "file history"
+- "changes made"
+
 ## Overview
 
 Claude now has access to a sophisticated contextual memory database that automatically tracks:
@@ -74,6 +100,178 @@ CREATE TABLE subagent_tasks (
 
 **Purpose**: Tracks task delegation to specialized agents with their outcomes.
 
+## Convenience Views for Simplified Queries
+
+To make database queries more accessible, create these views:
+
+```sql
+-- Recent file changes (last 7 days) with WHY context
+CREATE VIEW recent_file_changes AS
+SELECT c.user_intent, fc.file_path, fc.change_reason, 
+       fc.operation_type, fc.timestamp, c.cycle_id,
+       c.primary_activity
+FROM cycles c 
+JOIN file_contexts fc ON c.cycle_id = fc.cycle_id
+WHERE c.start_time > datetime('now', '-7 days')
+ORDER BY fc.timestamp DESC;
+
+-- Recent activity summary with change reasoning
+CREATE VIEW recent_activity AS
+SELECT c.user_intent, c.primary_activity, c.start_time,
+       GROUP_CONCAT(fc.file_path || ' (' || fc.change_reason || ')') as files_and_reasons
+FROM cycles c 
+LEFT JOIN file_contexts fc ON c.cycle_id = fc.cycle_id
+WHERE c.start_time > datetime('now', '-7 days')
+GROUP BY c.cycle_id
+ORDER BY c.start_time DESC;
+
+-- File modification history with full context
+CREATE VIEW file_history AS
+SELECT fc.file_path, c.user_intent, fc.change_reason,
+       fc.operation_type, fc.timestamp, c.primary_activity,
+       CASE 
+         WHEN fc.change_reason IS NOT NULL THEN fc.change_reason
+         ELSE 'No specific reason recorded'
+       END as why_changed
+FROM file_contexts fc
+JOIN cycles c ON fc.cycle_id = c.cycle_id
+ORDER BY fc.file_path, fc.timestamp DESC;
+
+-- WHY analysis view - focuses on reasoning patterns
+CREATE VIEW change_reasoning AS
+SELECT fc.file_path, fc.change_reason as why,
+       c.user_intent as original_request,
+       fc.operation_type, fc.timestamp,
+       COUNT(*) OVER (PARTITION BY fc.file_path) as total_changes
+FROM file_contexts fc
+JOIN cycles c ON fc.cycle_id = c.cycle_id
+WHERE fc.change_reason IS NOT NULL
+ORDER BY fc.timestamp DESC;
+```
+
+## Common Database Queries
+
+### Quick Pattern Lookups
+
+**Files changed in recent task with WHY context:**
+```sql
+SELECT file_path, change_reason, user_intent, timestamp 
+FROM recent_file_changes 
+LIMIT 10;
+```
+
+**What did we work on recently with reasoning:**
+```sql
+SELECT user_intent, files_and_reasons, start_time 
+FROM recent_activity 
+LIMIT 5;
+```
+
+**History for specific file with WHY context:**
+```sql
+SELECT user_intent, why_changed, operation_type, timestamp
+FROM file_history
+WHERE file_path LIKE '%filename%'
+LIMIT 5;
+```
+
+**WHY was this file changed so much:**
+```sql
+SELECT why, original_request, timestamp, total_changes
+FROM change_reasoning
+WHERE file_path LIKE '%filename%'
+LIMIT 10;
+```
+
+**What types of changes are we making:**
+```sql
+SELECT change_reason, COUNT(*) as frequency,
+       GROUP_CONCAT(DISTINCT file_path) as affected_files
+FROM recent_file_changes
+WHERE change_reason IS NOT NULL
+GROUP BY change_reason
+ORDER BY frequency DESC;
+```
+
+### Time Boundary Guidelines
+
+**Default time ranges for queries:**
+- **Recent work**: Last 7 days (`datetime('now', '-7 days')`)
+- **Current session**: Last 24 hours (`datetime('now', '-1 day')`)
+- **Extended history**: Last 30 days (`datetime('now', '-30 days')`)
+- **All history**: No time filter (use with LIMIT)
+
+### Pattern Matching Best Practices
+
+**File path matching:**
+```sql
+-- Exact match (fastest)
+WHERE fc.file_path = 'src/components/Header.tsx'
+
+-- Filename only
+WHERE fc.file_path LIKE '%Header.tsx'
+
+-- Directory pattern
+WHERE fc.file_path LIKE 'src/components/%'
+
+-- Multiple patterns
+WHERE fc.file_path LIKE '%Header%' OR fc.file_path LIKE '%Nav%'
+```
+
+**Intent matching:**
+```sql
+-- Bug-related work
+WHERE c.user_intent LIKE '%bug%' OR c.user_intent LIKE '%fix%'
+
+-- Feature development
+WHERE c.user_intent LIKE '%feature%' OR c.user_intent LIKE '%add%'
+
+-- Refactoring
+WHERE c.user_intent LIKE '%refactor%' OR c.user_intent LIKE '%cleanup%'
+```
+
+### WHY Context Best Practices
+
+**Good change_reason examples:**
+- "Fix TypeScript error in component props"
+- "Add validation to prevent null user data"
+- "Optimize query performance for large datasets"
+- "Update API endpoint to match new backend schema"
+- "Remove deprecated function calls"
+
+**Poor change_reason examples:**
+- "Updated file"
+- "Made changes"
+- "Fixed it"
+- "Code cleanup"
+
+**WHY-focused queries for better context:**
+```sql
+-- Understanding decision patterns
+SELECT change_reason, COUNT(*) as times_used,
+       AVG(julianday('now') - julianday(timestamp)) as avg_days_ago
+FROM file_contexts
+WHERE change_reason IS NOT NULL
+GROUP BY change_reason
+ORDER BY times_used DESC;
+
+-- Files that keep getting changed for same reason
+SELECT file_path, change_reason, COUNT(*) as repeat_changes
+FROM file_contexts
+WHERE change_reason IS NOT NULL
+GROUP BY file_path, change_reason
+HAVING repeat_changes > 1
+ORDER BY repeat_changes DESC;
+
+-- Tracing problem resolution
+SELECT c.user_intent, fc.file_path, fc.change_reason, fc.timestamp
+FROM cycles c
+JOIN file_contexts fc ON c.cycle_id = fc.cycle_id
+WHERE c.user_intent LIKE '%error%' OR c.user_intent LIKE '%bug%'
+   OR fc.change_reason LIKE '%fix%' OR fc.change_reason LIKE '%error%'
+ORDER BY fc.timestamp DESC;
+```
+
 ## Context Retrieval Patterns
 
 ### Recent Activity Queries
@@ -125,6 +323,8 @@ WHERE start_time > datetime('now', '-1 week')
 ORDER BY start_time DESC;
 ```
 
+**Example triggers**: "what did we work on recently?", "what was the last thing we did?", "recent activity"
+
 ### 2. File Change Context
 When working with a file, understand why it was previously modified:
 
@@ -137,7 +337,23 @@ ORDER BY fc.timestamp DESC
 LIMIT 5;
 ```
 
-### 3. Project Phase Tracking
+**Example triggers**: "what files were changed?", "which files were modified?", "file history"
+
+### 3. Recent File Changes Across All Files
+For broad change tracking:
+
+```sql
+SELECT fc.file_path, fc.change_reason, fc.operation_type, c.user_intent, fc.timestamp
+FROM file_contexts fc
+JOIN cycles c ON fc.cycle_id = c.cycle_id
+WHERE fc.timestamp > datetime('now', '-3 days')
+ORDER BY fc.timestamp DESC
+LIMIT 20;
+```
+
+**Example triggers**: "what files were changed?", "recent changes", "changes made"
+
+### 4. Project Phase Tracking
 For ongoing projects, track phase progression:
 
 ```sql
@@ -147,7 +363,7 @@ WHERE phase_number IS NOT NULL
 ORDER BY phase_number, task_number;
 ```
 
-### 4. Delegation Patterns
+### 5. Delegation Patterns
 Understand when and why subagents were used:
 
 ```sql
@@ -289,5 +505,43 @@ When users ask about previous work or context:
 4. **Explain WHY changes were made** using change_reason data
 5. **Mention delegation patterns** if subagents were involved
 6. **Handle missing data gracefully** - explain what context is available vs. missing
+
+### Capturing Better WHY Context
+
+**When recording file changes, always include:**
+- **Root cause**: Why was this change necessary?
+- **Problem solved**: What specific issue did this address?
+- **Impact**: How does this change affect the system?
+- **Decision rationale**: Why this approach vs alternatives?
+
+**Examples of good WHY context recording:**
+```sql
+-- Instead of: "Updated component"
+INSERT INTO file_contexts (change_reason) VALUES 
+('Fix prop drilling by implementing Redux state management');
+
+-- Instead of: "Fixed bug"
+INSERT INTO file_contexts (change_reason) VALUES 
+('Resolve infinite loop in useEffect by adding dependency array');
+
+-- Instead of: "Added feature"
+INSERT INTO file_contexts (change_reason) VALUES 
+('Implement user authentication to secure dashboard routes');
+```
+
+**When querying for WHY context, prioritize:**
+1. **change_reason** field for specific technical reasoning
+2. **user_intent** for the original business/user need
+3. **Timestamps** to understand sequence of related changes
+4. **Repeat patterns** to identify recurring issues
+
+**WHY-focused response format:**
+```
+File: src/components/Header.tsx
+When: 2024-01-15 14:30:00
+Why: Fix TypeScript error in component props
+Original need: User reported navigation not working
+Impact: Resolves type safety issues in navigation component
+```
 
 This contextual memory system enables Claude to maintain coherent, context-aware conversations across multiple sessions and provide meaningful continuity for ongoing projects.
