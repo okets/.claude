@@ -19,7 +19,8 @@ Valid levels:
 - **3** or **verbose**: Detailed workflow narration with context awareness
 - **4**: Maximum verbosity (same as verbose currently)
 
-!SETTINGS_FILE="$HOME/.claude/.claude/smarter-claude/smarter-claude.json"
+!# Use the settings management system for proper cascading
+MANAGE_SETTINGS="$HOME/.claude/hooks/utils/manage_settings.py"
 
 # Get the argument (interaction level)
 LEVEL="$1"
@@ -36,20 +37,8 @@ if [ -z "$LEVEL" ]; then
   echo "  3 or verbose - Detailed workflow narration"
   echo "  4           - Maximum verbosity"
   echo ""
-  if [ -f "$SETTINGS_FILE" ]; then
-    echo "Current setting:"
-    if command -v jq >/dev/null 2>&1; then
-      jq -r '.interaction_level' "$SETTINGS_FILE"
-    else
-      grep '"interaction_level"' "$SETTINGS_FILE" | cut -d'"' -f4
-    fi
-  fi
-  exit 1
-fi
-
-if [ ! -f "$SETTINGS_FILE" ]; then
-  echo "❌ smarter-claude settings file not found at: $SETTINGS_FILE"
-  echo "Make sure smarter-claude is properly installed."
+  echo "Current setting:"
+  python3 "$MANAGE_SETTINGS" get interaction_level 2>/dev/null || echo "Using global defaults"
   exit 1
 fi
 
@@ -69,46 +58,29 @@ esac
 
 echo "🔧 Setting smarter-claude interaction level to: $LEVEL_TEXT"
 
-# Create backup
-cp "$SETTINGS_FILE" "$SETTINGS_FILE.backup.$(date +%s)"
-
-# Update the interaction_level setting
-if command -v jq >/dev/null 2>&1; then
-  # Use jq if available (more reliable)
-  jq --arg level "$LEVEL_TEXT" '.interaction_level = $level' "$SETTINGS_FILE" > "$SETTINGS_FILE.tmp" && mv "$SETTINGS_FILE.tmp" "$SETTINGS_FILE"
-else
-  # Fallback to sed
-  sed -i.bak "s/\"interaction_level\": \"[^\"]*\"/\"interaction_level\": \"$LEVEL_TEXT\"/" "$SETTINGS_FILE"
-  rm -f "$SETTINGS_FILE.bak"
-fi
-
-if [ $? -eq 0 ]; then
-  echo "✅ Successfully updated smarter-claude interaction level to: $LEVEL_TEXT"
-  echo ""
-  case "$LEVEL_TEXT" in
-    "silent")
-      echo "🔇 TTS announcements are now disabled"
-      ;;
-    "quiet") 
-      echo "🔔 Only sound notifications will play"
-      ;;
-    "concise")
-      echo "📝 Brief planning and completion announcements enabled"
-      ;;
-    "verbose")
-      echo "🗣️  Detailed workflow narration with context awareness enabled"
-      ;;
-  esac
-  echo ""
-  echo "Current settings:"
-  if command -v jq >/dev/null 2>&1; then
-    jq '.interaction_level' "$SETTINGS_FILE"
-  else
-    grep '"interaction_level"' "$SETTINGS_FILE"
-  fi
-else
-  echo "❌ Failed to update settings"
-  echo "Restoring backup..."
-  mv "$SETTINGS_FILE.backup."* "$SETTINGS_FILE" 2>/dev/null
-  exit 1
-fi
+# Due to slash command execution issues, provide the command for manual execution
+echo ""
+echo "🔧 To set your project interaction level to $LEVEL_TEXT, please run this command:"
+echo ""
+echo "python3 \"$MANAGE_SETTINGS\" set interaction_level \"$LEVEL_TEXT\""
+echo ""
+echo "This will create a project-specific settings file with only this interaction level override,"
+echo "while keeping all other settings inherited from global defaults."
+echo ""
+case "$LEVEL_TEXT" in
+  "silent")
+    echo "This will disable TTS announcements for this project."
+    ;;
+  "quiet") 
+    echo "This will enable only sound notifications for this project."
+    ;;
+  "concise")
+    echo "This will enable brief planning and completion announcements for this project."
+    ;;
+  "verbose")
+    echo "This will enable detailed workflow narration for this project."
+    ;;
+esac
+echo ""
+echo "After running the command, you can verify it worked with:"
+echo "python3 \"$MANAGE_SETTINGS\" get interaction_level"

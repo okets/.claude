@@ -87,7 +87,7 @@ install_dependencies() {
     log_info "Installing TTS dependencies and voices..."
     
     # Use the voice manager for comprehensive installation
-    VOICE_MANAGER="$HOME/.claude/.claude/smarter-claude/manage_voices.py"
+    VOICE_MANAGER="$HOME/.claude/hooks/utils/manage_voices.py"
     
     # Install all supported voices automatically
     if [ -f "$VOICE_MANAGER" ]; then
@@ -191,7 +191,7 @@ install_smarter_claude() {
     
     # Create smarter-claude directory and copy voice manager
     mkdir -p "$CLAUDE_DIR/.claude/smarter-claude"
-    cp "$TEMP_DIR"/.claude/smarter-claude/manage_voices.py "$CLAUDE_DIR/.claude/smarter-claude/" 2>/dev/null || true
+    cp "$TEMP_DIR"/hooks/utils/manage_voices.py "$CLAUDE_DIR/hooks/utils/" 2>/dev/null || true
     
     # Make hooks and scripts executable
     chmod +x "$CLAUDE_DIR"/hooks/*.py
@@ -208,7 +208,7 @@ configure_settings() {
     log_info "Configuring default settings..."
     
     SETTINGS_SCRIPT="$HOME/.claude/hooks/utils/manage_settings.py"
-    VOICE_MANAGER="$HOME/.claude/.claude/smarter-claude/manage_voices.py"
+    VOICE_MANAGER="$HOME/.claude/hooks/utils/manage_voices.py"
     
     if [ -f "$SETTINGS_SCRIPT" ]; then
         # Set reasonable defaults
