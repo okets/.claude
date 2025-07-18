@@ -6,7 +6,7 @@
   "tts_engine_options": "macos-female, macos-male, pyttsx3",
   "notification_sounds": true,
   "cleanup_policy": {
-    "retention_cycles": 2,
+    "retention_cycles": 1,
     "auto_cleanup": true
   },
   "database_settings": {
