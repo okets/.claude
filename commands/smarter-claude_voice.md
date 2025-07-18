@@ -80,14 +80,32 @@ fi
 
 echo "🔧 Setting smarter-claude voice to: $VOICE_TEXT"
 
-# Due to slash command execution issues, provide the command for manual execution
+# Provide working commands for installation + configuration
 echo ""
-echo "🔧 To set your project voice to $VOICE_TEXT, please run this command:"
+echo "🔧 To install and configure $VOICE_TEXT for this project, please run these commands:"
 echo ""
-echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+
+# Create the complete command based on voice type
+if [[ "$VOICE_TEXT" == "coqui-female" || "$VOICE_TEXT" == "coqui-male" ]]; then
+  echo "# Step 1: Install voice dependencies"
+  echo "python3 \"$VOICE_MANAGER\" install --engine \"$VOICE_TEXT\""
+  echo ""
+  echo "# Step 2: Set voice in project settings"
+  echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+  echo ""
+  echo "Or run both in one command:"
+  echo "python3 \"$VOICE_MANAGER\" install --engine \"$VOICE_TEXT\" && python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+else
+  # For macOS voices, no installation needed
+  echo "# Set voice in project settings (no installation needed for macOS voices)"
+  echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+fi
+
 echo ""
-echo "This will create a project-specific settings file with only this voice override,"
-echo "while keeping all other settings inherited from global defaults."
+echo "This will:"
+echo "• Install voice dependencies (if needed for Coqui voices)"
+echo "• Create project-specific settings with only this voice override"
+echo "• Keep all other settings inherited from global defaults"
 echo ""
-echo "After running the command, you can verify it worked with:"
+echo "Verify it worked:"
 echo "python3 \"$MANAGE_SETTINGS\" get tts_engine"
