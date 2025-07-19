@@ -80,7 +80,9 @@ def create_manager_style_message(subagent_task, subagent_summary, interaction_le
     import random
     
     # Extract key info from task/summary
-    task_snippet = (subagent_task[:50] + "...") if len(subagent_task) > 50 else subagent_task
+    # Use semantic truncation for better task description
+    from cycle_utils import truncate_for_speech
+    task_snippet = truncate_for_speech(subagent_task, 50)
     
     if interaction_level == "concise":
         concise_messages = [

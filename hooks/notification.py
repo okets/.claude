@@ -181,8 +181,9 @@ def announce_notification(user_request=None, input_data=None):
                 except Exception as e:
                     # Fallback to simple verbose message
                     if user_request:
-                        # Extract first 40 chars for verbose context
-                        context = user_request[:40] + "..." if len(user_request) > 40 else user_request
+                        # Extract context using semantic truncation
+                        from cycle_utils import truncate_for_speech
+                        context = truncate_for_speech(user_request, 40)
                         if engineer_name and random.random() < 0.3:
                             notification_message = f"{engineer_name}, ready to help with: {context}"
                         else:

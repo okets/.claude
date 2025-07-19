@@ -302,9 +302,9 @@ def main():
                         'I need to update this', 'I\'m revising this', 'I\'m refining this now'
                     ],
                     'Task': [
-                        'I need help with this now', 'I\'m getting assistance', 'I need to delegate this', 'I\'m calling for help',
-                        'I need an agent for this', 'I\'m bringing in support now', 'I need specialized help', 'I\'m getting backup',
-                        'I need to collaborate on this', 'I\'m requesting assistance now', 'I need extra help'
+                        'I\'m creating a specialized agent', 'I\'m delegating this task', 'I\'m launching a subagent',
+                        'I\'m spinning up an expert agent', 'I\'m creating a focused agent', 'I\'m deploying specialized help',
+                        'I\'m starting a dedicated agent', 'I\'m creating targeted assistance', 'I\'m launching expert support'
                     ],
                     'Glob': [
                         'I\'m finding files now', 'I need to locate files', 'I\'m searching for files', 'I need to find matches',
@@ -321,6 +321,11 @@ def main():
                         'I\'m retrieving this data', 'I need to access this online now', 'I\'m gathering web data', 'I\'m fetching online content',
                         'I need to download this', 'I\'m accessing web resources now', 'I\'m collecting web data'
                     ],
+                    'WebSearch': [
+                        'I\'m searching online now', 'I need to search the web', 'I\'m looking this up online', 'I need web search results',
+                        'I\'m searching the internet', 'I need to find this online', 'I\'m doing a web search', 'I\'m looking online for this',
+                        'I need to search for information', 'I\'m browsing for answers', 'I\'m researching online'
+                    ],
                     'exit_plan_mode': [
                         'I\'ve created a plan for you to review', 'Here\'s my implementation plan', 'I\'ve prepared a detailed plan',
                         'Let me present my plan', 'I\'ve outlined an approach', 'Here\'s my proposed solution plan',
@@ -334,7 +339,7 @@ def main():
                     # Helper function to make filenames more TTS-friendly
                     def make_filename_speakable(filename):
                         """Replace dots and underscores for better TTS pronunciation"""
-                        return filename.replace('.', ' dot ').replace('_', ' underscore ')
+                        return filename.replace('.', ' dot ').replace('_', ' ')
                     
                     # Special handling for file-related tools to include filename
                     if tool_name == 'Read':
@@ -373,6 +378,48 @@ def main():
                                 announcement = random.choice(edit_announcements)
                         else:
                             # Fallback if no file path
+                            announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                            announcement = random.choice(announcements)
+                    elif tool_name == 'WebSearch':
+                        # Special handling for WebSearch to include the search query
+                        search_query = tool_input.get('query', '')
+                        if search_query:
+                            # Truncate query for speech if it's too long
+                            from cycle_utils import truncate_for_speech
+                            speakable_query = truncate_for_speech(search_query, 60)
+                            web_search_announcements = [
+                                f'I\'m searching online for: {speakable_query}',
+                                f'Looking up: {speakable_query}',
+                                f'Searching the web for: {speakable_query}',
+                                f'Finding information about: {speakable_query}',
+                                f'Researching: {speakable_query}'
+                            ]
+                            announcement = random.choice(web_search_announcements)
+                        else:
+                            # Fallback if no query
+                            announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                            announcement = random.choice(announcements)
+                    elif tool_name == 'WebFetch':
+                        # Special handling for WebFetch to include URL or prompt context
+                        url = tool_input.get('url', '')
+                        prompt = tool_input.get('prompt', '')
+                        if url and prompt:
+                            # Truncate prompt for speech if it's too long
+                            from cycle_utils import truncate_for_speech
+                            speakable_prompt = truncate_for_speech(prompt, 60)
+                            web_fetch_announcements = [
+                                f'Fetching web content about: {speakable_prompt}',
+                                f'Getting online data for: {speakable_prompt}',
+                                f'Retrieving web information about: {speakable_prompt}',
+                                f'Accessing online content for: {speakable_prompt}'
+                            ]
+                            announcement = random.choice(web_fetch_announcements)
+                        elif url:
+                            # Just have URL, use generic fetch message
+                            announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                            announcement = random.choice(announcements)
+                        else:
+                            # Fallback if no URL
                             announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
                             announcement = random.choice(announcements)
                     else:

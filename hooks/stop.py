@@ -987,9 +987,10 @@ def main():
                                 # Remove surrounding quotes
                                 if clean_intent.startswith('"') and clean_intent.endswith('"'):
                                     clean_intent = clean_intent[1:-1]
-                                # Truncate at reasonable length
+                                # Use semantic truncation for reasonable length
                                 if len(clean_intent) > 80:
-                                    clean_intent = clean_intent[:77] + "..."
+                                    from cycle_utils import truncate_user_intent
+                                    clean_intent = truncate_user_intent(clean_intent, 80)
                                 return clean_intent
                             
                             def assess_cycle_complexity():
@@ -1042,7 +1043,7 @@ def main():
                                             else:
                                                 # Simple fallback with context
                                                 if clean_intent:
-                                                    message = f"You asked: {clean_intent}. Done!"
+                                                    message = f"You instructed me to: {clean_intent}. Done!"
                                                     if todo_summary:
                                                         message += f" {todo_summary}"
                                                     announce_user_content(message)
@@ -1054,7 +1055,7 @@ def main():
                                         else:
                                             # No response found, use contextual completion
                                             if clean_intent:
-                                                message = f"You asked: {clean_intent}. Done!"
+                                                message = f"You instructed me to: {clean_intent}. Done!"
                                                 if todo_summary:
                                                     message += f" {todo_summary}"
                                                 announce_user_content(message)
@@ -1076,7 +1077,7 @@ def main():
                                     announce_user_content("I'm done")
                             
                             elif complexity == "moderate":
-                                # Moderate tasks: "You requested X, I did Y" format
+                                # Moderate tasks: "You instructed me to X, I did Y" format
                                 outcomes = []
                                 if files_modified > 0:
                                     outcomes.append(f"modified {files_modified} file{'s' if files_modified > 1 else ''}")
@@ -1088,9 +1089,9 @@ def main():
                                 
                                 if clean_intent and outcomes:
                                     outcome_text = " and ".join(outcomes)
-                                    message = f"You requested: {clean_intent}. I {outcome_text}."
+                                    message = f"You instructed me to: {clean_intent}. I {outcome_text}."
                                 elif clean_intent:
-                                    message = f"You requested: {clean_intent}. Task completed successfully."
+                                    message = f"You instructed me to: {clean_intent}. Task completed successfully."
                                 elif outcomes:
                                     outcome_text = " and ".join(outcomes)
                                     message = f"I {outcome_text}."
@@ -1114,9 +1115,9 @@ def main():
                                 
                                 if clean_intent and outcomes:
                                     outcome_text = ", ".join(outcomes)
-                                    message = f"You asked: {clean_intent}. I successfully {outcome_text}. Excellent work completed!"
+                                    message = f"You instructed me to: {clean_intent}. I successfully {outcome_text}. Excellent work completed!"
                                 elif clean_intent:
-                                    message = f"You requested: {clean_intent}. Complex task mastered with comprehensive results!"
+                                    message = f"You instructed me to: {clean_intent}. Complex task mastered with comprehensive results!"
                                 elif outcomes:
                                     outcome_text = ", ".join(outcomes)
                                     message = f"Complex task completed! I {outcome_text} with precision and expertise."

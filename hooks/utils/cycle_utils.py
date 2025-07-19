@@ -257,8 +257,8 @@ def extract_user_intent_from_transcript(transcript_path, max_lines_back=50):
                     
                     content = entry.get('message', {}).get('content', '')
                     if content and isinstance(content, str) and len(content.strip()) > 0:
-                        # Clean up the content - take first 200 chars to avoid huge intents
-                        return content.strip()[:200]
+                        # Clean up the content using semantic truncation
+                        return truncate_user_intent(content.strip(), 200)
                         
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue
@@ -379,25 +379,96 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
 import re
 
 
-def truncate_at_sentence_boundary(text, max_length=80):
-    """Truncate text at sentence boundary, preferring periods over other punctuation."""
-    if len(text) <= max_length:
+def semantic_truncate(text, max_length=80, flexibility=0.15, preserve_meaning=True):
+    """
+    Intelligent semantic text truncation that respects natural boundaries.
+    
+    Args:
+        text: Text to truncate
+        max_length: Target maximum length
+        flexibility: Percentage flexibility (0.15 = ±15%)
+        preserve_meaning: Whether to prioritize meaning preservation
+    
+    Returns:
+        Semantically truncated text
+    """
+    if not text or len(text) <= max_length:
         return text
     
-    # Try to find last period within limit
-    truncated = text[:max_length]
-    last_period = truncated.rfind('.')
+    # Calculate flexible boundaries
+    min_length = int(max_length * (1 - flexibility))
+    max_flexible = int(max_length * (1 + flexibility))
     
-    if last_period > max_length * 0.6:  # If period is reasonably far in
-        return truncated[:last_period + 1].strip()
+    # Priority 1: Natural sentence boundaries (periods)
+    period_pos = text.rfind('.', 0, max_flexible)
+    if period_pos >= min_length:
+        return text[:period_pos + 1].strip()
     
-    # Fall back to word boundary
-    last_space = truncated.rfind(' ')
-    if last_space > max_length * 0.5:
-        return truncated[:last_space].strip() + "..."
+    # Priority 2: Secondary punctuation (semicolons, exclamation, question marks)
+    for punct in [';', '!', '?']:
+        punct_pos = text.rfind(punct, 0, max_flexible)
+        if punct_pos >= min_length:
+            return text[:punct_pos + 1].strip()
     
-    # Last resort: hard truncation
-    return truncated.strip() + "..."
+    # Priority 3: Comma boundaries (for lists or clauses)
+    comma_pos = text.rfind(',', 0, max_flexible)
+    if comma_pos >= min_length:
+        return text[:comma_pos].strip() + "..."
+    
+    # Priority 4: Word boundaries (never cut mid-word)
+    space_pos = text.rfind(' ', 0, max_length)
+    if space_pos >= min_length:
+        return text[:space_pos].strip() + "..."
+    
+    # Priority 5: Preserve at least minimum meaningful content
+    if preserve_meaning and len(text) > max_length * 2:
+        # For very long text, be more aggressive to preserve meaning
+        early_space = text.rfind(' ', 0, min_length)
+        if early_space > max_length * 0.3:  # At least 30% of target
+            return text[:early_space].strip() + "..."
+    
+    # Last resort: Hard truncation with word boundary respect
+    if max_length > 3:
+        return text[:max_length - 3].strip() + "..."
+    else:
+        return text[:max_length]
+
+
+def truncate_user_intent(text, max_length=77):
+    """Specialized truncation for user intent messages - preserves meaning."""
+    if not text:
+        return text
+    
+    # Clean up quotes that wrap entire text
+    clean_text = text.strip()
+    if clean_text.startswith('"') and clean_text.endswith('"') and len(clean_text) > 2:
+        clean_text = clean_text[1:-1]
+    
+    # Use semantic truncation with high meaning preservation
+    return semantic_truncate(clean_text, max_length, flexibility=0.2, preserve_meaning=True)
+
+
+def truncate_for_speech(text, max_length=80):
+    """Specialized truncation for TTS/speech - prioritizes natural breaks."""
+    if not text:
+        return text
+    
+    # Speech-friendly truncation with more flexibility for natural pauses
+    return semantic_truncate(text, max_length, flexibility=0.25, preserve_meaning=True)
+
+
+def truncate_technical_content(text, max_length=100):
+    """Specialized truncation for technical content - preserves technical terms."""
+    if not text:
+        return text
+    
+    # For technical content, be more conservative to avoid breaking technical terms
+    return semantic_truncate(text, max_length, flexibility=0.1, preserve_meaning=True)
+
+
+def truncate_at_sentence_boundary(text, max_length=80):
+    """Legacy function - now uses semantic truncation for compatibility."""
+    return semantic_truncate(text, max_length, flexibility=0.15, preserve_meaning=True)
 
 
 def extract_action_and_subject(user_request):
@@ -409,18 +480,8 @@ def extract_action_and_subject(user_request):
     if len(user_request.strip()) <= 50:
         return "help", f"with: {user_request.strip()}"
     
-    # For longer requests, use a more natural truncation
-    # Take first 80 chars and try to end at a word boundary
-    truncated = user_request[:80]
-    last_space = truncated.rfind(' ')
-    if last_space > 20:  # If we found a reasonable word boundary
-        subject = truncated[:last_space]
-    else:
-        subject = truncated
-    
-    # Add ellipsis if we truncated
-    if len(user_request) > len(subject):
-        subject += "..."
+    # For longer requests, use semantic truncation for natural boundaries
+    subject = truncate_for_speech(user_request, 80)
     
     # Simple action detection
     user_lower = user_request.lower()
@@ -1024,7 +1085,7 @@ def create_todo_aware_notification(tool_name, file_name, command, user_request, 
     
     # If we have a current todo, create context-aware message
     if current_todo:
-        todo_short = current_todo
+        todo_short = truncate_for_speech(current_todo, 60)  # Shorter for speech clarity
         
         # Create file-specific messages with todo context
         if file_name and tool_name:
@@ -1301,15 +1362,10 @@ def create_rich_completion_message(user_intent, cycle_summary_data=None):
     # Start with user intent reminder
     if user_intent and len(user_intent.strip()) > 10:
         # Clean up the user intent for speaking
-        clean_intent = user_intent.strip()
-        if len(clean_intent) > 80:
-            clean_intent = clean_intent[:77] + "..."
+        # Clean up the user intent using semantic truncation
+        clean_intent = truncate_user_intent(user_intent, 80)
         
-        # Remove quotes if they wrap the entire intent
-        if clean_intent.startswith('"') and clean_intent.endswith('"'):
-            clean_intent = clean_intent[1:-1]
-        
-        intro = f"You asked: {clean_intent}. "
+        intro = f"You instructed me to: {clean_intent}. "
     else:
         intro = "Task completed! "
     
@@ -1421,16 +1477,8 @@ def create_verbose_notification(user_request, trigger_message="", recent_work_co
     if not user_request or user_request.strip() == "":
         return "Ready to help with your next task"
     
-    # Clean up user request - take first sentence if it's long
-    clean_request = user_request.strip()
-    if len(clean_request) > 80:
-        # Find first sentence or truncate at word boundary
-        first_sentence = clean_request.split('.')[0]
-        if len(first_sentence) <= 80:
-            clean_request = first_sentence
-        else:
-            last_space = clean_request[:80].rfind(' ')
-            clean_request = clean_request[:last_space] if last_space > 40 else clean_request[:80]
+    # Clean up user request using semantic truncation
+    clean_request = truncate_for_speech(user_request.strip(), 80)
     
     # Use the same clean format as concise mode
     return f"You instructed me to '{clean_request}'. I need your confirmation to proceed with a subtask related to that."
@@ -1521,7 +1569,7 @@ def create_fallback_verbose_message(user_intent, complexity):
     
     elif complexity == "moderate":
         if user_intent and len(user_intent.strip()) > 10:
-            clean_intent = user_intent.strip()[:80] + ("..." if len(user_intent.strip()) > 80 else "")
+            clean_intent = truncate_user_intent(user_intent, 80)
             return f"Task completed! {clean_intent} - All handled with care."
         else:
             return "Solid work completed! Everything's been handled properly."
@@ -1534,7 +1582,7 @@ def create_fallback_verbose_message(user_intent, complexity):
             "Fantastic work finished!"
         ]
         if user_intent:
-            clean_intent = user_intent.strip()[:100] + ("..." if len(user_intent.strip()) > 100 else "")
+            clean_intent = truncate_user_intent(user_intent, 100)
             return f"{random.choice(reactions)} {clean_intent} - Comprehensive solution delivered!"
         else:
             return f"{random.choice(reactions)} Complex task handled with precision and expertise!"
@@ -1758,7 +1806,7 @@ def create_complex_completion_message(user_intent, context, timing_info=None):
     else:  # comprehensive_summary
         # Full celebration with context
         if user_intent:
-            intent_snippet = user_intent.strip()[:60] + ("..." if len(user_intent.strip()) > 60 else "")
+            intent_snippet = truncate_user_intent(user_intent, 60)
             return (f"Outstanding achievement! Your request: {intent_snippet} - "
                    f"Successfully delivered through {context['files_modified']} file modifications, "
                    f"{context['total_edits']} edits, demonstrating complex technical coordination. Exceptional results!")
