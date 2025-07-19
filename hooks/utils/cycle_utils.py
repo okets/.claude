@@ -554,11 +554,88 @@ def extract_file_from_user_request(user_request):
     return None
 
 
+def extract_command_from_user_request(user_request):
+    """Extract bash command from user request and return the command name."""
+    if not user_request:
+        return None
+    
+    import re
+    
+    # Look for command patterns in the user request - order matters for specificity
+    patterns = [
+        r'run\s+([a-zA-Z0-9_\-]+)',  # "run ls", "run git status"
+        r'execute\s+([a-zA-Z0-9_\-]+)',  # "execute npm install"
+        r'([a-zA-Z0-9_\-]+)\s+command',  # "ls command", "git command"
+        r'use\s+([a-zA-Z0-9_\-]+)',  # "use npm", "use git"
+        r'\b(ls|git|npm|pip|python|node|yarn|docker|kubectl|ssh|curl|wget|grep|find|cat|tail|head|ps|top|htop|vim|nano|mkdir|rmdir|rm|cp|mv|chmod|chown|sudo|apt|yum|brew|make|cmake|gcc|javac|java|go|rust|cargo)\b',  # common commands
+        r'([a-zA-Z0-9_\-]+)\s+install',  # "npm install", "pip install"
+        r'([a-zA-Z0-9_\-]+)\s+build',  # "npm build", "cargo build"
+        r'([a-zA-Z0-9_\-]+)\s+test',  # "npm test", "pytest"
+        r'([a-zA-Z0-9_\-]+)\s+start',  # "npm start", "docker start"
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, user_request, re.IGNORECASE)
+        if match:
+            command = match.group(1)
+            # Filter out common non-command words
+            non_commands = {'the', 'and', 'or', 'but', 'for', 'with', 'file', 'directory', 'folder', 'code', 'script'}
+            if command.lower() not in non_commands:
+                return command.lower()
+    
+    return None
+
+
 def extract_command_from_permission_message(trigger_message):
     """Extract bash command information from permission message."""  
     # Note: Standard Claude Code notifications don't contain specific commands
     # They only say "Claude needs your permission to use Bash"
     # Command context must come from todo items or other sources
+    return None
+
+
+def extract_bash_command_from_transcript(transcript_path):
+    """Extract the most recent bash command from transcript for permission notifications."""
+    if not transcript_path or not Path(transcript_path).exists():
+        return None
+    
+    try:
+        with open(transcript_path, 'r') as f:
+            lines = f.readlines()
+        
+        # Look backwards through recent lines for Bash tool calls
+        # Look at last 20 lines to find the most recent bash command
+        recent_lines = lines[-20:] if len(lines) > 20 else lines
+        
+        for line in reversed(recent_lines):
+            try:
+                entry = json.loads(line.strip())
+                
+                # Look for assistant messages with tool_use for Bash
+                if (entry.get('type') == 'assistant' and 
+                    entry.get('message', {}).get('role') == 'assistant'):
+                    
+                    content = entry.get('message', {}).get('content', [])
+                    if isinstance(content, list):
+                        for item in content:
+                            if (item.get('type') == 'tool_use' and 
+                                item.get('name') == 'Bash'):
+                                
+                                # Extract the command from the input
+                                command = item.get('input', {}).get('command', '')
+                                if command:
+                                    # Extract just the command name (first word) for TTS
+                                    # e.g., "ls -la" -> "ls", "git status" -> "git"
+                                    command_parts = command.strip().split()
+                                    if command_parts:
+                                        return command_parts[0]
+                                        
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
+                
+    except Exception:
+        pass
+    
     return None
 
 
@@ -598,10 +675,10 @@ def create_tool_focused_notification(tool_name, user_request=None, input_data=No
             'Should I go ahead and edit files?'
         ],
         'Bash': [
-            'May I run commands?',
-            'Permission needed to execute commands',
-            'Can I run bash commands?',
-            'Should I go ahead and execute commands?'
+            'May I execute bash commands?',
+            'Permission needed to run commands',
+            'Can I execute bash commands?',
+            'Should I go ahead and run bash commands?'
         ],
         'Task': [
             'May I create subtasks?',
@@ -654,7 +731,13 @@ def create_concise_notification(user_request, trigger_message="", transcript_pat
     # Extract context from trigger message and user request
     tool_name = extract_tool_from_permission_message(trigger_message)
     file_name = extract_file_from_user_request(user_request)  # Get file from user request instead
-    command = extract_command_from_permission_message(trigger_message)
+    command = extract_command_from_user_request(user_request)  # Extract command from user request
+    
+    # Special handling for Bash tool: extract command from transcript
+    if tool_name and tool_name.lower() == 'bash' and transcript_path:
+        transcript_command = extract_bash_command_from_transcript(transcript_path)
+        if transcript_command:
+            command = transcript_command  # Use the actual command from transcript
     
     # Priority 0: Try todo-aware notification first (highest context)
     if transcript_path:
@@ -679,7 +762,11 @@ def create_concise_notification(user_request, trigger_message="", transcript_pat
             else:
                 return create_tool_focused_notification(tool_name, user_request)
     
-    # Priority 3: File operations without tool context
+    # Priority 3: Command operations without tool context (command detected but no Bash tool)
+    if command:
+        return create_command_notification(command, user_request)
+    
+    # Priority 4: File operations without tool context
     if file_name:
         return create_file_notification(file_name, user_request)
     
@@ -727,39 +814,75 @@ def create_command_notification(command, user_request=None):
     """Create notification for bash commands."""
     import random
     
-    # Command-specific messages
+    # Command-specific messages - expanded list
     command_messages = {
         'git': [
-            "May I run git commands?",
+            "May I execute git commands?",
             "Permission needed for git operations",
             "Can I proceed with git commands?",
             "Should I go ahead and run git?"
         ],
         'npm': [
-            "May I run npm commands?",
+            "May I execute npm commands?",
             "Permission needed for npm operations", 
-            "Can I execute npm commands?",
-            "Should I go ahead and run npm?"
+            "Can I run npm commands?",
+            "Should I go ahead and execute npm?"
         ],
         'python': [
-            "May I run Python scripts?",
-            "Permission needed to execute Python",
-            "Can I run Python commands?",
-            "Should I go ahead and execute Python?"
+            "May I execute Python scripts?",
+            "Permission needed to run Python",
+            "Can I execute Python commands?",
+            "Should I go ahead and run Python?"
         ],
         'pip': [
-            "May I run pip commands?",
+            "May I execute pip commands?",
             "Permission needed for pip operations",
             "Can I install packages with pip?",
             "Should I go ahead and run pip?"
+        ],
+        'ls': [
+            "May I execute ls command?",
+            "Permission needed to list files",
+            "Can I run ls command?",
+            "Should I go ahead and list files?"
+        ],
+        'docker': [
+            "May I execute Docker commands?",
+            "Permission needed for Docker operations",
+            "Can I run Docker commands?",
+            "Should I go ahead and execute Docker?"
+        ],
+        'yarn': [
+            "May I execute Yarn commands?",
+            "Permission needed for Yarn operations",
+            "Can I run Yarn commands?",
+            "Should I go ahead and execute Yarn?"
+        ],
+        'make': [
+            "May I execute make commands?",
+            "Permission needed to run make",
+            "Can I execute make commands?",
+            "Should I go ahead and run make?"
+        ],
+        'curl': [
+            "May I execute curl commands?",
+            "Permission needed for network requests",
+            "Can I run curl commands?",
+            "Should I go ahead and execute curl?"
+        ],
+        'ssh': [
+            "May I execute SSH commands?",
+            "Permission needed for SSH operations",
+            "Can I run SSH commands?",
+            "Should I go ahead and execute SSH?"
         ]
     }
     
     messages = command_messages.get(command.lower(), [
-        f"May I run {command} commands?",
-        f"Permission needed to execute {command}",
-        f"Can I run {command}?",
-        f"Should I go ahead and execute {command}?"
+        f"May I execute {command} command?",
+        f"Permission needed to run {command}",
+        f"Can I execute {command} command?",
+        f"Should I go ahead and run {command}?"
     ])
     
     return random.choice(messages)
@@ -919,10 +1042,10 @@ def create_todo_aware_notification(tool_name, file_name, command, user_request, 
             ])
             return random.choice(messages)
         
-        # Command-specific messages with todo context
+        # Command-specific messages with todo context (enhanced for bash commands)
         elif command and tool_name and tool_name.lower() == 'bash':
             command_todo_messages = [
-                f"Working on: {todo_short} - may I run {command} commands?",
+                f"Working on: {todo_short} - may I run {command}?",
                 f"For task '{todo_short}' - permission to execute {command}?",
                 f"Current task: {todo_short} - can I run {command}?"
             ]
