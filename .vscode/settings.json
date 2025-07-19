@@ -1,0 +1,8 @@
+{
+    "type": "setting",
+    "details": {
+        "key": "workbench.colorTheme",
+        "value": "Violet Midnight",
+    },
+    "workbench.colorTheme": "Violet Midnight"
+}
