@@ -304,6 +304,12 @@ def main():
                         'I\'m getting web data now', 'I need to fetch this', 'I\'m downloading this', 'I need web information',
                         'I\'m retrieving this data', 'I need to access this online now', 'I\'m gathering web data', 'I\'m fetching online content',
                         'I need to download this', 'I\'m accessing web resources now', 'I\'m collecting web data'
+                    ],
+                    'exit_plan_mode': [
+                        'I\'ve created a plan for you to review', 'Here\'s my implementation plan', 'I\'ve prepared a detailed plan',
+                        'Let me present my plan', 'I\'ve outlined an approach', 'Here\'s my proposed solution plan',
+                        'I\'ve drafted an implementation strategy', 'Let me share my analysis and plan', 'I\'ve prepared a roadmap',
+                        'Here\'s my recommended approach', 'I\'ve created a step-by-step plan'
                     ]
                 }
                 
