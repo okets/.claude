@@ -74,6 +74,9 @@ If smarter-claude is installed, Claude will remember everything with full contex
 
 ## 🔊 TTS Voice Configuration
 
+**Watch: How to Change Your Voice** 🎥  
+[![Voice Configuration Guide](https://img.youtube.com/vi/linS2EZ14bc/hqdefault.jpg)](https://youtu.be/linS2EZ14bc)
+
 **Automatic voice installation and management:**
 
 ```bash
