@@ -109,11 +109,11 @@ class ContextualDB:
         self.connection.commit()
     
     def _announce_save(self):
-        """Announce database save with randomized messages - but only occasionally"""
+        """Announce database save with randomized messages - disabled to avoid interfering with completion summaries"""
         try:
             import random
-            # Only announce 1 in 10 saves to reduce frequency
-            if random.random() < 0.1:
+            # Disabled: These announcements interfere with clean completion summaries
+            if False:  # Previously: random.random() < 0.1
                 save_announcements = [
                     "saving to my long context database",
                     "saving to my long term memory", 

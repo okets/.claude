@@ -978,13 +978,39 @@ def main():
                         try:
                             from settings import get_setting
                             
-                            # Check if this was a simple interaction that should read the actual response
-                            user_intent_short = len(user_intent) < 100
-                            minimal_tools = execution_summary.get("total_edits", 0) <= 2
-                            no_file_changes = files_modified == 0
+                            # Enhanced completion messages with "you requested X, I did Y" format
+                            def clean_user_intent(intent):
+                                """Clean and truncate user intent for announcements"""
+                                if not intent or len(intent.strip()) < 10:
+                                    return None
+                                clean_intent = intent.strip()
+                                # Remove surrounding quotes
+                                if clean_intent.startswith('"') and clean_intent.endswith('"'):
+                                    clean_intent = clean_intent[1:-1]
+                                # Truncate at reasonable length
+                                if len(clean_intent) > 80:
+                                    clean_intent = clean_intent[:77] + "..."
+                                return clean_intent
                             
-                            if user_intent_short and minimal_tools and no_file_changes:
-                                # Simple Q&A - parse transcript directly to get assistant response
+                            def assess_cycle_complexity():
+                                """Assess cycle complexity for appropriate messaging"""
+                                total_edits = execution_summary.get("total_edits", 0)
+                                
+                                # Simple: short request, minimal changes
+                                if len(user_intent) < 100 and total_edits <= 2 and files_modified == 0:
+                                    return "simple"
+                                # Complex: many files, agents, or edits
+                                elif files_modified >= 3 or subagents_used >= 2 or total_edits >= 8:
+                                    return "complex"
+                                # Moderate: everything else
+                                else:
+                                    return "moderate"
+                            
+                            complexity = assess_cycle_complexity()
+                            clean_intent = clean_user_intent(user_intent)
+                            
+                            if complexity == "simple":
+                                # Simple tasks: Try to read actual response or give brief context
                                 try:
                                     transcript_path = input_data.get('transcript_path', '')
                                     if transcript_path:
@@ -1007,54 +1033,99 @@ def main():
                                             else:
                                                 response_text = str(response_content).strip()
                                             
-                                            # If response is reasonably short and contains actual content, read it
+                                            # If response is reasonably short, read it
                                             if response_text and len(response_text) < 300 and len(response_text) > 10:
-                                                # Add todo summary if available
                                                 if todo_summary:
                                                     announce_user_content(f"{response_text}. {todo_summary}")
                                                 else:
                                                     announce_user_content(response_text)
                                             else:
-                                                # Fallback to simple completion message with todo summary
+                                                # Simple fallback with context
+                                                if clean_intent:
+                                                    message = f"You asked: {clean_intent}. Done!"
+                                                    if todo_summary:
+                                                        message += f" {todo_summary}"
+                                                    announce_user_content(message)
+                                                else:
+                                                    if todo_summary:
+                                                        announce_user_content(f"Done. {todo_summary}")
+                                                    else:
+                                                        announce_user_content("I'm done")
+                                        else:
+                                            # No response found, use contextual completion
+                                            if clean_intent:
+                                                message = f"You asked: {clean_intent}. Done!"
+                                                if todo_summary:
+                                                    message += f" {todo_summary}"
+                                                announce_user_content(message)
+                                            else:
                                                 if todo_summary:
                                                     announce_user_content(f"Done. {todo_summary}")
                                                 else:
-                                                    announce_user_content("Done")
-                                        else:
-                                            if todo_summary:
-                                                announce_user_content(f"Done. {todo_summary}")
-                                            else:
-                                                announce_user_content("Done")
+                                                    announce_user_content("I'm done")
                                     else:
+                                        # No transcript, basic completion
                                         if todo_summary:
                                             announce_user_content(f"Done. {todo_summary}")
                                         else:
-                                            announce_user_content("Done")
+                                            announce_user_content("I'm done")
                                 except Exception as e:
-                                    # Debug logging to understand what's available
+                                    # Debug logging
                                     with open('/tmp/stop_hook_debug.log', 'a') as f:
                                         f.write(f"\n{datetime.now()}: Failed to extract response text: {str(e)}\n")
-                                    announce_user_content("Done")
-                            else:
-                                # Complex interaction - use factual summary without superlatives
-                                base_message = ""
-                                if primary_activity == "file_modification" and files_modified > 0:
-                                    if subagents_used > 0:
-                                        base_message = f"Modified {files_modified} files using {subagents_used} agents"
-                                    else:
-                                        base_message = f"Modified {files_modified} files"
-                                elif primary_activity == "code_analysis":
-                                    base_message = "Analysis complete"
-                                elif primary_activity == "testing":
-                                    base_message = "Tests complete"
-                                else:
-                                    base_message = "Task complete"
+                                    announce_user_content("I'm done")
+                            
+                            elif complexity == "moderate":
+                                # Moderate tasks: "You requested X, I did Y" format
+                                outcomes = []
+                                if files_modified > 0:
+                                    outcomes.append(f"modified {files_modified} file{'s' if files_modified > 1 else ''}")
+                                if subagents_used > 0:
+                                    outcomes.append(f"used {subagents_used} specialized agent{'s' if subagents_used > 1 else ''}")
+                                if execution_summary.get("total_edits", 0) > 0:
+                                    edits = execution_summary.get("total_edits", 0)
+                                    outcomes.append(f"made {edits} edit{'s' if edits > 1 else ''}")
                                 
-                                # Add todo summary to complex interactions too
-                                if todo_summary:
-                                    announce_user_content(f"{base_message}. {todo_summary}")
+                                if clean_intent and outcomes:
+                                    outcome_text = " and ".join(outcomes)
+                                    message = f"You requested: {clean_intent}. I {outcome_text}."
+                                elif clean_intent:
+                                    message = f"You requested: {clean_intent}. Task completed successfully."
+                                elif outcomes:
+                                    outcome_text = " and ".join(outcomes)
+                                    message = f"I {outcome_text}."
                                 else:
-                                    announce_user_content(base_message)
+                                    message = "Task completed successfully."
+                                
+                                if todo_summary:
+                                    message += f" {todo_summary}"
+                                announce_user_content(message)
+                            
+                            else:  # complex
+                                # Complex tasks: Celebrate with detailed context
+                                outcomes = []
+                                if files_modified > 0:
+                                    outcomes.append(f"modified {files_modified} file{'s' if files_modified > 1 else ''}")
+                                if subagents_used > 0:
+                                    outcomes.append(f"coordinated {subagents_used} specialized agent{'s' if subagents_used > 1 else ''}")
+                                if execution_summary.get("total_edits", 0) > 5:
+                                    edits = execution_summary.get("total_edits", 0)
+                                    outcomes.append(f"executed {edits} precise edits")
+                                
+                                if clean_intent and outcomes:
+                                    outcome_text = ", ".join(outcomes)
+                                    message = f"You asked: {clean_intent}. I successfully {outcome_text}. Excellent work completed!"
+                                elif clean_intent:
+                                    message = f"You requested: {clean_intent}. Complex task mastered with comprehensive results!"
+                                elif outcomes:
+                                    outcome_text = ", ".join(outcomes)
+                                    message = f"Complex task completed! I {outcome_text} with precision and expertise."
+                                else:
+                                    message = "Outstanding! Complex task handled with technical excellence!"
+                                
+                                if todo_summary:
+                                    message += f" {todo_summary}"
+                                announce_user_content(message)
                             
                         except ImportError:
                             # Fallback if settings not available

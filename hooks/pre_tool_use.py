@@ -331,8 +331,55 @@ def main():
                 
                 # TodoWrite and Bash already handled above, skip them here
                 if tool_name not in ['TodoWrite', 'Bash']:
-                    announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
-                    announcement = random.choice(announcements)
+                    # Helper function to make filenames more TTS-friendly
+                    def make_filename_speakable(filename):
+                        """Replace dots and underscores for better TTS pronunciation"""
+                        return filename.replace('.', ' dot ').replace('_', ' underscore ')
+                    
+                    # Special handling for file-related tools to include filename
+                    if tool_name == 'Read':
+                        file_path = tool_input.get('file_path', '')
+                        if file_path:
+                            filename = file_path.split('/')[-1]  # Get just the filename
+                            speakable_filename = make_filename_speakable(filename)
+                            read_announcements = [
+                                f'I need to read {speakable_filename}', f'I\'m checking {speakable_filename}', f'I\'m looking at {speakable_filename}',
+                                f'I\'m reading {speakable_filename} now', f'I\'m examining {speakable_filename}', f'I\'m reviewing {speakable_filename}',
+                                f'I need to check {speakable_filename}', f'I\'m going through {speakable_filename}', f'I\'m analyzing {speakable_filename}'
+                            ]
+                            announcement = random.choice(read_announcements)
+                        else:
+                            # Fallback if no file path
+                            announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                            announcement = random.choice(announcements)
+                    elif tool_name in ['Write', 'Edit', 'MultiEdit']:
+                        file_path = tool_input.get('file_path', '')
+                        if file_path:
+                            filename = file_path.split('/')[-1]  # Get just the filename
+                            speakable_filename = make_filename_speakable(filename)
+                            if tool_name == 'Write':
+                                write_announcements = [
+                                    f'I\'m writing {speakable_filename}', f'I\'m creating {speakable_filename}', f'I need to write {speakable_filename}',
+                                    f'I\'m building {speakable_filename}', f'I\'m making {speakable_filename}', f'I\'m generating {speakable_filename}',
+                                    f'I\'m composing {speakable_filename}', f'I\'m constructing {speakable_filename}'
+                                ]
+                                announcement = random.choice(write_announcements)
+                            elif tool_name in ['Edit', 'MultiEdit']:
+                                edit_announcements = [
+                                    f'I\'m updating {speakable_filename}', f'I need to modify {speakable_filename}', f'I\'m changing {speakable_filename}',
+                                    f'I\'m fixing {speakable_filename}', f'I need to edit {speakable_filename}', f'I\'m adjusting {speakable_filename}',
+                                    f'I\'m improving {speakable_filename}', f'I\'m revising {speakable_filename}'
+                                ]
+                                announcement = random.choice(edit_announcements)
+                        else:
+                            # Fallback if no file path
+                            announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                            announcement = random.choice(announcements)
+                    else:
+                        # Default handling for other tools
+                        announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
+                        announcement = random.choice(announcements)
+                    
                     announce_user_content(announcement, level="verbose")
                 
         except ImportError:
