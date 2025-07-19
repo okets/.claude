@@ -256,12 +256,28 @@ def main():
                 elif interaction_level == "verbose":
                     # Only announce regular bash commands in verbose mode if not database access
                     import random
-                    bash_announcements = [
-                        'I\'m running this now', 'I need to execute this', 'I\'m launching this', 'I need to run this',
-                        'I\'m starting this command now', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
-                        'I need to start this', 'I\'m executing this now', 'I\'m performing this command'
-                    ]
-                    announcement = random.choice(bash_announcements)
+                    
+                    # Extract command name for more informative announcements
+                    command_parts = command.strip().split()
+                    if command_parts:
+                        command_name = command_parts[0]
+                        
+                        # Special handling for git commands - include subcommand
+                        if command_name.lower() == 'git' and len(command_parts) > 1:
+                            full_command = f"git {command_parts[1]}"
+                        else:
+                            full_command = command_name
+                        
+                        bash_announcements = [
+                            f'I\'m running {full_command} now', f'I need to execute {full_command}', f'I\'m launching {full_command}',
+                            f'I\'m starting {full_command}', f'I need to run {full_command}', f'I\'m executing {full_command} now',
+                            f'I\'m processing {full_command}', f'Running {full_command}', f'Executing {full_command}'
+                        ]
+                        announcement = random.choice(bash_announcements)
+                    else:
+                        # Fallback for edge cases
+                        announcement = "I'm running this command now"
+                    
                     announce_user_content(announcement, level="verbose")
             
             elif interaction_level == "verbose":
