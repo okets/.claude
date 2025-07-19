@@ -23,6 +23,12 @@
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
+## 🎥 See It In Action
+
+[![smarter-claude Demo](https://img.youtube.com/vi/p02gvuYGrbk/maxresdefault.jpg)](https://www.youtube.com/watch?v=p02gvuYGrbk)
+
+*Click to watch the full demonstration of smarter-claude's contextual memory and TTS features*
+
 ## 🤔 What is smarter-claude?
 
 Every time you restart Claude Code, you lose everything. Your entire development context, the reasoning behind your changes, the problems you solved - gone. You're constantly re-explaining your project, re-establishing context, starting from scratch.
