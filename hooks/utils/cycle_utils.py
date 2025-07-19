@@ -811,20 +811,21 @@ def create_concise_notification(user_request, trigger_message="", transcript_pat
         if todo_notification:
             return todo_notification
     
-    # Priority 1: File operations with filename
-    if file_name and tool_name:
+    # Priority 1: Bash tool operations (highest priority for bash commands)
+    if tool_name and tool_name.lower() == 'bash' and command:
+        return create_command_notification(command, user_request)
+    
+    # Priority 2: File operations with filename (for non-bash tools)
+    if file_name and tool_name and tool_name.lower() != 'bash':
         return create_file_operation_notification(tool_name, file_name, user_request)
     
-    # Priority 2: Tool operations with specific context
+    # Priority 3: Other tool operations with specific context
     if tool_name:
-        if tool_name.lower() == 'bash' and command:
-            return create_command_notification(command, user_request)
+        # If we have a file name from user request, include it (for non-bash tools)
+        if file_name and tool_name.lower() != 'bash':
+            return create_file_operation_notification(tool_name, file_name, user_request)
         else:
-            # If we have a file name from user request, include it
-            if file_name:
-                return create_file_operation_notification(tool_name, file_name, user_request)
-            else:
-                return create_tool_focused_notification(tool_name, user_request)
+            return create_tool_focused_notification(tool_name, user_request)
     
     # Priority 3: Command operations without tool context (command detected but no Bash tool)
     if command:
