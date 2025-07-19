@@ -624,11 +624,14 @@ def extract_bash_command_from_transcript(transcript_path):
                                 # Extract the command from the input
                                 command = item.get('input', {}).get('command', '')
                                 if command:
-                                    # Extract just the command name (first word) for TTS
-                                    # e.g., "ls -la" -> "ls", "git status" -> "git"
                                     command_parts = command.strip().split()
                                     if command_parts:
-                                        return command_parts[0]
+                                        # Special handling for git commands - include subcommand
+                                        if command_parts[0].lower() == 'git' and len(command_parts) > 1:
+                                            return f"git {command_parts[1]}"
+                                        # For other commands, just return the main command
+                                        else:
+                                            return command_parts[0]
                                         
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue
@@ -813,6 +816,17 @@ def create_file_operation_notification(tool_name, file_name, user_request=None):
 def create_command_notification(command, user_request=None):
     """Create notification for bash commands."""
     import random
+    
+    # Check if this is a git subcommand
+    if command.startswith('git '):
+        git_subcommand = command.split(' ', 1)[1] if len(command.split(' ')) > 1 else ''
+        git_messages = [
+            f"May I execute {command}?",
+            f"Permission needed to run {command}",
+            f"Can I execute {command}?",
+            f"Should I go ahead and run {command}?"
+        ]
+        return random.choice(git_messages)
     
     # Command-specific messages - expanded list
     command_messages = {
