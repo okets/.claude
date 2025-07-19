@@ -124,11 +124,18 @@ def announce_notification(user_request=None, input_data=None):
             interaction_level = get_setting("interaction_level", "concise")
             
             if interaction_level == "concise":
-                # Use concise, contextual notification
+                # Use enhanced concise, contextual notification with todo context
                 try:
                     from cycle_utils import create_concise_notification
                     
-                    notification_message = create_concise_notification(user_request, input_data.get('message', ''))
+                    # Get transcript path for todo context
+                    transcript_path = input_data.get('transcript_path', '')
+                    
+                    notification_message = create_concise_notification(
+                        user_request, 
+                        input_data.get('message', ''), 
+                        transcript_path
+                    )
                         
                 except Exception as e:
                     # Fallback to simple message
@@ -139,22 +146,33 @@ def announce_notification(user_request=None, input_data=None):
                     notification_message = f"{engineer_name}, {notification_message.lower()}"
                     
             else:
-                # Verbose mode: use rich, contextual notifications with work history
+                # Verbose mode: use enhanced notifications with todo context first, then fallback
                 try:
-                    from cycle_utils import create_verbose_notification, get_recent_work_context, get_current_cycle_id
+                    from cycle_utils import create_concise_notification, create_verbose_notification, get_recent_work_context, get_current_cycle_id
                     
-                    # Get recent work context for enhanced verbose notifications
-                    session_id = input_data.get('session_id', '')
+                    # Get transcript path for todo context
                     transcript_path = input_data.get('transcript_path', '')
-                    current_cycle_id = get_current_cycle_id(session_id, transcript_path)
-                    recent_work_context = get_recent_work_context(session_id, current_cycle_id, lookback_cycles=3)
                     
-                    # Create verbose notification with full context
-                    notification_message = create_verbose_notification(
+                    # Try enhanced notification first (same as concise but with verbose context)
+                    notification_message = create_concise_notification(
                         user_request, 
-                        input_data.get('message', ''),
-                        recent_work_context
+                        input_data.get('message', ''), 
+                        transcript_path
                     )
+                    
+                    # If that didn't work, try the original verbose approach
+                    if not notification_message or notification_message == "Ready to help":
+                        # Get recent work context for enhanced verbose notifications
+                        session_id = input_data.get('session_id', '')
+                        current_cycle_id = get_current_cycle_id(session_id, transcript_path)
+                        recent_work_context = get_recent_work_context(session_id, current_cycle_id, lookback_cycles=3)
+                        
+                        # Create verbose notification with full context
+                        notification_message = create_verbose_notification(
+                            user_request, 
+                            input_data.get('message', ''),
+                            recent_work_context
+                        )
                     
                     # Add engineer name occasionally for verbose mode
                     if engineer_name and random.random() < 0.3:

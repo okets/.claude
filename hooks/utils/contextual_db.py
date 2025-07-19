@@ -109,19 +109,22 @@ class ContextualDB:
         self.connection.commit()
     
     def _announce_save(self):
-        """Announce database save with randomized messages"""
+        """Announce database save with randomized messages - but only occasionally"""
         try:
-            save_announcements = [
-                "saving to my long context database",
-                "saving to my long term memory", 
-                "storing in my memory database",
-                "recording to my context memory",
-                "updating my long term storage",
-                "saving to my persistent memory",
-                "storing in my knowledge base"
-            ]
-            announcement = random.choice(save_announcements)
-            announce_user_content(announcement, level="concise")  # Use concise for saves
+            import random
+            # Only announce 1 in 10 saves to reduce frequency
+            if random.random() < 0.1:
+                save_announcements = [
+                    "saving to my long context database",
+                    "saving to my long term memory", 
+                    "storing in my memory database",
+                    "recording to my context memory",
+                    "updating my long term storage",
+                    "saving to my persistent memory",
+                    "storing in my knowledge base"
+                ]
+                announcement = random.choice(save_announcements)
+                announce_user_content(announcement, level="concise")  # Use concise for saves
         except:
             pass  # Fail silently if TTS not available
     

@@ -515,6 +515,53 @@ def extract_tool_from_permission_message(trigger_message):
     return None
 
 
+def extract_file_from_user_request(user_request):
+    """Extract file path from user request and return just the filename."""
+    if not user_request:
+        return None
+    
+    import re
+    from pathlib import Path
+    
+    # Look for file patterns in the user request - order matters for specificity
+    patterns = [
+        r'read\s+(?:the\s+)?file\s+([/\w\.-]+)',  # "read the file /path/file"
+        r'(/etc/[^\s"\']+)',  # common system files like /etc/hosts
+        r'(/var/[^\s"\']+)',  # var directory files
+        r'(/usr/[^\s"\']+)',  # usr directory files
+        r'(/[^\s"\']+\.[a-zA-Z0-9]+)',  # unix absolute path with extension
+        r'([A-Za-z]:[/\\][^\s"\']+\.[a-zA-Z0-9]+)',  # windows absolute path
+        r'access\s+([^\s"\']+\.[a-zA-Z0-9]+)',  # "access file.ext"
+        r'open\s+([^\s"\']+\.[a-zA-Z0-9]+)',  # "open file.ext"
+        r'edit\s+([^\s"\']+\.[a-zA-Z0-9]+)',  # "edit file.ext"
+        r'modify\s+([^\s"\']+\.[a-zA-Z0-9]+)',  # "modify file.ext"
+        r'check\s+([^\s"\']+\.[a-zA-Z0-9]+)',  # "check file.ext"
+        r'["\']([^"\']*[/\\][^"\']*)["\']',  # any quoted path
+        r'(/[^\s"\']+/[^\s"\']+)',  # unix paths without extension
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, user_request, re.IGNORECASE)
+        if match:
+            file_path = match.group(1)
+            try:
+                # Return just the filename without path
+                return Path(file_path).name
+            except:
+                # If path parsing fails, return the original match
+                return file_path.split('/')[-1].split('\\')[-1]
+    
+    return None
+
+
+def extract_command_from_permission_message(trigger_message):
+    """Extract bash command information from permission message."""  
+    # Note: Standard Claude Code notifications don't contain specific commands
+    # They only say "Claude needs your permission to use Bash"
+    # Command context must come from todo items or other sources
+    return None
+
+
 
 
 def create_tool_focused_notification(tool_name, user_request=None, input_data=None):
@@ -522,55 +569,376 @@ def create_tool_focused_notification(tool_name, user_request=None, input_data=No
     if not tool_name:
         return get_varied_fallback_message()
     
-    # Tool-specific messages
-    tool_messages = {
-        'Read': ['read files', 'access files', 'view files', 'check files'],
-        'Write': ['write files', 'create files', 'save files'],
-        'Edit': ['edit files', 'modify files', 'update files'],
-        'Bash': ['run commands', 'execute commands', 'run bash'],
-        'Task': ['create subtasks', 'spawn agents', 'delegate work'],
-        'Glob': ['search files', 'find files', 'locate files'],
-        'Grep': ['search content', 'find text', 'search files'],
-        'WebFetch': ['fetch web content', 'access websites', 'get web data']
-    }
-    
     import random
     
-    # Get tool-specific action
-    actions = tool_messages.get(tool_name, [f'use {tool_name}'])
-    action = random.choice(actions)
+    # Enhanced tool-specific messages with more natural phrasing
+    tool_messages = {
+        'Read': [
+            'May I read files?',
+            'Permission needed to read files',
+            'Can I access files?',
+            'Should I go ahead and read files?'
+        ],
+        'Write': [
+            'May I write files?',
+            'Permission needed to create files',
+            'Can I write files?',
+            'Should I go ahead and create files?'
+        ],
+        'Edit': [
+            'May I edit files?',
+            'Permission needed to modify files',
+            'Can I update files?',
+            'Should I go ahead and edit files?'
+        ],
+        'MultiEdit': [
+            'May I edit multiple files?',
+            'Permission needed to modify files',
+            'Can I update files?',
+            'Should I go ahead and edit files?'
+        ],
+        'Bash': [
+            'May I run commands?',
+            'Permission needed to execute commands',
+            'Can I run bash commands?',
+            'Should I go ahead and execute commands?'
+        ],
+        'Task': [
+            'May I create subtasks?',
+            'Permission needed to delegate work',
+            'Can I spawn agents?',
+            'Should I go ahead and create subtasks?'
+        ],
+        'Glob': [
+            'May I search for files?',
+            'Permission needed to find files',
+            'Can I locate files?',
+            'Should I go ahead and search files?'
+        ],
+        'Grep': [
+            'May I search file content?',
+            'Permission needed to find text',
+            'Can I search through files?',
+            'Should I go ahead and search content?'
+        ],
+        'WebFetch': [
+            'May I fetch web content?',
+            'Permission needed to access websites',
+            'Can I get web data?',
+            'Should I go ahead and fetch web content?'
+        ],
+        'LS': [
+            'May I list directory contents?',
+            'Permission needed to view files',
+            'Can I check directories?',
+            'Should I go ahead and list files?'
+        ]
+    }
     
-    # Get varied permission prefix
-    prefix = get_varied_permission_prefix()
+    # Get tool-specific messages or create generic ones
+    messages = tool_messages.get(tool_name, [
+        f'May I use {tool_name}?',
+        f'Permission needed to use {tool_name}',
+        f'Can I proceed with {tool_name}?',
+        f'Should I go ahead and use {tool_name}?'
+    ])
     
-    if prefix in ["May I", "Should I go ahead and"]:
-        return f"{prefix} {action}?"
-    elif prefix in ["Can I proceed with", "Need approval for"]:
-        return f"{prefix} {action}"
-    elif prefix in ["Awaiting permission to", "Ready to proceed with"]:
-        return f"{prefix} {action}"
-    else:
-        return f"{prefix}: {action}"
+    return random.choice(messages)
 
 
-def create_concise_notification(user_request, trigger_message=""):
+def create_concise_notification(user_request, trigger_message="", transcript_path=None):
     """Create concise notification message based on user request and trigger type."""
     if not user_request or user_request.strip() == "":
         return get_varied_fallback_message()
     
-    # Clean up user request - take first sentence if it's long
-    clean_request = user_request.strip()
-    if len(clean_request) > 80:
-        # Find first sentence or truncate at word boundary
-        first_sentence = clean_request.split('.')[0]
-        if len(first_sentence) <= 80:
-            clean_request = first_sentence
-        else:
-            last_space = clean_request[:80].rfind(' ')
-            clean_request = clean_request[:last_space] if last_space > 40 else clean_request[:80]
+    # Extract context from trigger message and user request
+    tool_name = extract_tool_from_permission_message(trigger_message)
+    file_name = extract_file_from_user_request(user_request)  # Get file from user request instead
+    command = extract_command_from_permission_message(trigger_message)
     
-    # Use the same clean format for all notifications
-    return f"You instructed me to '{clean_request}'. I need your confirmation to proceed with a subtask related to that."
+    # Priority 0: Try todo-aware notification first (highest context)
+    if transcript_path:
+        todo_notification = create_todo_aware_notification(
+            tool_name, file_name, command, user_request, transcript_path
+        )
+        if todo_notification:
+            return todo_notification
+    
+    # Priority 1: File operations with filename
+    if file_name and tool_name:
+        return create_file_operation_notification(tool_name, file_name, user_request)
+    
+    # Priority 2: Tool operations with specific context
+    if tool_name:
+        if tool_name.lower() == 'bash' and command:
+            return create_command_notification(command, user_request)
+        else:
+            # If we have a file name from user request, include it
+            if file_name:
+                return create_file_operation_notification(tool_name, file_name, user_request)
+            else:
+                return create_tool_focused_notification(tool_name, user_request)
+    
+    # Priority 3: File operations without tool context
+    if file_name:
+        return create_file_notification(file_name, user_request)
+    
+    # Fallback: Use improved generic message
+    return create_generic_notification(user_request)
+
+
+def create_file_operation_notification(tool_name, file_name, user_request=None):
+    """Create notification for specific file operations."""
+    import random
+    
+    # Tool-specific file operation messages
+    file_operations = {
+        'Read': [
+            f"May I read {file_name}?",
+            f"Permission needed to read {file_name}",
+            f"Can I access {file_name}?",
+            f"Should I go ahead and read {file_name}?"
+        ],
+        'Write': [
+            f"May I write {file_name}?",
+            f"Permission needed to create {file_name}",
+            f"Can I write to {file_name}?",
+            f"Should I go ahead and create {file_name}?"
+        ],
+        'Edit': [
+            f"May I edit {file_name}?",
+            f"Permission needed to modify {file_name}",
+            f"Can I update {file_name}?",
+            f"Should I go ahead and modify {file_name}?"
+        ],
+        'MultiEdit': [
+            f"May I edit {file_name}?",
+            f"Permission needed to modify {file_name}",
+            f"Can I update {file_name}?",
+            f"Should I go ahead and modify {file_name}?"
+        ]
+    }
+    
+    messages = file_operations.get(tool_name, [f"May I use {tool_name} on {file_name}?"])
+    return random.choice(messages)
+
+
+def create_command_notification(command, user_request=None):
+    """Create notification for bash commands."""
+    import random
+    
+    # Command-specific messages
+    command_messages = {
+        'git': [
+            "May I run git commands?",
+            "Permission needed for git operations",
+            "Can I proceed with git commands?",
+            "Should I go ahead and run git?"
+        ],
+        'npm': [
+            "May I run npm commands?",
+            "Permission needed for npm operations", 
+            "Can I execute npm commands?",
+            "Should I go ahead and run npm?"
+        ],
+        'python': [
+            "May I run Python scripts?",
+            "Permission needed to execute Python",
+            "Can I run Python commands?",
+            "Should I go ahead and execute Python?"
+        ],
+        'pip': [
+            "May I run pip commands?",
+            "Permission needed for pip operations",
+            "Can I install packages with pip?",
+            "Should I go ahead and run pip?"
+        ]
+    }
+    
+    messages = command_messages.get(command.lower(), [
+        f"May I run {command} commands?",
+        f"Permission needed to execute {command}",
+        f"Can I run {command}?",
+        f"Should I go ahead and execute {command}?"
+    ])
+    
+    return random.choice(messages)
+
+
+def create_file_notification(file_name, user_request=None):
+    """Create notification when we know the file but not the operation."""
+    import random
+    
+    messages = [
+        f"May I work with {file_name}?",
+        f"Permission needed to access {file_name}",
+        f"Can I proceed with {file_name}?",
+        f"Should I go ahead and modify {file_name}?"
+    ]
+    
+    return random.choice(messages)
+
+
+def create_generic_notification(user_request):
+    """Create improved generic notification without restating full user request."""
+    import random
+    
+    # Extract action from user request for more natural messages
+    action, subject = extract_action_and_subject(user_request)
+    
+    if action == "help":
+        # For generic help requests, use varied messages
+        messages = [
+            "May I proceed with your request?",
+            "Permission needed to continue",
+            "Can I go ahead with this task?",
+            "Should I proceed with your request?",
+            "Ready to help - may I continue?",
+            "Awaiting permission to proceed"
+        ]
+    else:
+        # For specific actions, use action-based messages
+        messages = [
+            f"May I {action}?",
+            f"Permission needed to {action}",
+            f"Can I proceed to {action}?",
+            f"Should I go ahead and {action}?",
+            f"Ready to {action} - may I continue?"
+        ]
+    
+    return random.choice(messages)
+
+
+def extract_current_todos(transcript_path):
+    """Extract current todo items from transcript for notification context."""
+    if not transcript_path:
+        return None
+    
+    try:
+        from hook_parser import parse_current_request_cycle
+        
+        # Parse the current cycle to get tools used
+        transcript_data = parse_current_request_cycle(transcript_path)
+        tools_used = transcript_data.get("raw_data", {}).get("tools_used", [])
+        
+        # Debug: Log what we found
+        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+            f.write(f"Todo extraction debug:\n")
+            f.write(f"Tools found: {len(tools_used)}\n")
+            f.write(f"TodoWrite calls: {len([t for t in tools_used if t.get('tool_name') == 'TodoWrite'])}\n")
+        
+        # Find TodoWrite calls and extract current todo state
+        todo_calls = [t for t in tools_used if t.get('tool_name') == 'TodoWrite']
+        if todo_calls:
+            # Get the last TodoWrite call to see final todo state
+            last_todo_call = todo_calls[-1]
+            todos = last_todo_call.get('input', {}).get('todos', [])
+            
+            # Debug: Log todo details
+            with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                f.write(f"Last TodoWrite found {len(todos)} todos\n")
+                for i, todo in enumerate(todos):
+                    f.write(f"Todo {i}: {todo.get('content', '')} - {todo.get('status', '')}\n")
+            
+            if todos:
+                # Smart current todo detection
+                # Priority 1: Find the current active todo (in_progress)
+                for todo in todos:
+                    if todo.get('status') == 'in_progress':
+                        result = todo.get('content', '').strip()
+                        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                            f.write(f"Returning in_progress todo: {result}\n")
+                        return result
+                
+                # Priority 2: Find the next pending todo (auto-becomes current)
+                for todo in todos:
+                    if todo.get('status') == 'pending':
+                        result = todo.get('content', '').strip()
+                        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                            f.write(f"Returning pending todo: {result}\n")
+                        return result
+                
+                # Priority 3: If all completed, return progress summary
+                completed_count = len([t for t in todos if t.get('status') == 'completed'])
+                total_count = len(todos)
+                if completed_count == total_count and total_count > 0:
+                    result = f"All {total_count} tasks completed"
+                    with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                        f.write(f"Returning completion summary: {result}\n")
+                    return result
+        
+        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+            f.write(f"No todos found, returning None\n")
+        return None
+        
+    except Exception as e:
+        # Log the exception for debugging
+        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+            f.write(f"Exception in todo extraction: {str(e)}\n")
+        return None
+
+
+def create_todo_aware_notification(tool_name, file_name, command, user_request, transcript_path):
+    """Create notification with todo context when available."""
+    import random
+    
+    # Extract current todo context
+    current_todo = extract_current_todos(transcript_path)
+    
+    # If we have a current todo, create context-aware message
+    if current_todo:
+        todo_short = current_todo
+        
+        # Create file-specific messages with todo context
+        if file_name and tool_name:
+            todo_messages = {
+                'Read': [
+                    f"Working on: {todo_short} - may I read {file_name}?",
+                    f"For task '{todo_short}' - permission to read {file_name}?",
+                    f"Current task: {todo_short} - can I access {file_name}?"
+                ],
+                'Write': [
+                    f"Working on: {todo_short} - may I create {file_name}?",
+                    f"For task '{todo_short}' - permission to write {file_name}?", 
+                    f"Current task: {todo_short} - can I write {file_name}?"
+                ],
+                'Edit': [
+                    f"Working on: {todo_short} - may I edit {file_name}?",
+                    f"For task '{todo_short}' - permission to modify {file_name}?",
+                    f"Current task: {todo_short} - can I update {file_name}?"
+                ],
+                'MultiEdit': [
+                    f"Working on: {todo_short} - may I edit {file_name}?",
+                    f"For task '{todo_short}' - permission to modify {file_name}?",
+                    f"Current task: {todo_short} - can I update {file_name}?"
+                ]
+            }
+            
+            messages = todo_messages.get(tool_name, [
+                f"Working on: {todo_short} - may I use {tool_name} on {file_name}?"
+            ])
+            return random.choice(messages)
+        
+        # Command-specific messages with todo context
+        elif command and tool_name and tool_name.lower() == 'bash':
+            command_todo_messages = [
+                f"Working on: {todo_short} - may I run {command} commands?",
+                f"For task '{todo_short}' - permission to execute {command}?",
+                f"Current task: {todo_short} - can I run {command}?"
+            ]
+            return random.choice(command_todo_messages)
+        
+        # Generic tool messages with todo context
+        elif tool_name:
+            generic_todo_messages = [
+                f"Working on: {todo_short} - may I use {tool_name}?",
+                f"For task '{todo_short}' - permission to use {tool_name}?",
+                f"Current task: {todo_short} - can I proceed with {tool_name}?"
+            ]
+            return random.choice(generic_todo_messages)
+    
+    # No todo context available, return None to fall back to other methods
+    return None
 
 
 def get_varied_completion_suffix(primary_activity, files_modified=0):

@@ -204,17 +204,49 @@ def main():
             
             interaction_level = get_setting("interaction_level", "concise")
             
-            # Announce TodoWrite in both concise and verbose modes (planning is important)
+            # Announce TodoWrite with actual todo content instead of generic messages
             if tool_name == 'TodoWrite' and interaction_level in ["concise", "verbose"]:
-                import random
-                planning_announcements = [
-                    'Planning this task', 'Planning approach', 'Organizing work', 'Setting up plan',
-                    'Structuring this task', 'Planning next steps', 'Breaking down work',
-                    'Organizing approach', 'Planning implementation', 'Mapping out tasks',
-                    'Creating task plan', 'Setting up workflow', 'Planning strategy'
-                ]
-                announcement = random.choice(planning_announcements)
-                announce_user_content(announcement, level="concise")
+                try:
+                    # Get the actual todo data from the tool input
+                    todos = tool_input.get('todos', [])
+                    
+                    if todos:
+                        # Find current working item (in_progress or next pending)
+                        current_todo = None
+                        next_todo = None
+                        
+                        # Look for in_progress items first
+                        for todo in todos:
+                            if todo.get('status') == 'in_progress':
+                                current_todo = todo.get('content', '').strip()
+                                break
+                        
+                        # If no in_progress, find first pending
+                        if not current_todo:
+                            for todo in todos:
+                                if todo.get('status') == 'pending':
+                                    next_todo = todo.get('content', '').strip()
+                                    break
+                        
+                        # Create contextual announcement
+                        if current_todo:
+                            announcement = f"Working on: {current_todo}"
+                        elif next_todo:
+                            announcement = f"Next task: {next_todo}"
+                        else:
+                            # Fallback if no clear current item
+                            completed_count = len([t for t in todos if t.get('status') == 'completed'])
+                            total_count = len(todos)
+                            announcement = f"Planning tasks - {completed_count} of {total_count} completed"
+                    else:
+                        # No todos in input, use generic planning message
+                        announcement = "Planning this task"
+                    
+                    announce_user_content(announcement, level="concise")
+                    
+                except Exception:
+                    # Fallback to simple message if todo parsing fails
+                    announce_user_content("Planning tasks", level="concise")
             
             # Special announcement for smarter-claude database access (all interaction levels)
             if tool_name == 'Bash':

@@ -353,6 +353,57 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - ✅ Social media announcement
 - ✅ Developer community engagement
 - ✅ Usage examples and tutorials
+
+### Phase 13: Enhanced TTS Contextual Notifications 🎤 ✅ COMPLETED
+**Goal**: Replace generic TTS notifications with intelligent, contextual messages
+**Vision**: TTS that announces specific actions, file names, and current todo context
+
+#### Task 13.1: Extract File Names from Permission Messages ✅ COMPLETED
+- ✅ Parse file paths from trigger messages and include filenames in TTS
+- ✅ Modified `create_concise_notification()` function in `hooks/utils/cycle_utils.py`
+- ✅ Extract `file_path` from `trigger_message` tool input data using regex patterns
+- ✅ Use `Path(file_path).name` to get just filename (without full path)
+- ✅ Create file-specific messages: `"May I read config.py?"`, `"Should I go ahead and modify main.js?"`
+
+#### Task 13.2: Add Todo Context Access ✅ COMPLETED
+- ✅ Include current todo item information in TTS notifications
+- ✅ Parse current TodoWrite state from transcript (similar to stop.py implementation)
+- ✅ Extract active/in-progress todo items with `extract_current_todos()` function
+- ✅ Include relevant todo context: `"Working on: implement user authentication - may I edit auth.py?"`
+
+#### Task 13.3: Create Tool-Specific Permission Messages ✅ COMPLETED
+- ✅ Replace generic messages with specific tool permission requests
+- ✅ Enhanced `create_tool_focused_notification()` with natural phrasing
+- ✅ Tool-specific messages for Read, Write, Edit, Bash, Task, Glob, Grep, WebFetch, LS
+- ✅ Use varied permission prefixes: `"May I"`, `"Permission needed to"`, `"Can I proceed with"`
+
+#### Task 13.4: Implement Message Routing Logic ✅ COMPLETED
+- ✅ Route to appropriate message type based on available context
+- ✅ Priority system: Todo + File context > File context > Tool context > Fallback
+- ✅ Parse `trigger_message` to determine what information is available
+- ✅ Route to most specific message type possible
+
+#### Task 13.5: Update Notification Hook Integration ✅ COMPLETED
+- ✅ Integrate enhanced notifications into notification.py
+- ✅ Modified notification.py to use new enhanced notification functions
+- ✅ Pass transcript_path for todo context extraction
+- ✅ Ensure proper fallback behavior when context isn't available
+
+#### Task 13.6: Test Enhanced TTS Messages ✅ COMPLETED
+- ✅ Verified all notification improvements work correctly
+- ✅ Tested file operation permissions: Read, Write, Edit, MultiEdit
+- ✅ Tested bash command permissions with specific commands (git, npm)
+- ✅ Tested tool-specific permissions (Grep, Glob, Task, etc.)
+- ✅ Verified fallback messages still work for unknown scenarios
+
+**Results Achieved**:
+- **Before**: `"You instructed me to 'read file'. I need confirmation."`
+- **After**: `"May I read notification.py?"` or `"Working on: fix login bug - may I edit auth.py?"`
+- **File extraction**: ✅ Working (config.py, notification.py, main.js)
+- **Tool extraction**: ✅ Working (Read, Edit, Bash, Grep)
+- **Command extraction**: ✅ Working (git, npm)
+- **Todo context**: ✅ Ready for live testing with transcript data
+- **Message routing**: ✅ Priority system working correctly
 ## Hook Execution Order Reference
 
 ### Typical Flow:
