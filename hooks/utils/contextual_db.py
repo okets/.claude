@@ -12,10 +12,11 @@ Simple 4-table schema for fast context retrieval:
 import json
 import sqlite3
 import sys
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from cycle_utils import get_project_smarter_claude_dir
+from cycle_utils import get_project_smarter_claude_dir, announce_user_content
 
 
 class ContextualDB:
@@ -107,6 +108,23 @@ class ContextualDB:
         
         self.connection.commit()
     
+    def _announce_save(self):
+        """Announce database save with randomized messages"""
+        try:
+            save_announcements = [
+                "saving to my long context database",
+                "saving to my long term memory", 
+                "storing in my memory database",
+                "recording to my context memory",
+                "updating my long term storage",
+                "saving to my persistent memory",
+                "storing in my knowledge base"
+            ]
+            announcement = random.choice(save_announcements)
+            announce_user_content(announcement, level="concise")  # Use concise for saves
+        except:
+            pass  # Fail silently if TTS not available
+    
     # Data insertion methods
     
     def insert_cycle(self, session_id: str, cycle_id: int, user_intent: str = None,
@@ -128,6 +146,7 @@ class ContextualDB:
                   start_time, end_time, primary_activity))
             
             self.connection.commit()
+            self._announce_save()
             return True
         except Exception as e:
             print(f"Error inserting cycle: {e}", file=sys.stderr)
@@ -149,6 +168,7 @@ class ContextualDB:
             """, (cycle_id, file_path, agent_type, operation_type, change_reason, edit_count, timestamp))
             
             self.connection.commit()
+            self._announce_save()
             return True
         except Exception as e:
             print(f"Error inserting file context: {e}", file=sys.stderr)
@@ -169,6 +189,7 @@ class ContextualDB:
             """, (cycle_id, intent_sequence, summary_text, summary_type, confidence_level))
             
             self.connection.commit()
+            self._announce_save()
             return True
         except Exception as e:
             print(f"Error inserting LLM summary: {e}", file=sys.stderr)
@@ -190,6 +211,7 @@ class ContextualDB:
             """, (cycle_id, task_description, files_json, status, completion_time))
             
             self.connection.commit()
+            self._announce_save()
             return True
         except Exception as e:
             print(f"Error inserting subagent task: {e}", file=sys.stderr)

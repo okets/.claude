@@ -216,7 +216,24 @@ def main():
                 announcement = random.choice(planning_announcements)
                 announce_user_content(announcement, level="concise")
             
+            # Special announcement for smarter-claude database access (all interaction levels)
+            if tool_name == 'Bash':
+                command = tool_input.get('command', '')
+                if command.startswith('sqlite3 .claude/smarter-claude/smarter-claude.db'):
+                    announce_user_content("accessing my long context memory", level=interaction_level)
+                elif interaction_level == "verbose":
+                    # Only announce regular bash commands in verbose mode if not database access
+                    import random
+                    bash_announcements = [
+                        'I\'m running this now', 'I need to execute this', 'I\'m launching this', 'I need to run this',
+                        'I\'m starting this command now', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
+                        'I need to start this', 'I\'m executing this now', 'I\'m performing this command'
+                    ]
+                    announcement = random.choice(bash_announcements)
+                    announce_user_content(announcement, level="verbose")
+            
             elif interaction_level == "verbose":
+                
                 # Announce tool usage with varied messages
                 import random
                 
@@ -235,11 +252,6 @@ def main():
                         'I\'m updating this now', 'I need to modify this', 'I\'m changing this', 'I\'m fixing this',
                         'I need to edit this', 'I\'m adjusting this now', 'I\'m improving this', 'I\'m correcting this',
                         'I need to update this', 'I\'m revising this', 'I\'m refining this now'
-                    ],
-                    'Bash': [
-                        'I\'m running this now', 'I need to execute this', 'I\'m launching this', 'I need to run this',
-                        'I\'m starting this command now', 'I need to execute this command', 'I\'m processing this', 'I\'m running this script',
-                        'I need to start this', 'I\'m executing this now', 'I\'m performing this command'
                     ],
                     'Task': [
                         'I need help with this now', 'I\'m getting assistance', 'I need to delegate this', 'I\'m calling for help',
@@ -263,8 +275,8 @@ def main():
                     ]
                 }
                 
-                # TodoWrite already handled above, skip it here
-                if tool_name != 'TodoWrite':
+                # TodoWrite and Bash already handled above, skip them here
+                if tool_name not in ['TodoWrite', 'Bash']:
                     announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
                     announcement = random.choice(announcements)
                     announce_user_content(announcement, level="verbose")
