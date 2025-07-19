@@ -1077,7 +1077,7 @@ def main():
                                     announce_user_content("I'm done")
                             
                             elif complexity == "moderate":
-                                # Moderate tasks: "You instructed me to X, I did Y" format
+                                # Moderate tasks: "You instructed me to X, I did Y" format with variety
                                 outcomes = []
                                 if files_modified > 0:
                                     outcomes.append(f"modified {files_modified} file{'s' if files_modified > 1 else ''}")
@@ -1087,23 +1087,46 @@ def main():
                                     edits = execution_summary.get("total_edits", 0)
                                     outcomes.append(f"made {edits} edit{'s' if edits > 1 else ''}")
                                 
+                                # Randomized prefixes for moderate tasks
+                                prefixes = [
+                                    "Alright,",
+                                    "There we go,",
+                                    "All set,",
+                                    "Task handled,",
+                                    "Got it done,"
+                                ]
+                                
+                                # Randomized suffixes for moderate tasks
+                                suffixes = [
+                                    "Good work!",
+                                    "Well done!",
+                                    "Nice collaboration!",
+                                    "Solid teamwork!",
+                                    "Mission accomplished!"
+                                ]
+                                
+                                prefix = random.choice(prefixes)
+                                suffix = random.choice(suffixes)
+                                
                                 if clean_intent and outcomes:
                                     outcome_text = " and ".join(outcomes)
-                                    message = f"You instructed me to: {clean_intent}. I {outcome_text}."
+                                    summary_message = f"you instructed me to: {clean_intent}. I {outcome_text}."
                                 elif clean_intent:
-                                    message = f"You instructed me to: {clean_intent}. Task completed successfully."
+                                    summary_message = f"you instructed me to: {clean_intent}. Task completed successfully."
                                 elif outcomes:
                                     outcome_text = " and ".join(outcomes)
-                                    message = f"I {outcome_text}."
+                                    summary_message = f"I {outcome_text}."
                                 else:
-                                    message = "Task completed successfully."
+                                    summary_message = "task completed successfully."
+                                
+                                message = f"{prefix} {summary_message} {suffix}"
                                 
                                 if todo_summary:
                                     message += f" {todo_summary}"
                                 announce_user_content(message)
                             
                             else:  # complex
-                                # Complex tasks: Celebrate with detailed context
+                                # Complex tasks: Provide detailed summary with dynamic prefix/suffix
                                 outcomes = []
                                 if files_modified > 0:
                                     outcomes.append(f"modified {files_modified} file{'s' if files_modified > 1 else ''}")
@@ -1113,16 +1136,82 @@ def main():
                                     edits = execution_summary.get("total_edits", 0)
                                     outcomes.append(f"executed {edits} precise edits")
                                 
+                                # Assess complexity/length for appropriate messaging
+                                total_edits = execution_summary.get("total_edits", 0)
+                                is_extra_complex = (files_modified >= 5 or subagents_used >= 3 or total_edits >= 15)
+                                is_long_task = (len(user_intent) > 200 or total_edits >= 10)
+                                
+                                # Dynamic prefixes based on task characteristics
+                                if is_extra_complex:
+                                    prefixes = [
+                                        "That wasn't easy,",
+                                        "Whew, that was intricate,",
+                                        "That was quite the challenge,",
+                                        "What a complex undertaking,",
+                                        "That required some serious coordination,"
+                                    ]
+                                elif is_long_task:
+                                    prefixes = [
+                                        "That took a while,",
+                                        "After all that work,",
+                                        "Following that extensive process,",
+                                        "That was quite a journey,",
+                                        "After working through all those steps,"
+                                    ]
+                                else:
+                                    prefixes = [
+                                        "Well,",
+                                        "Alright,",
+                                        "There we go,",
+                                        "Mission accomplished,",
+                                        "Task handled,"
+                                    ]
+                                
+                                # Build the detailed summary
                                 if clean_intent and outcomes:
                                     outcome_text = ", ".join(outcomes)
-                                    message = f"You instructed me to: {clean_intent}. I successfully {outcome_text}. Excellent work completed!"
+                                    summary_message = f"you instructed me to: {clean_intent}. I successfully {outcome_text}."
                                 elif clean_intent:
-                                    message = f"You instructed me to: {clean_intent}. Complex task mastered with comprehensive results!"
+                                    summary_message = f"you instructed me to: {clean_intent}. Task completed successfully."
                                 elif outcomes:
                                     outcome_text = ", ".join(outcomes)
-                                    message = f"Complex task completed! I {outcome_text} with precision and expertise."
+                                    summary_message = f"I {outcome_text}."
                                 else:
-                                    message = "Outstanding! Complex task handled with technical excellence!"
+                                    summary_message = "complex task completed."
+                                
+                                # Dynamic suffixes
+                                if is_extra_complex:
+                                    suffixes = [
+                                        "Well done for both of us!",
+                                        "Great teamwork there!",
+                                        "We make a good team!",
+                                        "Excellent collaboration achieved!",
+                                        "That's what I call quality engineering!"
+                                    ]
+                                else:
+                                    suffixes = [
+                                        "Well done for us!",
+                                        "Nice work together!",
+                                        "Good collaboration!",
+                                        "Solid teamwork!",
+                                        "Mission accomplished together!"
+                                    ]
+                                
+                                prefix = random.choice(prefixes)
+                                suffix = random.choice(suffixes)
+                                
+                                # Extra appreciation for very complex tasks
+                                if is_extra_complex:
+                                    appreciation_phrases = [
+                                        "This level of coordination across multiple systems really showcases our collaborative capabilities.",
+                                        "Managing this many moving parts simultaneously demonstrates excellent technical orchestration.",
+                                        "The precision required for this multi-faceted implementation was quite impressive.",
+                                        "Successfully handling this complexity while maintaining quality is genuinely commendable."
+                                    ]
+                                    appreciation = random.choice(appreciation_phrases)
+                                    message = f"{prefix} {summary_message} {appreciation} {suffix}"
+                                else:
+                                    message = f"{prefix} {summary_message} {suffix}"
                                 
                                 if todo_summary:
                                     message += f" {todo_summary}"

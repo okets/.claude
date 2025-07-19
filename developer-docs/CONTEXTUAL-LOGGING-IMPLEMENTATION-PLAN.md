@@ -404,6 +404,52 @@ db.execute("SELECT task_description, status FROM subagent_tasks WHERE cycle_id =
 - **Command extraction**: ✅ Working (git, npm)
 - **Todo context**: ✅ Ready for live testing with transcript data
 - **Message routing**: ✅ Priority system working correctly
+
+### Phase 14: Semantic Text Truncation & TTS Improvements 🎯 ✅ COMPLETED
+**Goal**: Replace crude text truncation with intelligent semantic text processing
+**Vision**: Natural, boundary-aware text truncation and enhanced TTS completion messages
+
+#### Task 14.1: Implement Semantic Truncation System ✅ COMPLETED
+- ✅ Created `semantic_truncate()` core function with punctuation-aware algorithm
+- ✅ Implemented priority-based boundary detection (periods > semicolons > commas > words)
+- ✅ Added flexibility ranges (±15%) to preserve meaning while respecting length limits
+- ✅ Created specialized functions: `truncate_user_intent()`, `truncate_for_speech()`, `truncate_technical_content()`
+- ✅ Replaced all 16 crude truncation instances across hook system with semantic alternatives
+
+#### Task 14.2: Enhanced Stop Hook Completion Messages ✅ COMPLETED
+- ✅ Implemented complexity-aware messaging system with three levels: simple, moderate, complex
+- ✅ Added "you instructed me to X, I did Y" format for better context
+- ✅ Enhanced pronunciation: changed "you asked/said" to "you instructed me to" for accuracy
+- ✅ Fixed underscore pronunciation: replaced "underscore" with spaces for better TTS flow
+- ✅ Added randomized prefixes and suffixes to avoid repetitive announcements
+- ✅ Complex task prefixes: "That wasn't easy,", "Whew, that was intricate,", etc.
+- ✅ Long task prefixes: "That took a while,", "After all that work,", etc.
+- ✅ Collaborative suffixes: "Well done for us!", "Great teamwork!", etc.
+- ✅ Extra appreciation for very complex tasks with detailed technical acknowledgment
+
+#### Task 14.3: Fix Critical TTS Bash Command Bug ✅ COMPLETED
+- ✅ Identified bash command announcement bug: TTS saying "May I use bash on Name?" instead of proper command names
+- ✅ Root cause: Priority logic in `create_concise_notification()` treating bash commands as file operations
+- ✅ Fixed priority ordering to handle bash commands first before file pattern matching
+- ✅ Enhanced bash command extraction from transcript JSON for accurate command name announcements
+- ✅ Verified fix: TTS now correctly announces "May I run python3?" instead of mangled filenames
+
+#### Task 14.4: Tool Description TTS Integration ✅ COMPLETED
+- ✅ Discovered tool descriptions available in `tool_input.description` field (white bullet point text)
+- ✅ Implemented post_tool_use.py TTS announcements for tool descriptions
+- ✅ Added smart deduplication using cache file to avoid repeating same description for sequential tools
+- ✅ Added randomized completion suffixes: "- done", "- complete", "- finished", "- success", "- ready"
+- ✅ Integrated with interaction levels: works in both concise and verbose modes
+- ✅ Graceful fallback to original completion announcements when descriptions unavailable
+
+**Results Achieved**:
+- **Semantic Truncation**: Natural text boundaries preserved, no more mid-word cuts
+- **Enhanced Completion Messages**: Contextual "you instructed me to X, I did Y" format with celebration
+- **Bug-Free TTS**: Bash commands correctly announced with proper command names
+- **Rich Tool Context**: Tool descriptions from UI now spoken with completion indicators
+- **Non-Repetitive**: Randomized messaging prevents annoying repetition
+- **Pronunciation Quality**: Better TTS flow with improved word choices and spacing
+
 ## Hook Execution Order Reference
 
 ### Typical Flow:

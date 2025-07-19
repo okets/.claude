@@ -216,7 +216,7 @@ def main():
                     change_summary = "Modified notebook"
                 
         
-        # Announce tool completion in verbose mode
+        # Announce tool description if available
         try:
             sys.path.append(str(Path(__file__).parent / 'utils'))
             from settings import get_setting
@@ -224,56 +224,99 @@ def main():
             
             interaction_level = get_setting("interaction_level", "concise")
             
-            if interaction_level == "verbose":
-                # Announce tool completion with varied messages
-                if success:
-                    import random
+            # Skip announcements for TodoWrite - too frequent and annoying
+            if tool_name != 'TodoWrite':
+                # Get tool description from input (the white bullet point text)
+                tool_description = tool_input.get('description', '').strip()
+                
+                if tool_description:
+                    # Deduplication: Check if we've already announced this description recently
+                    cache_file = Path('/tmp') / 'last_tool_description.txt'
+                    should_announce = True
                     
-                    completion_announcements = {
-                        'Read': [
-                            'Read completed', 'File processed', 'Content analyzed', 'Read operation finished',
-                            'File contents retrieved', 'Reading successful', 'Content loaded', 'File examined',
-                            'Read task complete', 'File analysis done', 'Content processed', 'Reading finished'
-                        ],
-                        'Write': [
-                            'Write completed', 'File created', 'Content written', 'Write operation finished',
-                            'File saved successfully', 'Writing complete', 'Content generated', 'File built',
-                            'Write task done', 'File creation complete', 'Content saved', 'Writing finished'
-                        ], 
-                        'Edit': [
-                            'Edit completed', 'Changes applied', 'File modified', 'Edit operation finished',
-                            'Updates saved', 'Modifications complete', 'File updated', 'Changes processed',
-                            'Edit task done', 'File changes saved', 'Updates applied', 'Editing finished'
-                        ],
-                        'Bash': [
-                            'Command executed', 'Script completed', 'Execution finished', 'Command processed',
-                            'Script run successfully', 'Execution complete', 'Command finished', 'Process completed',
-                            'Shell command done', 'Script execution finished', 'Command successful', 'Execution done'
-                        ],
-                        'Task': [
-                            'Task completed', 'Agent finished', 'Delegation successful', 'Task execution done',
-                            'Agent task complete', 'Collaboration finished', 'Task processed', 'Agent work done',
-                            'Delegation complete', 'Task agent finished', 'Agent execution done', 'Task successful'
-                        ],
-                        'Glob': [
-                            'File search completed', 'Files located', 'Search finished', 'Pattern matching done',
-                            'File discovery complete', 'Search successful', 'Files found', 'Pattern search finished',
-                            'File matching complete', 'Search operation done', 'File lookup finished', 'Search complete'
-                        ],
-                        'Grep': [
-                            'Text search completed', 'Pattern found', 'Search finished', 'Text matching done',
-                            'Pattern search complete', 'Text scan finished', 'Search successful', 'Pattern matching finished',
-                            'Text analysis complete', 'Search operation done', 'Pattern lookup finished', 'Grep complete'
-                        ],
-                        'WebFetch': [
-                            'Web fetch completed', 'Data retrieved', 'Download finished', 'Web request done',
-                            'Content downloaded', 'Fetch successful', 'Web data obtained', 'Download complete',
-                            'Web operation finished', 'Data fetch done', 'Web content retrieved', 'Fetch complete'
+                    if cache_file.exists():
+                        try:
+                            with open(cache_file, 'r') as f:
+                                last_description = f.read().strip()
+                            # Don't repeat if it's the same description
+                            if last_description == tool_description:
+                                should_announce = False
+                        except:
+                            pass  # If cache read fails, proceed with announcement
+                    
+                    if should_announce:
+                        # Cache this description to avoid immediate repetition
+                        try:
+                            with open(cache_file, 'w') as f:
+                                f.write(tool_description)
+                        except:
+                            pass  # Cache write failure shouldn't break the hook
+                        
+                        # Announce the description with completion indicator
+                        completion_suffixes = [
+                            "- done",
+                            "- complete", 
+                            "- finished",
+                            "- success",
+                            "- ready"
                         ]
-                    }
-                    
-                    # Skip announcements for TodoWrite - too frequent and annoying
-                    if tool_name != 'TodoWrite':
+                        
+                        import random
+                        suffix = random.choice(completion_suffixes)
+                        announcement = f"{tool_description} {suffix}"
+                        
+                        # Use appropriate level based on interaction setting
+                        if interaction_level in ["concise", "verbose"]:
+                            announce_user_content(announcement)
+                
+                # Fallback to original verbose announcements if no description available
+                elif interaction_level == "verbose":
+                    if success:
+                        import random
+                        
+                        completion_announcements = {
+                            'Read': [
+                                'Read completed', 'File processed', 'Content analyzed', 'Read operation finished',
+                                'File contents retrieved', 'Reading successful', 'Content loaded', 'File examined',
+                                'Read task complete', 'File analysis done', 'Content processed', 'Reading finished'
+                            ],
+                            'Write': [
+                                'Write completed', 'File created', 'Content written', 'Write operation finished',
+                                'File saved successfully', 'Writing complete', 'Content generated', 'File built',
+                                'Write task done', 'File creation complete', 'Content saved', 'Writing finished'
+                            ], 
+                            'Edit': [
+                                'Edit completed', 'Changes applied', 'File modified', 'Edit operation finished',
+                                'Updates saved', 'Modifications complete', 'File updated', 'Changes processed',
+                                'Edit task done', 'File changes saved', 'Updates applied', 'Editing finished'
+                            ],
+                            'Bash': [
+                                'Command executed', 'Script completed', 'Execution finished', 'Command processed',
+                                'Script run successfully', 'Execution complete', 'Command finished', 'Process completed',
+                                'Shell command done', 'Script execution finished', 'Command successful', 'Execution done'
+                            ],
+                            'Task': [
+                                'Task completed', 'Agent finished', 'Delegation successful', 'Task execution done',
+                                'Agent task complete', 'Collaboration finished', 'Task processed', 'Agent work done',
+                                'Delegation complete', 'Task agent finished', 'Agent execution done', 'Task successful'
+                            ],
+                            'Glob': [
+                                'File search completed', 'Files located', 'Search finished', 'Pattern matching done',
+                                'File discovery complete', 'Search successful', 'Files found', 'Pattern search finished',
+                                'File matching complete', 'Search operation done', 'File lookup finished', 'Search complete'
+                            ],
+                            'Grep': [
+                                'Text search completed', 'Pattern found', 'Search finished', 'Text matching done',
+                                'Pattern search complete', 'Text scan finished', 'Search successful', 'Pattern matching finished',
+                                'Text analysis complete', 'Search operation done', 'Pattern lookup finished', 'Grep complete'
+                            ],
+                            'WebFetch': [
+                                'Web fetch completed', 'Data retrieved', 'Download finished', 'Web request done',
+                                'Content downloaded', 'Fetch successful', 'Web data obtained', 'Download complete',
+                                'Web operation finished', 'Data fetch done', 'Web content retrieved', 'Fetch complete'
+                            ]
+                        }
+                        
                         announcements = completion_announcements.get(tool_name, [f'{tool_name} completed'])
                         announcement = random.choice(announcements)
                         announce_user_content(announcement, level="verbose")
