@@ -1,5 +1,5 @@
 ---
-description: "Set smarter-claude voice engine (13 Kokoro voices: af_alloy, af_river, af_sky, af_sarah, af_nicole, am_adam, am_echo, am_puck, am_michael, bf_emma, bm_daniel, bm_lewis, bm_george + macos-female, macos-male)"
+description: "Set smarter-claude voice engine using friendly names: alloy, river, sky, sarah, nicole, adam, puck, michael, emma, daniel, lewis, george, default-male, default-female"
 allowed-tools:
   - Bash
   - Read
@@ -10,28 +10,24 @@ allowed-tools:
 
 I'll update your smarter-claude voice engine setting.
 
-Usage: `/smarter-claude_voice <voice>`
+Usage: `/smarter-claude_voice <voice_name>`
 
-Valid voices:
+Valid voice names:
 
-**Kokoro Voices (High-Quality Neural TTS):**
-- **kokoro-af_alloy**: Alloy female voice (neutral)
-- **kokoro-af_river**: River female voice 
-- **kokoro-af_sky**: Sky female voice
-- **kokoro-af_sarah**: Sarah female voice
-- **kokoro-af_nicole**: Nicole female voice
-- **kokoro-am_adam**: Adam male voice
-- **kokoro-am_echo**: Echo male voice (expressive)
-- **kokoro-am_puck**: Puck male voice (young)
-- **kokoro-am_michael**: Michael male voice
-- **kokoro-bf_emma**: Emma bright female voice
-- **kokoro-bm_daniel**: Daniel male voice (British)
-- **kokoro-bm_lewis**: Lewis male voice (British)
-- **kokoro-bm_george**: George male voice (British)
-
-**System Voices:**
-- **macos-female**: macOS built-in female voice (Samantha)
-- **macos-male**: macOS built-in male voice (Alex)
+- **alloy** = Alloy (American Female)
+- **river** = River (American Female)
+- **sky** = Sky (American Female)
+- **sarah** = Sarah (American Female)
+- **nicole** = Nicole (American Female, Whispering)
+- **adam** = Adam (American Male)
+- **puck** = Puck (American Male)
+- **michael** = Michael (American Male)
+- **emma** = Emma (British Female)
+- **daniel** = Daniel (British Male)
+- **lewis** = Lewis (British Male)
+- **george** = George (British Male)
+- **default-male** = default-male (MacOS)
+- **default-female** = default-female (MacOS)
 
 !# Use the settings management system for proper cascading
 MANAGE_SETTINGS="$HOME/.claude/hooks/utils/manage_settings.py"
@@ -41,30 +37,26 @@ VOICE_MANAGER="$HOME/.claude/hooks/utils/manage_voices.py"
 VOICE="$1"
 
 if [ -z "$VOICE" ]; then
-  echo "❌ Please specify a voice engine"
+  echo "❌ Please specify a voice name"
   echo ""
-  echo "Usage: /smarter-claude_voice <voice>"
+  echo "Usage: /smarter-claude_voice <voice_name>"
   echo ""
-  echo "Valid voices:"
+  echo "Valid voice names:"
   echo ""
-  echo "Kokoro Voices (High-Quality Neural TTS):"
-  echo "  kokoro-af_alloy   - Alloy female voice (neutral)"
-  echo "  kokoro-af_river   - River female voice"
-  echo "  kokoro-af_sky     - Sky female voice"
-  echo "  kokoro-af_sarah   - Sarah female voice"
-  echo "  kokoro-af_nicole  - Nicole female voice"
-  echo "  kokoro-am_adam    - Adam male voice"
-  echo "  kokoro-am_echo    - Echo male voice (expressive)"
-  echo "  kokoro-am_puck    - Puck male voice (young)"
-  echo "  kokoro-am_michael - Michael male voice"
-  echo "  kokoro-bf_emma    - Emma bright female voice"
-  echo "  kokoro-bm_daniel  - Daniel male voice (British)"
-  echo "  kokoro-bm_lewis   - Lewis male voice (British)"
-  echo "  kokoro-bm_george  - George male voice (British)"
-  echo ""
-  echo "System Voices:"
-  echo "  macos-female      - macOS built-in female voice (Samantha)"
-  echo "  macos-male        - macOS built-in male voice (Alex)"
+  echo "  alloy           = Alloy (American Female)"
+  echo "  river           = River (American Female)"
+  echo "  sky             = Sky (American Female)"
+  echo "  sarah           = Sarah (American Female)"
+  echo "  nicole          = Nicole (American Female, Whispering)"
+  echo "  adam            = Adam (American Male)"
+  echo "  puck            = Puck (American Male)"
+  echo "  michael         = Michael (American Male)"
+  echo "  emma            = Emma (British Female)"
+  echo "  daniel          = Daniel (British Male)"
+  echo "  lewis           = Lewis (British Male)"
+  echo "  george          = George (British Male)"
+  echo "  default-male    = default-male (MacOS)"
+  echo "  default-female  = default-female (MacOS)"
   echo ""
   echo "Current setting:"
   python3 "$MANAGE_SETTINGS" get tts_engine 2>/dev/null || echo "Using global defaults"
@@ -77,15 +69,53 @@ if [ -z "$VOICE" ]; then
   exit 1
 fi
 
-# Validate voice option
+# Map friendly names to voice IDs
 case "$VOICE" in
-  "kokoro-af_alloy"|"kokoro-af_river"|"kokoro-af_sky"|"kokoro-af_sarah"|"kokoro-af_nicole"|"kokoro-am_adam"|"kokoro-am_echo"|"kokoro-am_puck"|"kokoro-am_michael"|"kokoro-bf_emma"|"kokoro-bm_daniel"|"kokoro-bm_lewis"|"kokoro-bm_george"|"macos-female"|"macos-male")
-    VOICE_TEXT="$VOICE"
+  "alloy")
+    VOICE_TEXT="kokoro-af_alloy"
+    ;;
+  "river")
+    VOICE_TEXT="kokoro-af_river"
+    ;;
+  "sky")
+    VOICE_TEXT="kokoro-af_sky"
+    ;;
+  "sarah")
+    VOICE_TEXT="kokoro-af_sarah"
+    ;;
+  "nicole")
+    VOICE_TEXT="kokoro-af_nicole"
+    ;;
+  "adam")
+    VOICE_TEXT="kokoro-am_adam"
+    ;;
+  "puck")
+    VOICE_TEXT="kokoro-am_puck"
+    ;;
+  "michael")
+    VOICE_TEXT="kokoro-am_michael"
+    ;;
+  "emma")
+    VOICE_TEXT="kokoro-bf_emma"
+    ;;
+  "daniel")
+    VOICE_TEXT="kokoro-bm_daniel"
+    ;;
+  "lewis")
+    VOICE_TEXT="kokoro-bm_lewis"
+    ;;
+  "george")
+    VOICE_TEXT="kokoro-bm_george"
+    ;;
+  "default-male")
+    VOICE_TEXT="macos-male"
+    ;;
+  "default-female")
+    VOICE_TEXT="macos-female"
     ;;
   *)
-    echo "❌ Invalid voice: $VOICE"
-    echo "Valid Kokoro voices: kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george"
-    echo "Valid system voices: macos-female, macos-male"
+    echo "❌ Invalid voice name: $VOICE"
+    echo "Valid voice names: alloy, river, sky, sarah, nicole, adam, puck, michael, emma, daniel, lewis, george, default-male, default-female"
     exit 1
     ;;
 esac

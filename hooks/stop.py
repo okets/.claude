@@ -213,18 +213,18 @@ def extract_lessons_learned(tool_executions: List[Dict], accomplishments: str, f
     lessons = []
     
     # Check for test failures and fixes
-    test_failures = sum(1 for exec in tool_executions if exec['intent'] == 'running-tests' and not exec.get('success', True))
-    test_successes = sum(1 for exec in tool_executions if exec['intent'] == 'running-tests' and exec.get('success', True))
+    test_failures = sum(1 for execution in tool_executions if execution['intent'] == 'running-tests' and not execution.get('success', True))
+    test_successes = sum(1 for execution in tool_executions if execution['intent'] == 'running-tests' and execution.get('success', True))
     
     if test_failures > 0 and test_successes > test_failures:
         lessons.append("Fixed failing tests through iterative debugging")
     
     # Check for multiple modifications to same file
     file_edit_counts = {}
-    for exec in tool_executions:
-        if exec['intent'] == 'modifying-file' and exec['files_touched']:
+    for execution in tool_executions:
+        if execution['intent'] == 'modifying-file' and execution['files_touched']:
             try:
-                files = json.loads(exec['files_touched']) if isinstance(exec['files_touched'], str) else exec['files_touched']
+                files = json.loads(execution['files_touched']) if isinstance(execution['files_touched'], str) else execution['files_touched']
                 for file in files:
                     file_name = Path(file).name
                     file_edit_counts[file_name] = file_edit_counts.get(file_name, 0) + 1
@@ -236,12 +236,12 @@ def extract_lessons_learned(tool_executions: List[Dict], accomplishments: str, f
             lessons.append(f"Required multiple iterations ({count}) to get {file} working correctly")
     
     # Check for git operations
-    git_ops = [exec for exec in tool_executions if exec['intent'] == 'git-operation']
+    git_ops = [execution for execution in tool_executions if execution['intent'] == 'git-operation']
     if git_ops:
         lessons.append(f"Used {len(git_ops)} git operations to manage version control")
     
     # Check for search patterns
-    search_count = sum(1 for exec in tool_executions if exec['intent'] in ['searching-code', 'finding-files'])
+    search_count = sum(1 for execution in tool_executions if execution['intent'] in ['searching-code', 'finding-files'])
     if search_count > 5:
         lessons.append(f"Required extensive searching ({search_count} searches) to understand codebase")
     
@@ -283,23 +283,23 @@ def analyze_session_for_summary(chat_session_id: str, project_id: int, db) -> Di
         accomplishments = []
         topics = set()
         
-        for exec in executions:
+        for execution in executions:
             # Collect files
-            if exec['files_touched']:
+            if execution['files_touched']:
                 try:
-                    files = json.loads(exec['files_touched'])
+                    files = json.loads(execution['files_touched'])
                     files_mentioned.update([Path(f).name for f in files])
                 except:
                     pass
             
             # Collect intents
-            if exec['intent']:
-                intents.append(exec['intent'])
+            if execution['intent']:
+                intents.append(execution['intent'])
             
             # Extract topics from tool inputs
-            if exec['tool_input']:
+            if execution['tool_input']:
                 try:
-                    tool_input = json.loads(exec['tool_input']) if isinstance(exec['tool_input'], str) else exec['tool_input']
+                    tool_input = json.loads(execution['tool_input']) if isinstance(execution['tool_input'], str) else execution['tool_input']
                     
                     # Extract from commands
                     if 'command' in tool_input:
@@ -1072,37 +1072,39 @@ def main():
                                             # If response is reasonably short, read it
                                             if response_text and len(response_text) < 300 and len(response_text) > 10:
                                                 if todo_summary:
-                                                    announce_user_content(f"{response_text}. {todo_summary}")
+                                                    announce_user_content(f"{todo_summary}. {response_text}")
                                                 else:
                                                     announce_user_content(response_text)
                                             else:
                                                 # Simple fallback with context
                                                 if clean_intent:
-                                                    message = f"You instructed me to: {clean_intent}. Done!"
                                                     if todo_summary:
-                                                        message += f" {todo_summary}"
+                                                        message = f"{todo_summary}. You instructed me to: {clean_intent}. Done!"
+                                                    else:
+                                                        message = f"You instructed me to: {clean_intent}. Done!"
                                                     announce_user_content(message)
                                                 else:
                                                     if todo_summary:
-                                                        announce_user_content(f"Done. {todo_summary}")
+                                                        announce_user_content(f"{todo_summary}. Done!")
                                                     else:
                                                         announce_user_content("I'm done")
                                         else:
                                             # No response found, use contextual completion
                                             if clean_intent:
-                                                message = f"You instructed me to: {clean_intent}. Done!"
                                                 if todo_summary:
-                                                    message += f" {todo_summary}"
+                                                    message = f"{todo_summary}. You instructed me to: {clean_intent}. Done!"
+                                                else:
+                                                    message = f"You instructed me to: {clean_intent}. Done!"
                                                 announce_user_content(message)
                                             else:
                                                 if todo_summary:
-                                                    announce_user_content(f"Done. {todo_summary}")
+                                                    announce_user_content(f"{todo_summary}. Done!")
                                                 else:
                                                     announce_user_content("I'm done")
                                     else:
                                         # No transcript, basic completion
                                         if todo_summary:
-                                            announce_user_content(f"Done. {todo_summary}")
+                                            announce_user_content(f"{todo_summary}. Done!")
                                         else:
                                             announce_user_content("I'm done")
                                 except Exception as e:
@@ -1154,10 +1156,10 @@ def main():
                                 else:
                                     summary_message = "task completed successfully."
                                 
-                                message = f"{prefix} {summary_message} {suffix}"
-                                
                                 if todo_summary:
-                                    message += f" {todo_summary}"
+                                    message = f"{todo_summary}. {prefix} {summary_message} {suffix}"
+                                else:
+                                    message = f"{prefix} {summary_message} {suffix}"
                                 announce_user_content(message)
                             
                             else:  # complex
@@ -1247,16 +1249,16 @@ def main():
                                     appreciation = random.choice(appreciation_phrases)
                                     message = f"{prefix} {summary_message} {appreciation} {suffix}"
                                 else:
-                                    message = f"{prefix} {summary_message} {suffix}"
-                                
-                                if todo_summary:
-                                    message += f" {todo_summary}"
+                                    if todo_summary:
+                                        message = f"{todo_summary}. {prefix} {summary_message} {suffix}"
+                                    else:
+                                        message = f"{prefix} {summary_message} {suffix}"
                                 announce_user_content(message)
                             
                         except ImportError:
                             # Fallback if settings not available
                             if todo_summary:
-                                announce_user_content(f"Done. {todo_summary}")
+                                announce_user_content(f"{todo_summary}. Done!")
                             else:
                                 announce_user_content("Done")
                         

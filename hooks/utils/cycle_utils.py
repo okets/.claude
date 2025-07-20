@@ -654,29 +654,52 @@ def truncate_for_speech(text, max_words=15, max_length=None):
     search_window = text[search_start:search_end]
     
     # Find punctuation marks in order of preference
-    punctuation_marks = ['.', '!', '?', ';', ':', '-', ',']
+    # Strong punctuation (preferred for clean breaks)
+    strong_punctuation = ['.', '!', '?']
+    weak_punctuation = [';', ':', '-', ',']
+    
     best_cut_pos = None
     best_distance = float('inf')
+    best_is_strong = False
     
-    for punct in punctuation_marks:
+    # First pass: look for strong punctuation
+    for punct in strong_punctuation:
         for match in re.finditer(re.escape(punct), search_window):
             punct_pos = search_start + match.start() + 1  # +1 to include the punctuation
             distance = abs(punct_pos - target_char_pos)
             
-            # Prefer punctuation closer to target
+            # Prefer strong punctuation even if slightly farther
             if distance < best_distance:
                 best_distance = distance
                 best_cut_pos = punct_pos
+                best_is_strong = True
     
-    # If we found a good punctuation mark, cut there
-    if best_cut_pos and best_cut_pos < len(text):
+    # Second pass: only consider weak punctuation if no strong punctuation found
+    if not best_is_strong:
+        for punct in weak_punctuation:
+            for match in re.finditer(re.escape(punct), search_window):
+                punct_pos = search_start + match.start() + 1  # +1 to include the punctuation
+                distance = abs(punct_pos - target_char_pos)
+                
+                if distance < best_distance:
+                    best_distance = distance
+                    best_cut_pos = punct_pos
+    
+    # If we found a good punctuation mark within reasonable distance, cut there
+    target_words = max_words
+    max_distance_chars = len(' '.join(words[:int(target_words * 1.5)]))  # 1.5x word limit in chars
+    
+    # Only use punctuation if it creates a meaningful break (not too close to start)
+    min_distance_chars = len(' '.join(words[:max(3, int(target_words * 0.6))]))  # At least 60% through
+    
+    if (best_cut_pos and best_cut_pos < len(text) and 
+        best_cut_pos <= max_distance_chars and best_cut_pos >= min_distance_chars):
         return text[:best_cut_pos].strip()
     
-    # If no punctuation found, only then fall back to word boundary
-    # But be much more generous - use target + 50% buffer
-    fallback_words = int(max_words * 1.5)
-    if len(words) > fallback_words:
-        return ' '.join(words[:fallback_words]).strip() + "..."
+    # If punctuation is too far away or too close, truncate at word boundary and add "etcetera"
+    if len(words) > target_words:
+        truncated = ' '.join(words[:target_words]).strip()
+        return f"{truncated}, etcetera"
     
     # If even that's not needed, return original
     return text
