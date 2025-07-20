@@ -159,10 +159,40 @@ def get_latest_user_message_from_transcript(transcript_path):
         return None
 
 
+def clean_stale_tts_locks():
+    """Clean up stale TTS locks at start of new user session"""
+    try:
+        import os
+        import time
+        sys.path.append(str(Path(__file__).parent / 'utils'))
+        from cycle_utils import get_tts_lock_path
+        
+        lock_file = get_tts_lock_path()
+        
+        if lock_file.exists():
+            try:
+                # If lock is older than 30 seconds, assume crash
+                lock_age = time.time() - lock_file.stat().st_mtime
+                if lock_age > 30:
+                    lock_file.unlink()
+            except:
+                # If we can't read it, remove it
+                try:
+                    lock_file.unlink()
+                except:
+                    pass
+    except Exception:
+        # If cleanup fails, continue normally
+        pass
+
+
 def main():
     try:
         # Stop any playing TTS when new notification arrives (new user input)
         stop_all_tts()
+        
+        # Clean up any stale TTS locks from previous crashes
+        clean_stale_tts_locks()
         
         # Parse command line arguments (for compatibility)
         parser = argparse.ArgumentParser()

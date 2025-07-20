@@ -79,10 +79,25 @@ def speak_text(text, voice="am_echo", use_streaming=False):
         return False
 
 def speak_streaming(kokoro, text, voice):
-    """Stream TTS for real-time playback"""
+    """Stream TTS for real-time playback with lock coordination"""
     import asyncio
     import soundfile as sf
     import numpy as np
+    
+    # Import lock functions
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent))
+    try:
+        from cycle_utils import check_tts_lock, create_tts_lock, remove_tts_lock
+    except ImportError:
+        # If lock functions not available, proceed without locking
+        def check_tts_lock(): return False
+        def create_tts_lock(duration): pass
+        def remove_tts_lock(): pass
+    
+    # Check if TTS is locked before starting stream
+    if check_tts_lock():
+        return True  # Skip streaming - another TTS is playing
     
     async def stream_and_play():
         print(f"🔄 Streaming with {voice}...")
@@ -135,13 +150,20 @@ def speak_streaming(kokoro, text, voice):
                 # Concatenate all audio chunks
                 full_audio = np.concatenate(audio_chunks)
                 
-                # Play the complete audio
-                with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
-                    sf.write(tmp_file.name, full_audio, sample_rate)
-                    subprocess.run(["afplay", tmp_file.name], check=True)
+                # Calculate duration and create lock before playback
+                duration = len(full_audio) / sample_rate
+                create_tts_lock(duration)
+                
+                try:
+                    # Play the complete audio
+                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
+                        sf.write(tmp_file.name, full_audio, sample_rate)
+                        subprocess.run(["afplay", tmp_file.name], check=True)
+                finally:
+                    # Always remove lock when playback completes
+                    remove_tts_lock()
                 
                 total_time = time.time() - total_start
-                duration = len(full_audio) / sample_rate
                 rtf = (total_time - (time_to_first_audio/1000)) / duration if duration > 0 else 0
                 
                 print(f"⚡ Total time: {total_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
@@ -164,13 +186,29 @@ def speak_streaming(kokoro, text, voice):
         return speak_standard(kokoro, text, voice)
 
 def speak_standard(kokoro, text, voice):
-    """Standard non-streaming TTS synthesis"""
+    """Standard non-streaming TTS synthesis with lock coordination"""
+    # Import lock functions
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent))
+    try:
+        from cycle_utils import check_tts_lock, create_tts_lock, remove_tts_lock
+    except ImportError:
+        # If lock functions not available, proceed without locking
+        def check_tts_lock(): return False
+        def create_tts_lock(duration): pass
+        def remove_tts_lock(): pass
+    
+    # Check if TTS is locked before expensive generation
+    if check_tts_lock():
+        return True  # Skip generation - another TTS is playing
+    
     print(f"🗣️  Speaking with {voice}...")
     synthesis_start = time.time()
     
     # Get voice-specific settings
     settings = get_voice_settings(voice)
     
+    # Generate audio samples
     samples, sample_rate = kokoro.create(
         text=text,
         voice=voice,
@@ -185,30 +223,37 @@ def speak_standard(kokoro, text, voice):
     
     print(f"⚡ Synthesis: {synthesis_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
     
-    # Play directly (no file saved)
-    import soundfile as sf
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
-        sf.write(tmp_file.name, samples, sample_rate)
-        subprocess.run(["afplay", tmp_file.name], check=True)
+    # Create lock with exact duration before playback
+    create_tts_lock(duration)
+    
+    try:
+        # Play the pre-generated audio
+        import soundfile as sf
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
+            sf.write(tmp_file.name, samples, sample_rate)
+            subprocess.run(["afplay", tmp_file.name], check=True)
+    finally:
+        # Always remove lock when playback completes
+        remove_tts_lock()
     
     print("✅ Speech complete!")
     return True
 
 # Voice-specific settings for optimal TTS delivery
 VOICE_SETTINGS = {
-    "af_alloy": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_alloy": {"speed": 1.1, "lang": "en-us", "trim": True},
     "af_river": {"speed": 1.1, "lang": "en-us", "trim": True},  # 10% faster
-    "af_sky": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_sky": {"speed": 1.05, "lang": "en-us", "trim": True},
     "af_sarah": {"speed": 1.0, "lang": "en-us", "trim": True},
-    "af_nicole": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_nicole": {"speed": 1.3, "lang": "en-us", "trim": True},
     "am_adam": {"speed": 1.0, "lang": "en-us", "trim": True},
     "am_echo": {"speed": 1.0, "lang": "en-us", "trim": True},
-    "am_puck": {"speed": 1.0, "lang": "en-us", "trim": True},
-    "am_michael": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "am_puck": {"speed": 0.94, "lang": "en-us", "trim": True},
+    "am_michael": {"speed": 1.1, "lang": "en-us", "trim": True},
     "bf_emma": {"speed": 1.0, "lang": "en-us", "trim": True},
-    "bm_daniel": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "bm_daniel": {"speed": 1.3, "lang": "en-us", "trim": True},
     "bm_lewis": {"speed": 1.0, "lang": "en-us", "trim": True},
-    "bm_george": {"speed": 1.0, "lang": "en-us", "trim": True}
+    "bm_george": {"speed": 1.2, "lang": "en-us", "trim": True}
 }
 
 def get_voice_settings(voice):

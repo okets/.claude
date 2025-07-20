@@ -69,6 +69,16 @@ def get_project_smarter_claude_logs_dir() -> Path:
     return get_project_smarter_claude_dir() / "logs"
 
 
+def get_tts_lock_path() -> Path:
+    """
+    Get the project-specific TTS lock file path.
+    
+    Returns:
+        Path: <project-root>/.claude/smarter-claude/tts.lock
+    """
+    return get_project_smarter_claude_dir() / "tts.lock"
+
+
 def get_tts_script_path():
     """
     Determine which TTS script to use based on user settings.
@@ -137,6 +147,10 @@ def announce_tts(message):
             # Settings not available, default to silent for infrastructure
             return
         
+        # Check if TTS is locked (another TTS playing)
+        if check_tts_lock():
+            return  # Skip - another TTS is playing
+        
         tts_script = get_tts_script_path()
         if not tts_script:
             return  # No TTS scripts available
@@ -180,6 +194,82 @@ def announce_tts(message):
         pass
 
 
+def check_tts_lock() -> bool:
+    """
+    Check if TTS is currently locked (another TTS playing).
+    
+    Returns:
+        bool: True if TTS is locked (should skip), False if available
+    """
+    try:
+        import os
+        import time
+        
+        lock_file = get_tts_lock_path()
+        
+        if not lock_file.exists():
+            return False  # No lock, TTS available
+        
+        try:
+            with open(lock_file, 'r') as f:
+                end_time = float(f.read().strip())
+            
+            if time.time() < end_time:
+                return True  # Lock still valid, TTS busy
+            else:
+                # Lock expired, remove it
+                lock_file.unlink()
+                return False  # TTS available
+                
+        except (ValueError, IOError):
+            # Invalid lock file, remove it
+            try:
+                lock_file.unlink()
+            except:
+                pass
+            return False  # TTS available
+            
+    except Exception:
+        # If we can't check lock, assume TTS is available
+        return False
+
+
+def create_tts_lock(duration: float):
+    """
+    Create TTS lock file with specified duration.
+    
+    Args:
+        duration: Expected playback duration in seconds
+    """
+    try:
+        import time
+        
+        lock_file = get_tts_lock_path()
+        
+        # Ensure directory exists
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Create lock with completion time
+        completion_time = time.time() + duration
+        with open(lock_file, 'w') as f:
+            f.write(str(completion_time))
+            
+    except Exception:
+        # If we can't create lock, continue anyway
+        pass
+
+
+def remove_tts_lock():
+    """Remove TTS lock file when playback completes."""
+    try:
+        lock_file = get_tts_lock_path()
+        if lock_file.exists():
+            lock_file.unlink()
+    except Exception:
+        # If we can't remove lock, it will expire naturally
+        pass
+
+
 def announce_user_content(message, level="concise"):
     """Announce user-facing content about request cycles (controlled by interaction_level)"""
     try:
@@ -212,6 +302,10 @@ def announce_user_content(message, level="concise"):
         except ImportError:
             # Settings not available, use basic TTS check
             pass
+        
+        # Check if TTS is locked (another TTS playing)
+        if check_tts_lock():
+            return  # Skip - another TTS is playing
         
         tts_script = get_tts_script_path()
         if not tts_script:
