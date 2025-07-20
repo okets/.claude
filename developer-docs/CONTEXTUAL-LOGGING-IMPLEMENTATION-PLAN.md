@@ -514,6 +514,72 @@ sqlite3 [database_path] "SELECT * FROM [table];"
 8. **Advanced TTS Options**: ✅ Both male and female Coqui voices with audio processing
 9. **Branch Management**: ✅ Working version successfully made new main branch
 
+### Phase 15: Kokoro-82M Real-Time TTS Implementation 🎤🚀 
+**Goal**: Implement high-quality, sub-200ms latency TTS with Kokoro-82M for cross-platform support
+**Vision**: Production-ready real-time TTS with custom voices (Echo, Puck, River, Alloy, Emma) supporting Mac and Linux
+
+#### Task 15.1: Kokoro Installation & Cross-Platform Setup 
+- Download pre-compiled Kokoro ONNX model and voice files locally
+- Install target voices: Echo (`am_echo`), Puck (`am_puck`), River (`af_river`), Alloy (`af_alloy`), Emma (`bf_emma`)
+- Configure ONNX runtime settings optimized for target hardware:
+  - Mac Apple Silicon: CPU provider (MPS support pending)
+  - Linux: CPU provider with optional CUDA detection for acceleration
+- Test installation before proceeding to UV scripts development
+
+#### Task 15.2: UV Script Optimization for First Run
+- Pre-build UV environment by running installation script to cache all dependencies
+- Pin exact dependency versions to avoid resolution delays on subsequent runs
+- Set local model paths to skip download checks and reduce startup overhead
+- Implement platform detection for optimal ONNX provider selection
+
+#### Task 15.3: Manual Performance Testing & Latency Optimization
+- Test basic Kokoro functionality with simple UV script
+- Benchmark initial performance and identify bottlenecks
+- Optimize audio output methods: direct file write vs streaming vs chunking
+- Implement memory management tricks: disable garbage collection during inference, enable after
+- Target: Achieve <200ms time-to-first-audio consistently
+
+#### Task 15.4: Project Integration & Voice System
+- Cleanup all existing sounds, leave only the macos-male and macos-female. clean up the slash commands and README.md and GETTING_STARTED.md
+- Add Kokoro installation to smarter-claude_voice.md custom slash command
+- Document new voices in project .md files alongside existing voice options
+- Test voice switching functionality and first-time installation reliability
+- Implement uninstall/reinstall testing to ensure robust installation process
+- Optimize by preloading models early in hook lifecycle, not just when TTS needed
+
+#### Task 15.5: Cross-Platform Performance Validation
+- Verify consistent performance across Mac M3 Max and Linux systems
+- Test CUDA acceleration on supported Linux systems vs CPU fallback
+- Validate voice quality consistency across platforms
+- Benchmark concurrent request handling and memory usage
+- Document platform-specific optimizations and expected performance tiers
+
+#### Task 15.6: Complete Voice Library Integration
+- Integrate all 26 available Kokoro voices into smarter-claude_voice.md slash command
+- Update voice selection system to support full voice library:
+  - **American Female**: af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky
+  - **American Male**: am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck
+  - **British Female**: bf_alice, bf_emma, bf_isabella, bf_lily
+  - **British Male**: bm_daniel, bm_fable, bm_george, bm_lewis
+- Create voice preview/testing functionality for users to sample voices
+- Update voice documentation with accent/gender categorization
+- Implement voice switching validation across all 26 voices
+- Add voice discovery command to help users explore available options
+
+**Expected Performance Targets**:
+- **Linux + CUDA**: Sub-50ms (optimal)
+- **Mac M3 CPU**: ~200ms (target met)
+- **Linux CPU**: ~200-300ms (acceptable)
+- **Cross-platform**: Consistent voice quality and <300ms worst-case
+
+**Integration Points**:
+- Replace existing TTS engines in hook system with Kokoro-82M
+- Maintain backward compatibility with existing voice selection
+- Add all 26 Kokoro voices to interaction level settings
+- Create comprehensive voice library interface in slash command
+- Preserve all current TTS functionality while improving performance
+- Enable users to fully utilize the complete 355MB voice investment
+
 ## Notes
 
 - Start with Stop hook - it's guaranteed to run

@@ -1,5 +1,5 @@
 ---
-description: "Set smarter-claude voice engine (coqui-female, coqui-male, macos-female, macos-male, pyttsx3)"
+description: "Set smarter-claude voice engine (13 Kokoro voices: af_alloy, af_river, af_sky, af_sarah, af_nicole, am_adam, am_echo, am_puck, am_michael, bf_emma, bm_daniel, bm_lewis, bm_george + macos-female, macos-male)"
 allowed-tools:
   - Bash
   - Read
@@ -13,11 +13,25 @@ I'll update your smarter-claude voice engine setting.
 Usage: `/smarter-claude_voice <voice>`
 
 Valid voices:
-- **coqui-female**: High-quality female Coqui TTS voice
-- **coqui-male**: High-quality male Coqui TTS voice  
+
+**Kokoro Voices (High-Quality Neural TTS):**
+- **kokoro-af_alloy**: Alloy female voice (neutral)
+- **kokoro-af_river**: River female voice 
+- **kokoro-af_sky**: Sky female voice
+- **kokoro-af_sarah**: Sarah female voice
+- **kokoro-af_nicole**: Nicole female voice
+- **kokoro-am_adam**: Adam male voice
+- **kokoro-am_echo**: Echo male voice (expressive)
+- **kokoro-am_puck**: Puck male voice (young)
+- **kokoro-am_michael**: Michael male voice
+- **kokoro-bf_emma**: Emma bright female voice
+- **kokoro-bm_daniel**: Daniel male voice (British)
+- **kokoro-bm_lewis**: Lewis male voice (British)
+- **kokoro-bm_george**: George male voice (British)
+
+**System Voices:**
 - **macos-female**: macOS built-in female voice (Samantha)
 - **macos-male**: macOS built-in male voice (Alex)
-- **pyttsx3**: Python text-to-speech default voice
 
 !# Use the settings management system for proper cascading
 MANAGE_SETTINGS="$HOME/.claude/hooks/utils/manage_settings.py"
@@ -32,11 +46,25 @@ if [ -z "$VOICE" ]; then
   echo "Usage: /smarter-claude_voice <voice>"
   echo ""
   echo "Valid voices:"
-  echo "  coqui-female  - High-quality female Coqui TTS voice"
-  echo "  coqui-male    - High-quality male Coqui TTS voice"
-  echo "  macos-female  - macOS built-in female voice (Samantha)"
-  echo "  macos-male    - macOS built-in male voice (Alex)"
-  echo "  pyttsx3       - Python text-to-speech default voice"
+  echo ""
+  echo "Kokoro Voices (High-Quality Neural TTS):"
+  echo "  kokoro-af_alloy   - Alloy female voice (neutral)"
+  echo "  kokoro-af_river   - River female voice"
+  echo "  kokoro-af_sky     - Sky female voice"
+  echo "  kokoro-af_sarah   - Sarah female voice"
+  echo "  kokoro-af_nicole  - Nicole female voice"
+  echo "  kokoro-am_adam    - Adam male voice"
+  echo "  kokoro-am_echo    - Echo male voice (expressive)"
+  echo "  kokoro-am_puck    - Puck male voice (young)"
+  echo "  kokoro-am_michael - Michael male voice"
+  echo "  kokoro-bf_emma    - Emma bright female voice"
+  echo "  kokoro-bm_daniel  - Daniel male voice (British)"
+  echo "  kokoro-bm_lewis   - Lewis male voice (British)"
+  echo "  kokoro-bm_george  - George male voice (British)"
+  echo ""
+  echo "System Voices:"
+  echo "  macos-female      - macOS built-in female voice (Samantha)"
+  echo "  macos-male        - macOS built-in male voice (Alex)"
   echo ""
   echo "Current setting:"
   python3 "$MANAGE_SETTINGS" get tts_engine 2>/dev/null || echo "Using global defaults"
@@ -51,12 +79,13 @@ fi
 
 # Validate voice option
 case "$VOICE" in
-  "coqui-female"|"coqui-male"|"macos-female"|"macos-male"|"pyttsx3")
+  "kokoro-af_alloy"|"kokoro-af_river"|"kokoro-af_sky"|"kokoro-af_sarah"|"kokoro-af_nicole"|"kokoro-am_adam"|"kokoro-am_echo"|"kokoro-am_puck"|"kokoro-am_michael"|"kokoro-bf_emma"|"kokoro-bm_daniel"|"kokoro-bm_lewis"|"kokoro-bm_george"|"macos-female"|"macos-male")
     VOICE_TEXT="$VOICE"
     ;;
   *)
     echo "❌ Invalid voice: $VOICE"
-    echo "Valid options: coqui-female, coqui-male, macos-female, macos-male, pyttsx3"
+    echo "Valid Kokoro voices: kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george"
+    echo "Valid system voices: macos-female, macos-male"
     exit 1
     ;;
 esac
@@ -86,15 +115,15 @@ echo "🔧 To install and configure $VOICE_TEXT for this project, please run the
 echo ""
 
 # Create the complete command based on voice type
-if [[ "$VOICE_TEXT" == "coqui-female" || "$VOICE_TEXT" == "coqui-male" ]]; then
-  echo "# Step 1: Install voice dependencies"
-  echo "python3 \"$VOICE_MANAGER\" install --engine \"$VOICE_TEXT\""
+if [[ "$VOICE_TEXT" == kokoro-* ]]; then
+  echo "# Step 1: Install Kokoro TTS (first time only)"
+  echo "cd hooks/utils/tts && uv run kokoro_voice.py 'Installation test' --voice am_echo"
   echo ""
   echo "# Step 2: Set voice in project settings"
   echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
   echo ""
   echo "Or run both in one command:"
-  echo "python3 \"$VOICE_MANAGER\" install --engine \"$VOICE_TEXT\" && python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+  echo "cd hooks/utils/tts && uv run kokoro_voice.py 'Installation test' --voice am_echo && cd - && python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
 else
   # For macOS voices, no installation needed
   echo "# Set voice in project settings (no installation needed for macOS voices)"
@@ -103,7 +132,7 @@ fi
 
 echo ""
 echo "This will:"
-echo "• Install voice dependencies (if needed for Coqui voices)"
+echo "• Install Kokoro TTS models and dependencies (if needed for Kokoro voices)"
 echo "• Create project-specific settings with only this voice override"
 echo "• Keep all other settings inherited from global defaults"
 echo ""

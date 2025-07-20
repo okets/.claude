@@ -73,12 +73,24 @@ def get_tts_script_path():
     
     # Define available engines and their script paths
     engines = {
-        "coqui-female": tts_dir / "coqui_tts.py",  # High-quality neural TTS
-        "coqui-male": tts_dir / "coqui_male_tts.py",  # High-quality male neural TTS
+        # Kokoro TTS voices (high-quality neural)
+        "kokoro-af_alloy": tts_dir / "kokoro_voice.py",
+        "kokoro-af_river": tts_dir / "kokoro_voice.py", 
+        "kokoro-af_sky": tts_dir / "kokoro_voice.py",
+        "kokoro-af_sarah": tts_dir / "kokoro_voice.py",
+        "kokoro-af_nicole": tts_dir / "kokoro_voice.py",
+        "kokoro-am_adam": tts_dir / "kokoro_voice.py",
+        "kokoro-am_echo": tts_dir / "kokoro_voice.py",
+        "kokoro-am_puck": tts_dir / "kokoro_voice.py",
+        "kokoro-am_michael": tts_dir / "kokoro_voice.py",
+        "kokoro-bf_emma": tts_dir / "kokoro_voice.py",
+        "kokoro-bm_daniel": tts_dir / "kokoro_voice.py",
+        "kokoro-bm_lewis": tts_dir / "kokoro_voice.py",
+        "kokoro-bm_george": tts_dir / "kokoro_voice.py",
+        # System voices
         "macos-female": tts_dir / "macos_female_tts.py",
-        "macos-male": tts_dir / "macos_male_tts.py", 
-        "macos": tts_dir / "macos_native_tts.py",  # Legacy support
-        "pyttsx3": tts_dir / "pyttsx3_tts.py"
+        "macos-male": tts_dir / "macos_male_tts.py",
+        "macos": tts_dir / "macos_native_tts.py"  # Fallback for hooks
     }
     
     # Try user's preferred engine first
@@ -87,8 +99,8 @@ def get_tts_script_path():
         if preferred_script.exists():
             return str(preferred_script)
     
-    # Fallback chain: coqui-female > coqui-male > macos-female > macos-male > macos > pyttsx3
-    fallback_order = ["coqui-female", "coqui-male", "macos-female", "macos-male", "macos", "pyttsx3"]
+    # Fallback chain: macos > kokoro default  
+    fallback_order = ["macos-female", "macos-male", "macos", "kokoro-am_echo"]
     for engine in fallback_order:
         if engine != preferred_engine:  # Skip already tried preference
             script_path = engines[engine]
@@ -158,12 +170,35 @@ def announce_completion():
         completion_message = get_llm_completion_message()
         
         # Call the TTS script with the completion message
-        subprocess.run([
-            "uv", "run", tts_script, completion_message
-        ], 
-        capture_output=True,  # Suppress output
-        timeout=10  # 10-second timeout
-        )
+        # Check if it's a Kokoro voice and pass the voice name
+        script_name = Path(tts_script).name
+        if script_name == "kokoro_voice.py":
+            # Extract voice name from preferred_engine for Kokoro voices
+            try:
+                from settings import get_setting
+                voice_name = get_setting("tts_engine", "kokoro-am_echo")
+                subprocess.run([
+                    "uv", "run", tts_script, voice_name, completion_message
+                ], 
+                capture_output=False,  # Allow audio output
+                timeout=10  # 10-second timeout
+                )
+            except ImportError:
+                # Fallback to default voice
+                subprocess.run([
+                    "uv", "run", tts_script, "kokoro-am_echo", completion_message
+                ], 
+                capture_output=False,  # Allow audio output
+                timeout=10  # 10-second timeout
+                )
+        else:
+            # Regular TTS scripts (macOS)
+            subprocess.run([
+                "uv", "run", tts_script, completion_message
+            ], 
+            capture_output=False,  # Allow audio output
+            timeout=10  # 10-second timeout
+            )
         
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
         # Fail silently if TTS encounters issues

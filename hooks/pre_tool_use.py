@@ -8,6 +8,11 @@ import sys
 import re
 import subprocess
 from pathlib import Path
+import datetime
+
+# DEBUG: Log hook execution
+with open('/tmp/hook_debug.log', 'a') as f:
+    f.write(f"{datetime.datetime.now()}: pre_tool_use.py triggered\n")
 
 # Import our cycle utilities
 sys.path.append(str(Path(__file__).parent / 'utils'))

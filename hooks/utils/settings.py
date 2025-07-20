@@ -26,8 +26,8 @@ class SmarterClaudeSettings:
         "interaction_level": "verbose",  # silent, quiet, concise, verbose
         "interaction_level_options": "silent, quiet, concise, verbose",
         "tts_enabled": True,
-        "tts_engine": "macos",  # coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3
-        "tts_engine_options": "coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3",
+        "tts_engine": "macos-male",  # kokoro voices, macos-female, macos-male
+        "tts_engine_options": "kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george, macos-female, macos-male",
         "notification_sounds": True,
         "cleanup_policy": {
             "retention_cycles": 2,
@@ -189,8 +189,8 @@ class SmarterClaudeSettings:
         default_project_settings = {
             "interaction_level": "verbose",
             "interaction_level_options": "silent, quiet, concise, verbose",
-            "tts_engine": "macos",
-            "tts_engine_options": "coqui-female, coqui-male, macos-female, macos-male, macos, pyttsx3",
+            "tts_engine": "macos-male",
+            "tts_engine_options": "kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george, macos-female, macos-male",
             "cleanup_policy": {
                 "retention_cycles": 2
             },
