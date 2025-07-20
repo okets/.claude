@@ -328,12 +328,7 @@ def main():
                         'I\'m searching the internet', 'I need to find this online', 'I\'m doing a web search', 'I\'m looking online for this',
                         'I need to search for information', 'I\'m browsing for answers', 'I\'m researching online'
                     ],
-                    'exit_plan_mode': [
-                        'I\'ve created a plan for you to review', 'Here\'s my implementation plan', 'I\'ve prepared a detailed plan',
-                        'Let me present my plan', 'I\'ve outlined an approach', 'Here\'s my proposed solution plan',
-                        'I\'ve drafted an implementation strategy', 'Let me share my analysis and plan', 'I\'ve prepared a roadmap',
-                        'Here\'s my recommended approach', 'I\'ve created a step-by-step plan'
-                    ]
+                    # exit_plan_mode removed - handled by post_tool_use.py to prevent overlapping announcements
                 }
                 
                 # TodoWrite and Bash already handled above, skip them here
