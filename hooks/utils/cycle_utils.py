@@ -20,24 +20,12 @@ def detect_project_root() -> Path:
     """
     current_dir = Path.cwd()
     
-    # Special case: If we're in the hooks directory itself, don't treat it as a project
-    # The hooks directory is the global installation, not a user project
-    hooks_dir = Path(__file__).parent.parent  # Go up from utils/ to hooks/
-    claude_global_dir = hooks_dir.parent      # Go up from hooks/ to .claude/
-    
-    if current_dir == claude_global_dir or current_dir.is_relative_to(claude_global_dir):
-        # We're working from within the hooks directory - this is not a user project
-        # Fall back to current directory as project root (user must create .claude manually)
-        return current_dir
-    
     # Strategy 1: Look for existing .claude directory (project boundary)
     search_dir = current_dir
     for _ in range(10):  # Limit search depth
         claude_dir = search_dir / ".claude"
-        if claude_dir.exists():
-            # Additional check: make sure this isn't the hooks installation directory
-            if claude_dir != claude_global_dir:
-                return search_dir
+        if claude_dir.exists() and claude_dir.is_dir():
+            return search_dir
         
         parent = search_dir.parent
         if parent == search_dir:  # Reached filesystem root
@@ -48,7 +36,7 @@ def detect_project_root() -> Path:
     search_dir = current_dir
     for _ in range(10):  # Limit search depth
         git_dir = search_dir / ".git"
-        if git_dir.exists():
+        if git_dir.exists() and git_dir.is_dir():
             return search_dir
         
         parent = search_dir.parent
