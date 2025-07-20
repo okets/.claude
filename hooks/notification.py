@@ -44,10 +44,10 @@ def get_tts_script_path():
     try:
         sys.path.append(str(script_dir / 'utils'))
         from settings import get_setting
-        preferred_engine = get_setting("tts_engine", "macos")
+        preferred_engine = get_setting("tts_engine", "kokoro-af_river")
     except ImportError:
         # Fallback if settings not available
-        preferred_engine = "macos"
+        preferred_engine = "kokoro-af_river"
     
     # Define available engines and their script paths
     engines = {
@@ -256,26 +256,15 @@ def announce_notification(user_request=None, input_data=None):
         # Check if it's a Kokoro voice and pass the voice name
         script_name = Path(tts_script).name
         if script_name == "kokoro_voice.py":
-            # Extract voice name from preferred_engine for Kokoro voices
-            try:
-                from settings import get_setting
-                voice_name = get_setting("tts_engine", "kokoro-am_echo")
-                result = subprocess.run([
-                    "uv", "run", tts_script, voice_name, notification_message
-                ], 
-                capture_output=False,  # Allow audio output
-                timeout=10,  # 10-second timeout
-                text=True
-                )
-            except ImportError:
-                # Fallback to default voice
-                result = subprocess.run([
-                    "uv", "run", tts_script, "kokoro-am_echo", notification_message
-                ], 
-                capture_output=False,  # Allow audio output
-                timeout=10,  # 10-second timeout
-                text=True
-                )
+            # Use the already determined preferred_engine as the voice name
+            voice_name = preferred_engine
+            result = subprocess.run([
+                "uv", "run", tts_script, voice_name, notification_message
+            ], 
+            capture_output=False,  # Allow audio output
+            timeout=10,  # 10-second timeout
+            text=True
+            )
         else:
             # Regular TTS scripts (macOS)
             result = subprocess.run([
