@@ -1246,11 +1246,11 @@ def create_concise_completion(user_intent, files_modified=0, primary_activity="u
     """Create concise task completion message."""
     if not user_intent:
         fallback_completions = [
-            "Task complete",
-            "All done", 
-            "Finished",
-            "Work complete",
-            "Task finished"
+            "Task complete.",
+            "All done!", 
+            "Finished.",
+            "Work complete.",
+            "Task finished."
         ]
         import random
         return random.choice(fallback_completions)

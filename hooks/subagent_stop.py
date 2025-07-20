@@ -100,13 +100,13 @@ def create_manager_style_message(subagent_task, subagent_summary, interaction_le
         concise_messages = [
             f"My agent handled {task_snippet}",
             f"Subagent completed {task_snippet}",
-            f"Agent finished the work",
-            f"Delegation successful",
-            f"My helper got it done",
-            f"Agent reported back",
+            f"Agent finished the work.",
+            f"Delegation successful.",
+            f"My helper got it done!",
+            f"Agent reported back.",
             # Funny options (15%)
-            f"My unpaid intern delivered",
-            f"Bot completed slave labor"
+            f"My unpaid intern delivered.",
+            f"Bot completed slave labor."
         ]
         return random.choice(concise_messages)
     
@@ -132,7 +132,7 @@ def create_manager_style_message(subagent_task, subagent_summary, interaction_le
         return random.choice(verbose_messages)
     
     else:  # Default fallback
-        return "Subagent work complete"
+        return "Subagent work complete."
 
 def announce_subagent_completion(subagent_task="work", subagent_summary=""):
     """Announce subagent completion using the best available TTS service (controlled by interaction_level)."""

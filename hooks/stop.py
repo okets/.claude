@@ -45,11 +45,11 @@ except ImportError:
 def get_completion_messages():
     """Return list of simple completion messages."""
     return [
-        "Done",
-        "Complete",
-        "Finished",
-        "Task complete",
-        "Ready"
+        "Done!",
+        "Complete.",
+        "Finished.",
+        "Task complete.",
+        "Ready."
     ]
 
 def get_tts_script_path():
@@ -1225,10 +1225,11 @@ def main():
                                     ]
                                 else:
                                     suffixes = [
-                                        "Well done for us!",
+                                        "WELL DONE for us!",
                                         "Nice work together!",
                                         "Good collaboration!",
                                         "Solid teamwork!",
+                                        "Hope I did well!",
                                         "Mission accomplished together!"
                                     ]
                                 
@@ -1238,10 +1239,10 @@ def main():
                                 # Extra appreciation for very complex tasks
                                 if is_extra_complex:
                                     appreciation_phrases = [
-                                        "This level of coordination across multiple systems really showcases our collaborative capabilities.",
-                                        "Managing this many moving parts simultaneously demonstrates excellent technical orchestration.",
-                                        "The precision required for this multi-faceted implementation was quite impressive.",
-                                        "Successfully handling this complexity while maintaining quality is genuinely commendable."
+                                        "This level of coordination across multiple systems - really showcases our collaborative capabilities!",
+                                        "Managing this many moving parts simultaneously? That demonstrates excellent technical orchestration!",
+                                        "The precision required for this multi-faceted implementation - quite impressive work!",
+                                        "Successfully handling this complexity while maintaining quality? That's genuinely commendable!"
                                     ]
                                     appreciation = random.choice(appreciation_phrases)
                                     message = f"{prefix} {summary_message} {appreciation} {suffix}"
