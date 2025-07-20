@@ -1734,7 +1734,9 @@ def create_simple_completion_message(user_intent, context, timing_info=None):
     base = f"{timing_intro}{random.choice(base_reactions)}"
     
     if details:
-        detail_text = " and ".join(details[:2])  # Max 2 details for simple tasks
+        # Use semantic truncation for natural detail selection
+        detail_text = " and ".join(details)
+        detail_text = truncate_for_speech(detail_text, max_words=8)  # Natural TTS length
         return f"{base} I {detail_text}, ensuring everything integrates smoothly."
     else:
         return f"{base} Clean, efficient implementation with attention to detail."
@@ -1889,7 +1891,9 @@ def create_complex_completion_message(user_intent, context, timing_info=None):
             details.append(f"executed {len(context['operation_types'])} operation types")
         
         if details:
-            work_desc = ", ".join(details[:2])  # Limit to 2 details
+            # Use semantic truncation for natural detail combination
+            work_desc = ", ".join(details)
+            work_desc = truncate_for_speech(work_desc, max_words=10)  # Natural TTS length
             return f"Complex task mastered! I {work_desc} with expert precision. Everything integrated beautifully!"
         else:
             return "Sophisticated work completed! Complex requirements handled with technical excellence!"
