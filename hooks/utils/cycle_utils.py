@@ -535,14 +535,57 @@ def truncate_user_intent(text, max_words=18, max_length=None):
     return semantic_truncate(clean_text, max_words=max_words, max_length=max_length, flexibility=0.2, preserve_meaning=True)
 
 
-def truncate_for_speech(text, max_words=12, max_length=None):
-    """Specialized truncation for TTS/speech - prioritizes natural breaks."""
+def truncate_for_speech(text, max_words=15, max_length=None):
+    """
+    Intelligent TTS truncation that prioritizes logical completion over strict word limits.
+    
+    Philosophy: Time is our constraint, not space. Only truncate really long texts at logical points.
+    Target word count is a soft suggestion - find the nearest punctuation mark and cut there.
+    """
     if not text:
         return text
     
-    # Speech-friendly truncation with more flexibility for natural pauses
-    # Default 12 words for natural breathing and pacing
-    return semantic_truncate(text, max_words=max_words, max_length=max_length, flexibility=0.25, preserve_meaning=True)
+    words = text.split()
+    
+    # If text is reasonable length, don't truncate at all
+    if len(words) <= max_words * 1.5:  # 50% buffer before considering truncation
+        return text
+    
+    # For truly long text, find logical punctuation marks around the target
+    target_char_pos = len(' '.join(words[:max_words]))
+    
+    # Look for punctuation marks in a reasonable window around target
+    search_start = max(0, target_char_pos - 50)  # Look 50 chars before target
+    search_end = min(len(text), target_char_pos + 100)  # Look 100 chars after target
+    search_window = text[search_start:search_end]
+    
+    # Find punctuation marks in order of preference
+    punctuation_marks = ['.', '!', '?', ';', ':', '-', ',']
+    best_cut_pos = None
+    best_distance = float('inf')
+    
+    for punct in punctuation_marks:
+        for match in re.finditer(re.escape(punct), search_window):
+            punct_pos = search_start + match.start() + 1  # +1 to include the punctuation
+            distance = abs(punct_pos - target_char_pos)
+            
+            # Prefer punctuation closer to target
+            if distance < best_distance:
+                best_distance = distance
+                best_cut_pos = punct_pos
+    
+    # If we found a good punctuation mark, cut there
+    if best_cut_pos and best_cut_pos < len(text):
+        return text[:best_cut_pos].strip()
+    
+    # If no punctuation found, only then fall back to word boundary
+    # But be much more generous - use target + 50% buffer
+    fallback_words = int(max_words * 1.5)
+    if len(words) > fallback_words:
+        return ' '.join(words[:fallback_words]).strip() + "..."
+    
+    # If even that's not needed, return original
+    return text
 
 
 def truncate_technical_content(text, max_words=22, max_length=None):
@@ -1736,7 +1779,7 @@ def create_simple_completion_message(user_intent, context, timing_info=None):
     if details:
         # Use semantic truncation for natural detail selection
         detail_text = " and ".join(details)
-        detail_text = truncate_for_speech(detail_text, max_words=8)  # Natural TTS length
+        detail_text = truncate_for_speech(detail_text, max_words=20)  # More generous for logical completion
         return f"{base} I {detail_text}, ensuring everything integrates smoothly."
     else:
         return f"{base} Clean, efficient implementation with attention to detail."
@@ -1893,7 +1936,7 @@ def create_complex_completion_message(user_intent, context, timing_info=None):
         if details:
             # Use semantic truncation for natural detail combination
             work_desc = ", ".join(details)
-            work_desc = truncate_for_speech(work_desc, max_words=10)  # Natural TTS length
+            work_desc = truncate_for_speech(work_desc, max_words=25)  # More generous for logical completion
             return f"Complex task mastered! I {work_desc} with expert precision. Everything integrated beautifully!"
         else:
             return "Sophisticated work completed! Complex requirements handled with technical excellence!"
