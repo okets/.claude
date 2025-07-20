@@ -10,9 +10,6 @@ from pathlib import Path
 import re
 import datetime
 
-# DEBUG: Log hook execution
-with open('/tmp/hook_debug.log', 'a') as f:
-    f.write(f"{datetime.datetime.now()}: post_tool_use.py triggered\n")
 from datetime import datetime
 import time
 

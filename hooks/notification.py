@@ -248,10 +248,6 @@ def announce_notification(user_request=None, input_data=None):
             else:
                 notification_message = base_message
         
-        # Debug: Log TTS attempt
-        with open('/tmp/notification_debug.log', 'a') as f:
-            f.write(f"TTS: Calling script {tts_script} with message: {notification_message}\n")
-        
         # Call the TTS script with the notification message
         # Check if it's a Kokoro voice and pass the voice name
         script_name = Path(tts_script).name
@@ -274,10 +270,6 @@ def announce_notification(user_request=None, input_data=None):
             timeout=10,  # 10-second timeout
             text=True
             )
-        
-        # Debug: Log result
-        with open('/tmp/notification_debug.log', 'a') as f:
-            f.write(f"TTS Result: exit_code={result.returncode}, stdout={result.stdout}, stderr={result.stderr}\n")
         
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
         # Fail silently if TTS encounters issues
