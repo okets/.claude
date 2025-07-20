@@ -388,7 +388,7 @@ def main():
                         if search_query:
                             # Truncate query for speech if it's too long
                             from cycle_utils import truncate_for_speech
-                            speakable_query = truncate_for_speech(search_query, 60)
+                            speakable_query = truncate_for_speech(search_query, max_words=12)
                             web_search_announcements = [
                                 f'I\'m searching online for: {speakable_query}',
                                 f'Looking up: {speakable_query}',
@@ -408,7 +408,7 @@ def main():
                         if url and prompt:
                             # Truncate prompt for speech if it's too long
                             from cycle_utils import truncate_for_speech
-                            speakable_prompt = truncate_for_speech(prompt, 60)
+                            speakable_prompt = truncate_for_speech(prompt, max_words=12)
                             web_fetch_announcements = [
                                 f'Fetching web content about: {speakable_prompt}',
                                 f'Getting online data for: {speakable_prompt}',

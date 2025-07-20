@@ -71,7 +71,8 @@ class DataCollector:
         execution_summary = summary_data.get("execution_summary", {})
         primary_activity = execution_summary.get("primary_activity", "unknown")
         
-        print(f"Processing cycle {cycle_id} - {user_intent[:50]}...")
+        from cycle_utils import truncate_for_speech
+        print(f"Processing cycle {cycle_id} - {truncate_for_speech(user_intent, max_words=8)}")
         
         # Insert cycle data
         self.db.insert_cycle(
@@ -164,7 +165,7 @@ class DataCollector:
         print("\n2. Phase 2 context:")
         phase_contexts = self.db.get_phase_task_context(2)
         for ctx in phase_contexts:
-            print(f"  - Task {ctx['task_number']}: {ctx['user_intent'][:60]}...")
+            print(f"  - Task {ctx['task_number']}: {truncate_for_speech(ctx['user_intent'], max_words=10)}")
         
         print("\nData collection and testing complete!")
 

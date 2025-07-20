@@ -206,7 +206,7 @@ def main():
         #     })
         #     
         #     # Update session with user request summary
-        #     summary = user_request[:100] + '...' if len(user_request) > 100 else user_request
+        #     summary = truncate_user_intent(user_request, max_words=18) if user_request else user_request
         #     update_session_summary(session_id, summary)
         #     
         #     # Generate initial tags

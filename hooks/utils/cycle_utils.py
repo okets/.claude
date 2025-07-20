@@ -425,62 +425,102 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
 import re
 
 
-def semantic_truncate(text, max_length=80, flexibility=0.15, preserve_meaning=True):
+def semantic_truncate(text, max_words=None, max_length=None, flexibility=0.15, preserve_meaning=True):
     """
     Intelligent semantic text truncation that respects natural boundaries.
     
     Args:
         text: Text to truncate
-        max_length: Target maximum length
+        max_words: Target maximum word count (preferred, more natural for TTS)
+        max_length: Target maximum character length (fallback for compatibility)
         flexibility: Percentage flexibility (0.15 = ±15%)
         preserve_meaning: Whether to prioritize meaning preservation
     
     Returns:
         Semantically truncated text
     """
-    if not text or len(text) <= max_length:
+    if not text:
+        return text
+        
+    # Handle backwards compatibility - convert max_length to max_words if needed
+    if max_words is None and max_length is not None:
+        # Rough estimate: average 5 characters per word
+        max_words = max(5, max_length // 5)
+    elif max_words is None:
+        max_words = 15  # Default for TTS
+    
+    # Split into words to work with word count
+    words = text.split()
+    if len(words) <= max_words:
         return text
     
-    # Calculate flexible boundaries
-    min_length = int(max_length * (1 - flexibility))
-    max_flexible = int(max_length * (1 + flexibility))
+    # Calculate flexible boundaries in word count
+    min_words = int(max_words * (1 - flexibility))
+    max_flexible_words = int(max_words * (1 + flexibility))
+    
+    # Convert word positions back to character positions for punctuation search
+    def get_char_pos_at_word(word_index):
+        """Get character position at the end of given word index."""
+        if word_index >= len(words):
+            return len(text)
+        return len(' '.join(words[:word_index + 1]))
     
     # Priority 1: Natural sentence boundaries (periods)
-    period_pos = text.rfind('.', 0, max_flexible)
-    if period_pos >= min_length:
-        return text[:period_pos + 1].strip()
+    for word_idx in range(min(max_flexible_words, len(words) - 1), min_words - 1, -1):
+        char_pos = get_char_pos_at_word(word_idx)
+        if char_pos < len(text) and text[char_pos:char_pos + 1] == '.' or text.find('.', get_char_pos_at_word(word_idx - 1) if word_idx > 0 else 0, char_pos + 1) != -1:
+            # Find the actual period position
+            period_pos = text.find('.', get_char_pos_at_word(word_idx - 1) if word_idx > 0 else 0, char_pos + 1)
+            if period_pos != -1:
+                return text[:period_pos + 1].strip()
     
-    # Priority 2: Secondary punctuation (semicolons, exclamation, question marks)
-    for punct in [';', '!', '?']:
-        punct_pos = text.rfind(punct, 0, max_flexible)
-        if punct_pos >= min_length:
-            return text[:punct_pos + 1].strip()
+    # Priority 2: Strong punctuation (exclamation, question marks)
+    for punct in ['!', '?']:
+        for word_idx in range(min(max_flexible_words, len(words) - 1), min_words - 1, -1):
+            char_start = get_char_pos_at_word(word_idx - 1) if word_idx > 0 else 0
+            char_end = get_char_pos_at_word(word_idx) + 1
+            punct_pos = text.find(punct, char_start, min(char_end, len(text)))
+            if punct_pos != -1:
+                return text[:punct_pos + 1].strip()
     
-    # Priority 3: Comma boundaries (for lists or clauses)
-    comma_pos = text.rfind(',', 0, max_flexible)
-    if comma_pos >= min_length:
-        return text[:comma_pos].strip() + "..."
+    # Priority 3: Natural phrase breaks (dashes, semicolons)
+    for punct in [' - ', ' — ', ';']:
+        for word_idx in range(min(max_flexible_words, len(words) - 1), min_words - 1, -1):
+            char_start = get_char_pos_at_word(word_idx - 1) if word_idx > 0 else 0
+            char_end = get_char_pos_at_word(word_idx) + 1
+            punct_pos = text.find(punct, char_start, min(char_end, len(text)))
+            if punct_pos != -1:
+                end_pos = punct_pos + len(punct) - 1 if punct.strip() in ['-', '—'] else punct_pos + 1
+                return text[:end_pos].strip() + ("..." if punct.strip() in ['-', '—'] else "")
     
-    # Priority 4: Word boundaries (never cut mid-word)
-    space_pos = text.rfind(' ', 0, max_length)
-    if space_pos >= min_length:
-        return text[:space_pos].strip() + "..."
+    # Priority 4: Comma boundaries (for lists or clauses)
+    for word_idx in range(min(max_flexible_words, len(words) - 1), min_words - 1, -1):
+        char_start = get_char_pos_at_word(word_idx - 1) if word_idx > 0 else 0
+        char_end = get_char_pos_at_word(word_idx) + 1
+        comma_pos = text.find(',', char_start, min(char_end, len(text)))
+        if comma_pos != -1:
+            return text[:comma_pos].strip() + "..."
     
-    # Priority 5: Preserve at least minimum meaningful content
-    if preserve_meaning and len(text) > max_length * 2:
-        # For very long text, be more aggressive to preserve meaning
-        early_space = text.rfind(' ', 0, min_length)
-        if early_space > max_length * 0.3:  # At least 30% of target
-            return text[:early_space].strip() + "..."
+    # Priority 5: Natural connectors ("and", "but", "or")
+    for word_idx in range(min(max_flexible_words, len(words) - 1), min_words - 1, -1):
+        if word_idx < len(words) and words[word_idx].lower() in ['and', 'but', 'or', 'so', 'yet']:
+            return ' '.join(words[:word_idx]).strip() + "..."
     
-    # Last resort: Hard truncation with word boundary respect
-    if max_length > 3:
-        return text[:max_length - 3].strip() + "..."
-    else:
-        return text[:max_length]
+    # Priority 6: Word boundaries (clean cut at max_words)
+    if max_words <= len(words):
+        result = ' '.join(words[:max_words]).strip()
+        return result + ("..." if len(words) > max_words else "")
+    
+    # Priority 7: Preserve at least minimum meaningful content
+    if preserve_meaning and len(words) > max_words * 2:
+        # For very long text, cut at minimum words to preserve meaning
+        return ' '.join(words[:min_words]).strip() + "..."
+    
+    # Last resort: return original if we can't truncate sensibly
+    return text
 
 
-def truncate_user_intent(text, max_length=77):
+def truncate_user_intent(text, max_words=18, max_length=None):
     """Specialized truncation for user intent messages - preserves meaning."""
     if not text:
         return text
@@ -491,30 +531,34 @@ def truncate_user_intent(text, max_length=77):
         clean_text = clean_text[1:-1]
     
     # Use semantic truncation with high meaning preservation
-    return semantic_truncate(clean_text, max_length, flexibility=0.2, preserve_meaning=True)
+    # Default 18 words for context preservation while staying concise
+    return semantic_truncate(clean_text, max_words=max_words, max_length=max_length, flexibility=0.2, preserve_meaning=True)
 
 
-def truncate_for_speech(text, max_length=80):
+def truncate_for_speech(text, max_words=12, max_length=None):
     """Specialized truncation for TTS/speech - prioritizes natural breaks."""
     if not text:
         return text
     
     # Speech-friendly truncation with more flexibility for natural pauses
-    return semantic_truncate(text, max_length, flexibility=0.25, preserve_meaning=True)
+    # Default 12 words for natural breathing and pacing
+    return semantic_truncate(text, max_words=max_words, max_length=max_length, flexibility=0.25, preserve_meaning=True)
 
 
-def truncate_technical_content(text, max_length=100):
+def truncate_technical_content(text, max_words=22, max_length=None):
     """Specialized truncation for technical content - preserves technical terms."""
     if not text:
         return text
     
     # For technical content, be more conservative to avoid breaking technical terms
-    return semantic_truncate(text, max_length, flexibility=0.1, preserve_meaning=True)
+    # Default 22 words to preserve technical context and terminology
+    return semantic_truncate(text, max_words=max_words, max_length=max_length, flexibility=0.1, preserve_meaning=True)
 
 
-def truncate_at_sentence_boundary(text, max_length=80):
+def truncate_at_sentence_boundary(text, max_words=15, max_length=None):
     """Legacy function - now uses semantic truncation for compatibility."""
-    return semantic_truncate(text, max_length, flexibility=0.15, preserve_meaning=True)
+    # Default 15 words for general sentence boundaries
+    return semantic_truncate(text, max_words=max_words, max_length=max_length, flexibility=0.15, preserve_meaning=True)
 
 
 def extract_action_and_subject(user_request):
@@ -1132,7 +1176,7 @@ def create_todo_aware_notification(tool_name, file_name, command, user_request, 
     
     # If we have a current todo, create context-aware message
     if current_todo:
-        todo_short = truncate_for_speech(current_todo, 60)  # Shorter for speech clarity
+        todo_short = truncate_for_speech(current_todo, max_words=10)  # Shorter for speech clarity
         
         # Create file-specific messages with todo context
         if file_name and tool_name:
@@ -1410,7 +1454,7 @@ def create_rich_completion_message(user_intent, cycle_summary_data=None):
     if user_intent and len(user_intent.strip()) > 10:
         # Clean up the user intent for speaking
         # Clean up the user intent using semantic truncation
-        clean_intent = truncate_user_intent(user_intent, 80)
+        clean_intent = truncate_user_intent(user_intent, max_words=15)
         
         intro = f"You instructed me to: {clean_intent}. "
     else:
@@ -1616,7 +1660,7 @@ def create_fallback_verbose_message(user_intent, complexity):
     
     elif complexity == "moderate":
         if user_intent and len(user_intent.strip()) > 10:
-            clean_intent = truncate_user_intent(user_intent, 80)
+            clean_intent = truncate_user_intent(user_intent, max_words=15)
             return f"Task completed! {clean_intent} - All handled with care."
         else:
             return "Solid work completed! Everything's been handled properly."
@@ -1629,7 +1673,7 @@ def create_fallback_verbose_message(user_intent, complexity):
             "Fantastic work finished!"
         ]
         if user_intent:
-            clean_intent = truncate_user_intent(user_intent, 100)
+            clean_intent = truncate_user_intent(user_intent, max_words=18)
             return f"{random.choice(reactions)} {clean_intent} - Comprehensive solution delivered!"
         else:
             return f"{random.choice(reactions)} Complex task handled with precision and expertise!"
@@ -1853,7 +1897,7 @@ def create_complex_completion_message(user_intent, context, timing_info=None):
     else:  # comprehensive_summary
         # Full celebration with context
         if user_intent:
-            intent_snippet = truncate_user_intent(user_intent, 60)
+            intent_snippet = truncate_user_intent(user_intent, max_words=12)
             return (f"Outstanding achievement! Your request: {intent_snippet} - "
                    f"Successfully delivered through {context['files_modified']} file modifications, "
                    f"{context['total_edits']} edits, demonstrating complex technical coordination. Exceptional results!")

@@ -94,7 +94,7 @@ def create_manager_style_message(subagent_task, subagent_summary, interaction_le
     # Extract key info from task/summary
     # Use semantic truncation for better task description
     from cycle_utils import truncate_for_speech
-    task_snippet = truncate_for_speech(subagent_task, 50)
+    task_snippet = truncate_for_speech(subagent_task, max_words=8)
     
     if interaction_level == "concise":
         concise_messages = [

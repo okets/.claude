@@ -17,7 +17,7 @@ from typing import List, Dict, Set
 # Import our cycle utilities
 sys.path.append(str(Path(__file__).parent / 'utils'))
 try:
-    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts, announce_user_content, get_project_smarter_claude_logs_dir
+    from cycle_utils import dump_hook_data, get_current_cycle_id, announce_tts, announce_user_content, get_project_smarter_claude_logs_dir, truncate_user_intent
     from hook_parser import generate_contextual_summary, generate_cycle_summary_file
     from data_collector import DataCollector
 except ImportError:
@@ -723,7 +723,7 @@ def main():
             workflow_steps = []
             
             # User initiated the request
-            workflow_steps.append(f"User requested: {user_intent[:100]}...")
+            workflow_steps.append(f"User requested: {truncate_user_intent(user_intent, max_words=15)}")
             
             # Subagent tasks with work summaries
             for task in subagent_tasks.values():
@@ -1025,7 +1025,7 @@ def main():
                                 # Use semantic truncation for reasonable length
                                 if len(clean_intent) > 80:
                                     from cycle_utils import truncate_user_intent
-                                    clean_intent = truncate_user_intent(clean_intent, 80)
+                                    clean_intent = truncate_user_intent(clean_intent, max_words=15)
                                 return clean_intent
                             
                             def assess_cycle_complexity():
