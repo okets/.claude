@@ -23,7 +23,7 @@ def kill_all_tts():
             try:
                 cmdline = proc.info.get('cmdline', [])
                 if cmdline and any('tts' in str(arg).lower() for arg in cmdline):
-                    if 'pyttsx3' in str(cmdline) or 'macos_' in str(cmdline):
+                    if 'macos_' in str(cmdline) or 'kokoro_' in str(cmdline):
                         proc.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass

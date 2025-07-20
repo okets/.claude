@@ -37,7 +37,7 @@ def main():
     # Check if running on macOS
     if sys.platform != "darwin":
         print("❌ Error: This script only works on macOS")
-        print("Use pyttsx3_tts.py for cross-platform TTS")
+        print("Use Kokoro TTS for cross-platform support")
         sys.exit(1)
     
     # Get text from command line argument or use default

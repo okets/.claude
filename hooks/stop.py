@@ -55,7 +55,7 @@ def get_completion_messages():
 def get_tts_script_path():
     """
     Determine which TTS script to use based on user settings.
-    Priority order: user preference > coqui > macos > pyttsx3
+    Priority order: user preference > macos (reliable) > kokoro (fallback)
     """
     # Get current script directory and construct utils/tts path
     script_dir = Path(__file__).parent
@@ -66,10 +66,10 @@ def get_tts_script_path():
         import sys
         sys.path.append(str(script_dir / 'utils'))
         from settings import get_setting
-        preferred_engine = get_setting("tts_engine", "coqui-female")
+        preferred_engine = get_setting("tts_engine", "macos-male")
     except ImportError:
         # Fallback if settings not available
-        preferred_engine = "coqui-female"
+        preferred_engine = "macos-male"
     
     # Define available engines and their script paths
     engines = {

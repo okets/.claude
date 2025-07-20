@@ -25,7 +25,7 @@ curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 That's it! The script will:
 - ✅ Check if Claude Code is installed
 - ✅ Download and install smarter-claude
-- ✅ **Auto-install all TTS voices** (Coqui, ffmpeg, pyttsx3)
+- ✅ **Auto-install all TTS voices** (Kokoro, macOS voices)
 - ✅ **Configure optimal voice** for your platform
 - ✅ Configure sensible defaults
 - ✅ Test the installation
@@ -50,13 +50,13 @@ ls .claude/smarter-claude/
 
 | Command | Description |
 |---------|-------------|
-| `/smarter-claude_voice <voice>` | Set TTS voice (coqui-female, coqui-male, macos-female, macos-male, pyttsx3) |
+| `/smarter-claude_voice <voice>` | Set TTS voice using friendly names (alloy, nicole, emma, daniel, default-male, default-female) |
 | `/smarter-claude_interaction_level <level>` | Set feedback level (0=silent, 1=quiet, 2=concise, 3=verbose) |
 | `/smarter-claude_update` | Update smarter-claude to latest version |
 
 **Example usage:**
 ```bash
-/smarter-claude_voice coqui-female
+/smarter-claude_voice alloy
 /smarter-claude_interaction_level 2
 ```
 
@@ -81,13 +81,15 @@ If smarter-claude is installed, Claude will remember everything with full contex
 
 ```bash
 # Set your preferred voice (auto-installs if needed)
-/smarter-claude_voice coqui-female
+/smarter-claude_voice alloy
 
 # Available voices:
-/smarter-claude_voice coqui-male     # High-quality male neural voice
-/smarter-claude_voice macos-female   # macOS Samantha voice  
-/smarter-claude_voice macos-male     # macOS Alex voice
-/smarter-claude_voice pyttsx3        # Cross-platform fallback
+/smarter-claude_voice nicole         # Kokoro Nicole (whispering)
+/smarter-claude_voice alloy          # Kokoro Alloy (neutral female)
+/smarter-claude_voice emma           # Kokoro Emma (British female)
+/smarter-claude_voice daniel         # Kokoro Daniel (British male)
+/smarter-claude_voice default-female # macOS Samantha voice  
+/smarter-claude_voice default-male   # macOS Alex voice
 
 # Check voice installation status
 /smarter-claude_voice

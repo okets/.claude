@@ -23,20 +23,29 @@ class VoiceManager:
         
         # Voice engine definitions
         self.voice_engines = {
-            "coqui-female": {
-                "name": "High-quality female Coqui TTS",
-                "dependencies": ["coqui-tts"],
+            # Kokoro TTS voices (high-quality neural)
+            "kokoro-af_alloy": {
+                "name": "Kokoro Alloy (American Female)",
+                "dependencies": ["kokoro-onnx"],
                 "requires_uv": True,
-                "platform_support": ["Darwin", "Linux"],
-                "test_command": ["coqui", "--help"]
+                "platform_support": ["Darwin", "Linux", "Windows"],
+                "test_command": ["uv", "run", "kokoro_voice.py", "kokoro-af_alloy", "test"]
             },
-            "coqui-male": {
-                "name": "High-quality male Coqui TTS", 
-                "dependencies": ["coqui-tts", "ffmpeg"],
+            "kokoro-af_nicole": {
+                "name": "Kokoro Nicole (American Female, Whispering)",
+                "dependencies": ["kokoro-onnx"],
                 "requires_uv": True,
-                "platform_support": ["Darwin", "Linux"],
-                "test_command": ["coqui", "--help"]
+                "platform_support": ["Darwin", "Linux", "Windows"],
+                "test_command": ["uv", "run", "kokoro_voice.py", "kokoro-af_nicole", "test"]
             },
+            "kokoro-am_puck": {
+                "name": "Kokoro Puck (American Male)",
+                "dependencies": ["kokoro-onnx"],
+                "requires_uv": True,
+                "platform_support": ["Darwin", "Linux", "Windows"],
+                "test_command": ["uv", "run", "kokoro_voice.py", "kokoro-am_puck", "test"]
+            },
+            # System voices
             "macos-female": {
                 "name": "macOS female voice (Samantha)",
                 "dependencies": [],
@@ -51,13 +60,6 @@ class VoiceManager:
                 "platform_support": ["Darwin"],
                 "test_command": ["say", "-v", "Alex", "test"]
             },
-            "pyttsx3": {
-                "name": "Python text-to-speech (cross-platform)",
-                "dependencies": ["pyttsx3"],
-                "requires_uv": False,
-                "platform_support": ["Darwin", "Linux", "Windows"],
-                "test_command": ["python3", "-c", "import pyttsx3; pyttsx3.init()"]
-            }
         }
 
     def check_uv_installed(self) -> bool:
@@ -134,40 +136,25 @@ class VoiceManager:
             
         return False
 
-    def install_coqui_tts(self) -> bool:
-        """Install Coqui TTS via UV."""
+    def install_kokoro_tts(self) -> bool:
+        """Install Kokoro TTS via UV."""
         if not self.check_uv_installed():
             if not self.install_uv():
                 return False
                 
-        print("🗣️  Installing Coqui TTS...")
+        print("🗣️  Installing Kokoro TTS...")
         try:
-            result = subprocess.run(["uv", "tool", "install", "coqui-tts"], 
+            # Install kokoro-onnx package
+            result = subprocess.run(["uv", "add", "kokoro-onnx"], 
                                   capture_output=True, text=True, timeout=300)
             if result.returncode == 0:
-                print("✅ Coqui TTS installed successfully")
+                print("✅ Kokoro TTS installed successfully")
                 return True
             else:
-                print(f"❌ Coqui TTS installation failed: {result.stderr}")
+                print(f"❌ Kokoro TTS installation failed: {result.stderr}")
                 return False
         except Exception as e:
-            print(f"❌ Failed to install Coqui TTS: {e}")
-            return False
-
-    def install_pyttsx3(self) -> bool:
-        """Install pyttsx3 via pip."""
-        print("🐍 Installing pyttsx3...")
-        try:
-            result = subprocess.run([sys.executable, "-m", "pip", "install", "pyttsx3"], 
-                                  capture_output=True, text=True, timeout=120)
-            if result.returncode == 0:
-                print("✅ pyttsx3 installed successfully")
-                return True
-            else:
-                print(f"❌ pyttsx3 installation failed: {result.stderr}")
-                return False
-        except Exception as e:
-            print(f"❌ Failed to install pyttsx3: {e}")
+            print(f"❌ Failed to install Kokoro TTS: {e}")
             return False
 
     def test_voice_engine(self, engine: str) -> bool:
@@ -205,17 +192,14 @@ class VoiceManager:
         print(f"🔧 Installing {engine_info['name']}...")
         
         # Install dependencies
-        if "coqui-tts" in engine_info["dependencies"]:
-            if not self.install_coqui_tts():
+        if "kokoro-onnx" in engine_info["dependencies"]:
+            if not self.install_kokoro_tts():
                 return False
                 
         if "ffmpeg" in engine_info["dependencies"]:
             if not self.install_ffmpeg():
                 return False
                 
-        if "pyttsx3" in engine_info["dependencies"]:
-            if not self.install_pyttsx3():
-                return False
                 
         # Test the installation
         if self.test_voice_engine(engine):
@@ -264,7 +248,7 @@ class VoiceManager:
         status = self.get_voice_status()
         
         # Priority order for recommendations
-        priority = ["coqui-female", "coqui-male", "macos-female", "macos-male", "pyttsx3"]
+        priority = ["kokoro-am_puck", "kokoro-af_alloy", "kokoro-af_nicole", "macos-female", "macos-male"]
         
         for engine in priority:
             if engine in status and status[engine]["supported"] and status[engine]["installed"]:

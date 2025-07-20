@@ -3,7 +3,7 @@
   "interaction_level_options": "silent, quiet, concise, verbose",
   "tts_enabled": true,
   "tts_engine": "macos-female",
-  "tts_engine_options": "macos-female, macos-male, pyttsx3",
+  "tts_engine_options": "kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george, macos-female, macos-male",
   "notification_sounds": true,
   "cleanup_policy": {
     "retention_cycles": 1,

@@ -82,7 +82,7 @@ def get_tts_lock_path() -> Path:
 def get_tts_script_path():
     """
     Determine which TTS script to use based on user settings.
-    Priority order: user preference > coqui > macos > pyttsx3
+    Priority order: user preference > macos (reliable) > kokoro (fallback)
     """
     # Get current script directory and construct utils/tts path
     script_dir = Path(__file__).parent.parent
