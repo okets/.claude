@@ -92,12 +92,16 @@ def speak_streaming(kokoro, text, voice):
         first_audio_time = None
         
         try:
+            # Get voice-specific settings
+            settings = get_voice_settings(voice)
+            
             # Create streaming generator
             stream = kokoro.create_stream(
                 text=text,
                 voice=voice,
-                speed=1.0,
-                lang="en-us"
+                speed=settings["speed"],
+                lang=settings["lang"],
+                trim=settings["trim"]
             )
             
             # Collect audio chunks as they arrive
@@ -164,11 +168,15 @@ def speak_standard(kokoro, text, voice):
     print(f"🗣️  Speaking with {voice}...")
     synthesis_start = time.time()
     
+    # Get voice-specific settings
+    settings = get_voice_settings(voice)
+    
     samples, sample_rate = kokoro.create(
         text=text,
         voice=voice,
-        speed=1.0,
-        lang="en-us"
+        speed=settings["speed"],
+        lang=settings["lang"],
+        trim=settings["trim"]
     )
     
     synthesis_time = time.time() - synthesis_start
@@ -185,6 +193,27 @@ def speak_standard(kokoro, text, voice):
     
     print("✅ Speech complete!")
     return True
+
+# Voice-specific settings for optimal TTS delivery
+VOICE_SETTINGS = {
+    "af_alloy": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_river": {"speed": 1.1, "lang": "en-us", "trim": True},  # 10% faster
+    "af_sky": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_sarah": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "af_nicole": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "am_adam": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "am_echo": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "am_puck": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "am_michael": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "bf_emma": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "bm_daniel": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "bm_lewis": {"speed": 1.0, "lang": "en-us", "trim": True},
+    "bm_george": {"speed": 1.0, "lang": "en-us", "trim": True}
+}
+
+def get_voice_settings(voice):
+    """Get voice-specific settings with fallback to defaults."""
+    return VOICE_SETTINGS.get(voice, {"speed": 1.0, "lang": "en-us", "trim": True})
 
 def main():
     """Main entry point - handles both hook calls and direct usage"""
