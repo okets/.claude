@@ -105,9 +105,11 @@ jobs:
       - name: Create Release
         if: steps.check_tag.outputs.exists == 'false'
         run: |
+          # Create release using GitHub CLI with notes from file
+          echo "${{ steps.changelog.outputs.changelog }}" > release_notes.md
           gh release create ${{ steps.version.outputs.tag }} \
             --title "Smarter-Claude v${{ steps.version.outputs.version }}" \
-            --notes "${{ steps.changelog.outputs.changelog }}" \
+            --notes-file release_notes.md \
             --latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
