@@ -84,9 +84,9 @@ def get_tts_script_path():
     Determine which TTS script to use based on user settings.
     Priority order: user preference > macos (reliable) > kokoro (fallback)
     """
-    # Get current script directory and construct utils/tts path
+    # Use global TTS directory instead of relative path
     script_dir = Path(__file__).parent.parent
-    tts_dir = script_dir / "utils" / "tts"
+    tts_dir = Path.home() / ".claude" / "hooks" / "utils" / "tts"
     
     # Get user's preferred TTS engine from settings
     try:
@@ -158,30 +158,35 @@ def announce_tts(message):
         # Call the TTS script with the message
         # Check if it's a Kokoro voice and pass the voice name
         script_name = Path(tts_script).name
+        tts_cwd = Path(tts_script).parent  # Change to TTS directory for uv run
+        
         if script_name == "kokoro_voice.py":
             # Extract voice name from preferred_engine for Kokoro voices
             try:
                 from settings import get_setting
                 voice_name = get_setting("tts_engine", "kokoro-am_echo")
                 subprocess.run([
-                    "uv", "run", tts_script, voice_name, message
+                    "uv", "run", script_name, voice_name, message
                 ], 
+                cwd=str(tts_cwd),  # Run from TTS directory
                 capture_output=False,  # Allow audio output
                 timeout=10  # 10-second timeout
                 )
             except ImportError:
                 # Fallback to default voice
                 subprocess.run([
-                    "uv", "run", tts_script, "kokoro-am_echo", message
+                    "uv", "run", script_name, "kokoro-am_echo", message
                 ], 
+                cwd=str(tts_cwd),  # Run from TTS directory
                 capture_output=False,  # Allow audio output
                 timeout=10  # 10-second timeout
                 )
         else:
             # Regular TTS scripts (macOS)
             subprocess.run([
-                "uv", "run", tts_script, message
+                "uv", "run", script_name, message
             ], 
+            cwd=str(tts_cwd),  # Run from TTS directory
             capture_output=False,  # Allow audio output
             timeout=10  # 10-second timeout
             )
@@ -314,30 +319,35 @@ def announce_user_content(message, level="concise"):
         # Call the TTS script with the message
         # Check if it's a Kokoro voice and pass the voice name
         script_name = Path(tts_script).name
+        tts_cwd = Path(tts_script).parent  # Change to TTS directory for uv run
+        
         if script_name == "kokoro_voice.py":
             # Extract voice name from preferred_engine for Kokoro voices
             try:
                 from settings import get_setting
                 voice_name = get_setting("tts_engine", "kokoro-am_echo")
                 subprocess.run([
-                    "uv", "run", tts_script, voice_name, message
+                    "uv", "run", script_name, voice_name, message
                 ], 
+                cwd=str(tts_cwd),  # Run from TTS directory
                 capture_output=False,  # Allow audio output
                 timeout=10  # 10-second timeout
                 )
             except ImportError:
                 # Fallback to default voice
                 subprocess.run([
-                    "uv", "run", tts_script, "kokoro-am_echo", message
+                    "uv", "run", script_name, "kokoro-am_echo", message
                 ], 
+                cwd=str(tts_cwd),  # Run from TTS directory
                 capture_output=False,  # Allow audio output
                 timeout=10  # 10-second timeout
                 )
         else:
             # Regular TTS scripts (macOS)
             subprocess.run([
-                "uv", "run", tts_script, message
+                "uv", "run", script_name, message
             ], 
+            cwd=str(tts_cwd),  # Run from TTS directory
             capture_output=False,  # Allow audio output
             timeout=10  # 10-second timeout
             )
