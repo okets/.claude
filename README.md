@@ -25,7 +25,7 @@
 
 ## 🎥 See It In Action
 
-[![smarter-claude Demo](https://img.youtube.com/vi/p02gvuYGrbk/maxresdefault.jpg)](https://www.youtube.com/watch?v=p02gvuYGrbk)
+[![smarter-claude Demo](developer-docs/github-video-demo1.png)](https://www.youtube.com/watch?v=p02gvuYGrbk)
 
 *Click to watch the full demonstration of smarter-claude's contextual memory and TTS features*
 
