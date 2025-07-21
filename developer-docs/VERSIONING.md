@@ -32,6 +32,176 @@ The version system consists of:
 - **Migration Strategy**: Find all project databases and apply schema changes to each
 - **Backup Strategy**: Individual timestamped backups before migration
 
+## Update Flow Diagram
+
+```
+🎯 SMARTER-CLAUDE VERSION UPDATE FLOW
+═══════════════════════════════════════════════════════════════════
+
+👨‍💻 DEVELOPER WORKFLOW
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Developer creates new release:                               │
+│    • Edit VERSION file: 1.0.0 → 1.0.1                         │
+│    • Optional: Add migrations/v1.0.1.sh                        │
+│    • git commit -m "Release v1.0.1"                            │
+│    • git push origin main                                       │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+📡 GITHUB TRIGGERS
+┌─────────────────────────────────────────────────────────────────┐
+│ 2. GitHub Actions Workflow (.github/workflows/release.yml)     │
+│    Trigger: on.push.paths: ['VERSION']                         │
+│    • Detects VERSION file change                               │
+│    • Compares current vs previous version                      │
+│    • Generates changelog from git commits                      │
+│    • Creates GitHub release with tag (e.g., v1.0.1)          │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+🚀 GITHUB RELEASE CREATED
+┌─────────────────────────────────────────────────────────────────┐
+│ 3. GitHub Release (https://github.com/okets/.claude/releases)  │
+│    • Tag: v1.0.1                                               │
+│    • Title: "Smarter-Claude v1.0.1"                           │
+│    • Changelog: Auto-generated from commits                    │
+│    • Download URLs: tarball_url, zipball_url                   │
+│    • Installation instructions                                  │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+👤 USER UPDATE PROCESS
+┌─────────────────────────────────────────────────────────────────┐
+│ 4. User runs: /smarter-claude_update                           │
+│    Component: commands/smarter-claude_update.md                │
+│    Role: Slash command that triggers update.sh                 │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+🔄 UPDATE SCRIPT EXECUTION
+┌─────────────────────────────────────────────────────────────────┐
+│ 5. update.sh (Core Update Engine)                              │
+│    Location: ~/.claude/update.sh                               │
+│    Role: Permanent script that never changes after v1.0.0     │
+│                                                                 │
+│    Process:                                                     │
+│    a) Read current version: cat ~/.claude/VERSION              │
+│    b) Check latest: curl GitHub releases API                   │
+│    c) Compare versions using sort -V                           │
+│    d) If update needed → proceed                               │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+💾 BACKUP PHASE
+┌─────────────────────────────────────────────────────────────────┐
+│ 6. Backup Creation                                              │
+│    • Main backup: ~/.claude → ~/.claude.backup.TIMESTAMP      │
+│    • Database discovery: find all smarter-claude.db files     │
+│    • Individual DB backups: each_db.backup.TIMESTAMP          │
+│                                                                 │
+│    Database Locations:                                         │
+│    ~/project1/.claude/smarter-claude/smarter-claude.db        │
+│    ~/project2/.claude/smarter-claude/smarter-claude.db        │
+│    ~/project3/.claude/smarter-claude/smarter-claude.db        │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+📥 DOWNLOAD & INSTALL
+┌─────────────────────────────────────────────────────────────────┐
+│ 7. File Download & Installation                                │
+│    • Download: GitHub release tarball                          │
+│    • Extract to temp directory                                 │
+│    • Copy new files:                                           │
+│      - hooks/ (all Python scripts)                            │
+│      - docs/ (documentation)                                   │
+│      - commands/ (slash commands)                             │
+│      - migrations/ (migration scripts)                        │
+│      - update.sh (self-update)                                │
+│      - VERSION (new version number)                           │
+│    • Preserve user data:                                       │
+│      - Settings (.claude/smarter-claude/*.json)               │
+│      - Databases (all project .db files)                      │
+│      - Custom user files                                       │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+🔧 MIGRATION PHASE
+┌─────────────────────────────────────────────────────────────────┐
+│ 8. Database Migrations                                          │
+│    Role: Apply schema changes to ALL project databases         │
+│                                                                 │
+│    For each version between current and latest:                │
+│    • Check if migrations/vX.Y.Z.sh exists                     │
+│    • If exists, execute migration script                       │
+│                                                                 │
+│    Migration Script Process:                                   │
+│    • Find all project databases                                │
+│    • For each database:                                        │
+│      - Apply SQL schema changes                                │
+│      - Update indexes, tables, columns                         │
+│      - Ensure idempotent operations                            │
+│    • If any migration fails → rollback all databases          │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+✅ COMPLETION
+┌─────────────────────────────────────────────────────────────────┐
+│ 9. Update Completion                                            │
+│    • Update ~/.claude/VERSION to new version                   │
+│    • Set executable permissions on scripts                     │
+│    • Show success message with backup locations                │
+│    • Display release notes                                     │
+│    • Cleanup temporary files                                   │
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+🔄 COMPONENT ROLES & RESPONSIBILITIES
+═══════════════════════════════════════════════════════════════════
+
+📁 VERSION                     │ Single source of truth for version
+                               │ Triggers automated releases
+
+🏗️ .github/workflows/release.yml │ CI/CD automation
+                               │ Creates releases from VERSION changes
+
+⚡ commands/smarter-claude_update.md │ User interface
+                               │ Slash command entry point
+
+🔧 update.sh                   │ Core update engine (permanent)
+                               │ Never changes after v1.0.0
+
+🗃️ migrations/vX.Y.Z.sh        │ Database schema evolution
+                               │ Handles breaking changes
+
+🌐 GitHub Releases API         │ Version discovery
+                               │ Download coordination
+
+💾 Project Databases           │ Distributed data storage
+                               │ Per-project context
+
+📦 ~/.claude/ (Global)         │ Central installation
+                               │ Shared hooks and utilities
+
+═══════════════════════════════════════════════════════════════════
+🎯 KEY DESIGN PRINCIPLES
+═══════════════════════════════════════════════════════════════════
+
+1. VERSION FILE = SINGLE SOURCE OF TRUTH
+   └─ All automation triggered by this file
+
+2. PERMANENT UPDATE SCRIPT
+   └─ update.sh never changes, ensuring reliability
+
+3. MULTI-DATABASE ARCHITECTURE
+   └─ Global installation, per-project data
+
+4. ATOMIC OPERATIONS
+   └─ All databases updated or none (rollback on failure)
+
+5. ZERO-CONFIG UPDATES
+   └─ User runs one command, everything handled automatically
+```
+
 ## Initial Implementation (v1.0.0)
 
 ### Checklist for First Release
