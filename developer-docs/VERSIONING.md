@@ -4,11 +4,12 @@ This document describes the version control and update system for smarter-claude
 
 ## Table of Contents
 1. [System Overview](#system-overview)
-2. [Initial Implementation (v1.0.0)](#initial-implementation-v100)
-3. [Release Process](#release-process)
-4. [Migration Scripts](#migration-scripts)
-5. [Update Flow](#update-flow)
-6. [Troubleshooting](#troubleshooting)
+2. [Update Flow Diagram](#update-flow-diagram)
+3. [Initial Implementation (v1.0.0)](#initial-implementation-v100)
+4. [Release Process](#release-process)
+5. [Migration Scripts](#migration-scripts)
+6. [Update Flow](#update-flow)
+7. [Troubleshooting](#troubleshooting)
 
 ## System Overview
 
