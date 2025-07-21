@@ -47,29 +47,39 @@ This is Claude Code with memory. This is what you've been missing.
 - 🔄 **Seamlessly continue** from where you left off
 - 💰 **Zero extra tokens** on top of what Claude Code already uses
 
-## 🚀 One-Line Install (Experimental)
-> [!WARNING]
-> This will copy this project over your global .claude directory.
-> **In case you already wrote your own customizations** in the global .claude directory- custom slash commands are not effected, but **hooks will be ran over**.
+## 🚀 Installation
+
+### Ask Claude Code (Recommended)
+
+Simply tell Claude Code:
+
+```
+"Install https://github.com/okets/.claude"
+```
+
+**That's it!** Claude will read the repository, understand what to do, and install everything automatically.
+
+**OR**
+
+### One-Line Install 
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-> [!NOTE]
-> This experimental install method hasn't been tested on a wide variety of machine configurations yet. If it fails, use the manual installation below as a fallback.
-> **Tried the experimental install?** Please share your experience! Open an [issue](https://github.com/okets/.claude/issues) and let us know if it worked, what OS you're using, and any problems you encountered. Your feedback helps improve the installation process for everyone.
+**OR**
 
 ### Manual Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/okets/.claude.git
-   ```
-2. Copy the `.claude` folder to your user directory:
-   ```bash
-   cp -r .claude/.claude ~/
-   ```
+```bash
+git clone https://github.com/okets/.claude.git
+cd .claude && cp -r * ~/.claude/
+bash ~/.claude/setup.sh
+```
+
+> [!TIP]
+> Having issues? Just ask Claude Code: *"Help me fix my smarter-claude installation"*
+
 **Next:** [![🚀 Get Started](https://img.shields.io/badge/🚀_Get_Started-Complete_Setup_Guide-green?style=for-the-badge)](GETTING_STARTED.md)
 
 ## 📖 The Story
@@ -106,6 +116,7 @@ Ask Claude after install:
 "What task involving index.js changed the header?"
 "Why did task 8 change the interface of my rest server?"
 "Can you check what was my last really complex task before the debugging session?"
+"/smarter-claude_voice nicole" <- Slash command to change the active voice of the current project. (multiple projects can speak in different voices)
 ```
 
 **It knows. It actually knows.** 🤯
@@ -135,15 +146,20 @@ Ask Claude after install:
 
 ## 🚀 Stop losing your development context.
 
-**One-Line Install (Experimental):**
-```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh  | bash
+**Ask Claude:**
+```
+"Install https://github.com/okets/.claude"
 ```
 
-**Manual Install:**
+**OR One-Line Install:**
 ```bash
-# Clone the repo and copy to your home directory
-cp -r .claude ~/
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
+```
+
+**OR Manual Install:**
+```bash
+git clone https://github.com/okets/.claude.git
+cd .claude && cp -r * ~/.claude/ && bash ~/.claude/setup.sh
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡

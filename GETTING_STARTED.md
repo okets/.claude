@@ -14,21 +14,55 @@
 - **🔊 Smart notifications** - Customizable TTS that actually helps
 - **💰 Zero tokens** - All processing happens locally
 
-## 🚀 One-Line Installation
+## 🚀 Installation
 
-**The easiest way to install smarter-claude:**
+### Ask Claude Code (Recommended)
+
+Simply tell Claude Code:
+
+```
+"Install https://github.com/okets/.claude"
+```
+
+Claude will read the repository, understand the project, and handle the entire installation process automatically.
+
+**OR**
+
+### One-Line Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash 
 ```
 
-That's it! The script will:
+**OR**
+
+### Manual Install
+
+```bash
+git clone https://github.com/okets/.claude.git
+cd .claude && cp -r * ~/.claude/
+bash ~/.claude/setup.sh
+```
+
+**Both methods will:**
 - ✅ Check if Claude Code is installed
 - ✅ Download and install smarter-claude
 - ✅ **Auto-install all TTS voices** (Kokoro, macOS voices)
 - ✅ **Configure optimal voice** for your platform
 - ✅ Configure sensible defaults
 - ✅ Test the installation
+
+### 🔧 Installation Issues?
+
+If anything goes wrong during installation, just ask Claude Code to fix it:
+
+```
+"Help me troubleshoot my smarter-claude installation"
+"Fix my smarter-claude setup - the installation failed"
+"Debug my Claude hooks and TTS configuration"
+```
+
+Claude will analyze your setup, check logs, and guide you through fixes!
 
 ## ✅ Verify It's Working
 
