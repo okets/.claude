@@ -104,12 +104,10 @@ jobs:
       
       - name: Create Release
         if: steps.check_tag.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Smarter-Claude v${{ steps.version.outputs.version }}
-          body: ${{ steps.changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
+        run: |
+          gh release create ${{ steps.version.outputs.tag }} \
+            --title "Smarter-Claude v${{ steps.version.outputs.version }}" \
+            --notes "${{ steps.changelog.outputs.changelog }}" \
+            --latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
