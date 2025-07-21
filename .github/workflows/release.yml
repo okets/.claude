@@ -1,0 +1,115 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'VERSION'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get previous tag
+        if: steps.check_tag.outputs.exists == 'false'
+        id: prev_tag
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        if: steps.check_tag.outputs.exists == 'false'
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+          
+          {
+            echo "## 🚀 Smarter-Claude v$VERSION"
+            echo
+            
+            # Check for migration
+            if [ -f "migrations/v${VERSION}.sh" ]; then
+              echo "⚠️ **This release includes database migrations**"
+              echo "Your data will be automatically migrated during update."
+              echo
+            fi
+            
+            echo "### What's Changed"
+            echo
+            
+            # Get commit messages since last tag
+            if [ -z "$PREV_TAG" ]; then
+              # First release - show all commits
+              git log --pretty=format:"- %s" --reverse | head -20
+            else
+              # Show commits since last tag
+              git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --reverse
+            fi
+            
+            echo
+            echo
+            echo "### Update Instructions"
+            echo
+            echo "Run this command in any Claude Code session:"
+            echo '```bash'
+            echo '/smarter-claude_update'
+            echo '```'
+            echo
+            echo "Or manually:"
+            echo '```bash'
+            echo 'cd ~/.claude && bash update.sh'
+            echo '```'
+            echo
+            echo "### Installation Instructions"
+            echo
+            echo "For new installations:"
+            echo '```bash'
+            echo 'curl -fsSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash'
+            echo '```'
+            echo
+            
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ steps.version.outputs.tag }}"
+            else
+              echo "🎉 **This is the first stable release of Smarter-Claude!**"
+            fi
+          } > changelog.md
+          
+          # Set multiline output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          release_name: Smarter-Claude v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false

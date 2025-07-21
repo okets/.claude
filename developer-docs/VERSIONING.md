@@ -23,6 +23,13 @@ The version system consists of:
 2. Each release can include a migration script (`migrations/v1.0.1.sh`)
 3. Updates preserve user data (settings, database, custom files)
 4. GitHub releases are created automatically via CI/CD
+5. **Multi-database support** - Migrations automatically find and update all project databases
+
+### Database Architecture
+- **Global Installation**: `~/.claude/` (hooks, docs, migrations, update scripts)
+- **Project Databases**: `<project>/.claude/smarter-claude/smarter-claude.db` (one per project)
+- **Migration Strategy**: Find all project databases and apply schema changes to each
+- **Backup Strategy**: Individual timestamped backups before migration
 
 ## Initial Implementation (v1.0.0)
 
@@ -323,10 +330,20 @@ The version system consists of:
 
 ## Migration Scripts
 
+### Multi-Database Migration Approach
+
+Smarter-claude uses a **centralized migration system** that automatically:
+1. **Discovers** all project databases across the user's system
+2. **Backs up** each database individually before migration
+3. **Applies** schema changes to all databases simultaneously
+4. **Rolls back** all databases if any migration fails
+
+This ensures all projects stay synchronized with the latest database schema.
+
 ### When to Create a Migration
 
 Create a migration script when:
-- Database schema changes
+- Database schema changes (tables, columns, indexes)
 - File locations change
 - Settings format changes
 - Breaking changes that need data transformation
@@ -340,18 +357,32 @@ Create a migration script when:
 
 echo "Running vX.Y.Z migration..."
 
-# Database changes
-if [ -f ~/.claude/.claude/smarter-claude/smarter-claude.db ]; then
-    sqlite3 ~/.claude/.claude/smarter-claude/smarter-claude.db << EOF
-    -- SQL commands here
-    EOF
-fi
+# Database changes - Apply to ALL project databases
+DB_COUNT=0
+while IFS= read -r -d '' db_path; do
+    if [ -f "$db_path" ]; then
+        echo "  🔧 Migrating: $db_path"
+        
+        if sqlite3 "$db_path" << 'SQL_EOF'
+-- Your SQL commands here
+CREATE INDEX IF NOT EXISTS idx_example ON table_name(column);
+SQL_EOF
+        then
+            ((DB_COUNT++))
+        else
+            echo "❌ Migration failed for: $db_path"
+            exit 1
+        fi
+    fi
+done < <(find "$HOME" -name "smarter-claude.db" -path "*/.claude/smarter-claude/*" -print0 2>/dev/null)
 
-# File structure changes
+echo "  ✅ Database migration applied to $DB_COUNT database(s)"
+
+# File structure changes (global)
 # mkdir -p ~/.claude/new_directory
 # mv ~/.claude/old_file ~/.claude/new_location 2>/dev/null || true
 
-# Settings updates
+# Settings updates (can be global or per-project)
 # python3 << EOF
 # import json
 # # Python code to update settings
@@ -375,13 +406,15 @@ echo "✅ vX.Y.Z migration complete"
 1. **User runs** `/smarter-claude_update`
 2. **update.sh checks** current version vs. latest GitHub release
 3. **If update available:**
-   - Creates timestamped backup
+   - Creates timestamped backup of ~/.claude
    - Downloads latest release tarball
    - Copies new code files
    - Preserves user data (settings, database, custom files)
-   - Runs migrations between versions
+   - **Scans for all project databases** across the system
+   - **Backs up each database** individually
+   - **Runs migrations on all databases** between versions
    - Updates VERSION file
-4. **User sees** success message with backup location
+4. **User sees** success message with backup locations
 
 ### Files That Get Updated
 - ✅ All Python scripts in hooks/

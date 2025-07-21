@@ -507,11 +507,15 @@ install_smarter_claude() {
     cp -r "$TEMP_DIR"/commands "$CLAUDE_DIR/" 2>/dev/null || log_warning "No commands directory found - slash commands may not be available"
     
     # Copy individual files
-    for file in README.md CONTEXTUAL-LOGGING-IMPLEMENTATION-PLAN.md GETTING_STARTED.md; do
+    for file in README.md CONTEXTUAL-LOGGING-IMPLEMENTATION-PLAN.md GETTING_STARTED.md VERSION update.sh; do
         if [ -f "$TEMP_DIR/$file" ]; then
             cp "$TEMP_DIR/$file" "$CLAUDE_DIR/" 2>/dev/null || log_warning "Could not copy $file"
         fi
     done
+    
+    # Copy migrations and developer docs
+    cp -r "$TEMP_DIR"/migrations "$CLAUDE_DIR/" 2>/dev/null || true
+    cp -r "$TEMP_DIR"/developer-docs "$CLAUDE_DIR/" 2>/dev/null || true
     
     if [ $copy_errors -gt 0 ]; then
         log_error "Some files failed to copy. Installation may be incomplete."
@@ -523,6 +527,8 @@ install_smarter_claude() {
     log_progress "Setting permissions..."
     find "$CLAUDE_DIR/hooks" -name "*.py" -type f -exec chmod +x {} \; 2>/dev/null
     find "$CLAUDE_DIR/hooks/utils/tts" -name "*.py" -type f -exec chmod +x {} \; 2>/dev/null
+    find "$CLAUDE_DIR/migrations" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null
+    chmod +x "$CLAUDE_DIR/update.sh" 2>/dev/null || true
     
     # Clean up
     rm -rf "$TEMP_DIR"

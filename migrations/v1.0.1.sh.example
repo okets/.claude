@@ -1,0 +1,40 @@
+#!/bin/bash
+# migrations/v1.0.1.sh.example
+# Example migration: Add performance index to file_contexts table
+
+echo "Running v1.0.1 migration: Adding performance index..."
+
+# Database changes - Apply to ALL project databases
+DB_COUNT=0
+FAILED_COUNT=0
+
+while IFS= read -r -d '' db_path; do
+    if [ -f "$db_path" ]; then
+        project_name=$(basename "$(dirname "$(dirname "$db_path")")")
+        echo "  🔧 Migrating project: $project_name"
+        
+        if sqlite3 "$db_path" << 'SQL_EOF'
+-- Add performance index for faster queries
+CREATE INDEX IF NOT EXISTS idx_file_contexts_timestamp 
+ON file_contexts(timestamp);
+
+-- Add index for file path queries
+CREATE INDEX IF NOT EXISTS idx_file_contexts_path_timestamp
+ON file_contexts(file_path, timestamp);
+SQL_EOF
+        then
+            ((DB_COUNT++))
+            echo "    ✅ Success"
+        else
+            echo "    ❌ Migration failed for: $db_path"
+            ((FAILED_COUNT++))
+        fi
+    fi
+done < <(find "$HOME" -name "smarter-claude.db" -path "*/.claude/smarter-claude/*" -print0 2>/dev/null)
+
+if [ $FAILED_COUNT -gt 0 ]; then
+    echo "❌ Migration failed for $FAILED_COUNT database(s)"
+    exit 1
+fi
+
+echo "✅ v1.0.1 migration applied to $DB_COUNT database(s)"

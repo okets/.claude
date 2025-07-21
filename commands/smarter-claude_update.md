@@ -2,93 +2,42 @@
 description: "Updates smarter-claude to the latest version from GitHub"
 allowed-tools:
   - Bash
-  - Read
 ---
 
 # Update smarter-claude
 
-I'll help you update smarter-claude to the latest version. Let me check how smarter-claude is installed and choose the appropriate update method.
+I'll update smarter-claude to the latest version using the built-in update system.
 
-First, let me check if this is a git repository (developer installation) or a product installation:
+First, let me check if this is a developer installation or a user installation:
 
 !if [ -d ".git" ] && git rev-parse --git-dir > /dev/null 2>&1; then
   echo "🔧 Developer installation detected (git repository)"
-  echo "Checking git status..."
-  git status --porcelain
-  
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "⚠️  You have uncommitted changes. I'll stash them before updating."
-    echo "Your changes will be preserved and can be restored with: git stash pop"
-    read -p "Continue with stashing and updating? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-      git stash push -m "Auto-stash before smarter-claude update $(date)"
-      echo "✅ Changes stashed"
-    else
-      echo "❌ Update cancelled. Please commit or stash your changes manually."
-      exit 1
-    fi
-  fi
-  
-  echo "📡 Fetching latest changes from GitHub..."
-  git fetch origin
-  
-  echo "📊 Changes to be applied:"
-  git log --oneline HEAD..origin/main
-  
-  echo "⬇️  Pulling latest updates..."
-  git pull origin main
-  
-  if [ $? -eq 0 ]; then
-    echo "✅ smarter-claude updated successfully!"
-    echo "📋 Recent changes:"
-    git log --oneline -5
+  echo "⚠️  You're in a development environment."
+  echo "For development updates, use git commands directly:"
+  echo "  git pull origin main"
+  echo ""
+  echo "For testing the update system, you can still run:"
+  echo "  bash ~/.claude/update.sh"
+  echo ""
+  read -p "Run the update system anyway? (y/N): " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    cd ~/.claude && bash update.sh
   else
-    echo "❌ Update failed. Please resolve any conflicts manually."
-    exit 1
+    echo "Update cancelled. Use 'git pull origin main' for development updates."
   fi
-  
 else
-  echo "📦 Product installation detected (no git repository)"
-  echo "Downloading latest installer from GitHub..."
+  echo "📦 Product installation detected"
+  echo "Running the update system..."
+  echo ""
   
-  # Create temporary directory for download
-  TEMP_DIR=$(mktemp -d)
-  cd "$TEMP_DIR"
-  
-  # Download latest install.sh
-  echo "📡 Downloading install.sh..."
-  if curl -fsSL https://raw.githubusercontent.com/okets/.claude/main/install.sh -o install.sh; then
-    echo "✅ Download successful"
-    
-    # Make executable
-    chmod +x install.sh
-    
-    echo "🔄 Running installer to update smarter-claude..."
-    echo "This will update your smarter-claude installation with the latest version."
-    
-    # Run the installer
-    ./install.sh
-    
-    if [ $? -eq 0 ]; then
-      echo "✅ smarter-claude updated successfully!"
-    else
-      echo "❌ Update failed during installation."
-      exit 1
-    fi
-    
-    # Clean up
-    cd - > /dev/null
-    rm -rf "$TEMP_DIR"
-    
+  # Check if update.sh exists
+  if [ -f ~/.claude/update.sh ]; then
+    cd ~/.claude && bash update.sh
   else
-    echo "❌ Failed to download installer from GitHub."
-    echo "Please check your internet connection and try again."
-    rm -rf "$TEMP_DIR"
-    exit 1
+    echo "❌ Update script not found. This might be an old installation."
+    echo ""
+    echo "To fix this, please run the installer again:"
+    echo "curl -fsSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash"
   fi
 fi
-
-echo ""
-echo "🎉 Update complete! Your smarter-claude installation is now up to date."
-echo "💡 Tip: Use this command anytime to get the latest features and improvements."
