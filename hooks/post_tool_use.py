@@ -317,7 +317,7 @@ def main():
                                 'Content downloaded', 'Fetch successful', 'Web data obtained', 'Download complete',
                                 'Web operation finished', 'Data fetch done', 'Web content retrieved', 'Fetch complete'
                             ],
-                            'exit_plan_mode': [
+                            'ExitPlanMode': [
                                 'Let\'s do this!', 'Time to make it happen!', 'Let\'s get to work!', 'Ready to rock!',
                                 'Let\'s build something awesome!', 'Time to code!', 'Let\'s make this happen!', 'Ready to dive in!',
                                 'Let\'s ship it!', 'Time to get our hands dirty!', 'Let\'s crush this!', 'Ready to execute!',

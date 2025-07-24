@@ -328,7 +328,13 @@ def main():
                         'I\'m searching the internet', 'I need to find this online', 'I\'m doing a web search', 'I\'m looking online for this',
                         'I need to search for information', 'I\'m browsing for answers', 'I\'m researching online'
                     ],
-                    # exit_plan_mode removed - handled by post_tool_use.py to prevent overlapping announcements
+                    'ExitPlanMode': [
+                        'You asked me to {}. Please review my plan.',
+                        'You asked me to {}. Care to review my plan?',
+                        'You asked me to {}. My plan is ready for your approval?',
+                        'You asked me to {}. What do you think of this approach?',
+                        'You asked me to {}. Does this plan look good to you?'
+                    ]
                 }
                 
                 # TodoWrite and Bash already handled above, skip them here
@@ -423,6 +429,22 @@ def main():
                         # Default handling for other tools
                         announcements = tool_announcements.get(tool_name, [f'Using {tool_name}'])
                         announcement = random.choice(announcements)
+                    
+                    # Special handling for ExitPlanMode to include user intent
+                    if tool_name == 'ExitPlanMode' and '{}' in announcement:
+                        try:
+                            # Extract user intent from transcript
+                            from cycle_utils import extract_user_intent_from_transcript, truncate_user_intent
+                            user_intent = extract_user_intent_from_transcript(transcript_path)
+                            if user_intent and user_intent != "Unknown task":
+                                clean_intent = truncate_user_intent(user_intent, max_words=15)
+                                announcement = announcement.format(clean_intent)
+                            else:
+                                # Fallback if no user intent found
+                                announcement = announcement.format("help with this task")
+                        except ImportError:
+                            # Fallback if utils not available
+                            announcement = announcement.format("help with this task")
                     
                     announce_user_content(announcement, level="verbose")
                 
