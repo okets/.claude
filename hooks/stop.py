@@ -1027,10 +1027,10 @@ def main():
                                 # Remove surrounding quotes
                                 if clean_intent.startswith('"') and clean_intent.endswith('"'):
                                     clean_intent = clean_intent[1:-1]
-                                # Use semantic truncation for reasonable length
+                                # Use TTS-friendly truncation for reasonable length
                                 if len(clean_intent) > 80:
-                                    from cycle_utils import truncate_user_intent
-                                    clean_intent = truncate_user_intent(clean_intent, max_words=15)
+                                    from cycle_utils import truncate_for_speech
+                                    clean_intent = truncate_for_speech(clean_intent, max_words=20)
                                 return clean_intent
                             
                             def assess_cycle_complexity():
