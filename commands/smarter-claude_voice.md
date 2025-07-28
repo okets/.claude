@@ -139,24 +139,22 @@ fi
 
 echo "🔧 Setting smarter-claude voice to: $VOICE_TEXT"
 
-# Provide working commands for installation + configuration
+# Due to Claude Code limitations with executing commands in slash commands,
+# I'll provide the command for you to run manually:
+
 echo ""
-echo "🔧 To install and configure $VOICE_TEXT for this project, please run these commands:"
+echo "🔧 To set your voice to $VOICE_TEXT, please run this command:"
 echo ""
 
-# Create the complete command based on voice type
+# Provide appropriate command based on voice type
 if [[ "$VOICE_TEXT" == kokoro-* ]]; then
-  echo "# Step 1: Install Kokoro TTS (first time only)"
-  echo "cd hooks/utils/tts && uv run kokoro_voice.py 'Installation test' --voice am_echo"
-  echo ""
-  echo "# Step 2: Set voice in project settings"
-  echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
-  echo ""
-  echo "Or run both in one command:"
+  echo "# For Kokoro voices, ensure TTS is installed first, then set the voice:"
   echo "cd hooks/utils/tts && uv run kokoro_voice.py 'Installation test' --voice am_echo && cd - && python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
+  echo ""
+  echo "# Or run them separately:"
+  echo "cd hooks/utils/tts && uv run kokoro_voice.py 'Installation test' --voice am_echo"
+  echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
 else
-  # For macOS voices, no installation needed
-  echo "# Set voice in project settings (no installation needed for macOS voices)"
   echo "python3 \"$MANAGE_SETTINGS\" set tts_engine \"$VOICE_TEXT\""
 fi
 
@@ -165,6 +163,3 @@ echo "This will:"
 echo "• Install Kokoro TTS models and dependencies (if needed for Kokoro voices)"
 echo "• Create project-specific settings with only this voice override"
 echo "• Keep all other settings inherited from global defaults"
-echo ""
-echo "Verify it worked:"
-echo "python3 \"$MANAGE_SETTINGS\" get tts_engine"

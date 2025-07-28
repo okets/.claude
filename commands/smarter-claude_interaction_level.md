@@ -58,12 +58,15 @@ esac
 
 echo "🔧 Setting smarter-claude interaction level to: $LEVEL_TEXT"
 
-# Due to slash command execution issues, provide the command for manual execution
+# Due to Claude Code limitations with executing commands in slash commands,
+# I'll provide the command for you to run manually:
+
 echo ""
-echo "🔧 To set your project interaction level to $LEVEL_TEXT, please run this command:"
+echo "🔧 To set your interaction level to $LEVEL_TEXT, please run this command:"
 echo ""
 echo "python3 \"$MANAGE_SETTINGS\" set interaction_level \"$LEVEL_TEXT\""
 echo ""
+
 echo "This will create a project-specific settings file with only this interaction level override,"
 echo "while keeping all other settings inherited from global defaults."
 echo ""
