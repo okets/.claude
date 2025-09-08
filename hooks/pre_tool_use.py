@@ -168,14 +168,6 @@ def main():
         if tool_name == 'Bash':
             command = tool_input.get('command', '')
             
-            # Block operations outside project directory
-            if is_dangerous_outside_project_command(command):
-                print("BLOCKED: Operation targeting outside project directory", file=sys.stderr)
-                print("Only operations within the current project are allowed", file=sys.stderr)
-                
-                
-                sys.exit(2)
-            
             # Git confirmation - show warning but allow
             if needs_git_confirmation(command):
                 print(f"⚠️  Claude is running git command: {command}", file=sys.stderr)
