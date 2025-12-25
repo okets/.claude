@@ -21,16 +21,28 @@ from cycle_utils import get_project_smarter_claude_dir, announce_user_content
 
 class ContextualDB:
     """Phase 5 contextual database for file/task/phase context retrieval"""
-    
+
     def __init__(self, db_path: Optional[str] = None):
         self.connection = None
         if db_path is None:
             # Default to project-specific smarter-claude directory
             db_path = get_project_smarter_claude_dir() / "smarter-claude.db"
-        
+
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(exist_ok=True)
+
+        # Auto-create project settings with random voice if not exists
+        self._ensure_project_settings()
+
         self._connect()
+
+    def _ensure_project_settings(self):
+        """Create default project settings if they don't exist"""
+        try:
+            from settings import get_settings
+            get_settings().create_default_project_settings()
+        except Exception:
+            pass  # Fail silently - settings are optional
     
     def _connect(self):
         """Connect to SQLite database"""

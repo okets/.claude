@@ -181,41 +181,57 @@ class SmarterClaudeSettings:
             
     def create_default_project_settings(self) -> bool:
         """
-        Create a default project settings file with common overrides
-        
+        Create a default project settings file with random voice selection
+
         Returns:
             True if successful, False otherwise
         """
+        import random
+
+        # Available voice options
+        voice_options = [
+            "macos-male",
+            "macos-female",
+            "kokoro-af_alloy",
+            "kokoro-af_river",
+            "kokoro-af_sky",
+            "kokoro-af_sarah",
+            "kokoro-af_nicole",
+            "kokoro-am_adam",
+            "kokoro-am_puck",
+            "kokoro-am_michael",
+            "kokoro-bf_emma",
+            "kokoro-bm_daniel",
+            "kokoro-bm_lewis",
+            "kokoro-bm_george"
+        ]
+
+        # Randomly select a voice for this project
+        selected_voice = random.choice(voice_options)
+
         default_project_settings = {
             "interaction_level": "verbose",
-            "interaction_level_options": "silent, quiet, concise, verbose",
-            "tts_engine": "macos-male",
-            "tts_engine_options": "kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george, macos-female, macos-male",
-            "cleanup_policy": {
-                "retention_cycles": 2
-            },
-            "logging_settings": {
-                "speak_hook_logging": False,
-                "debug_logging": False
-            }
+            "retention_cycles": 2,
+            "tts_engine": selected_voice,
+            "all options": voice_options
         }
-        
+
         try:
             project_settings_path = self.get_project_settings_path()
-            
+
             # Don't overwrite existing settings
             if project_settings_path.exists():
                 return True
-                
+
             # Ensure directory exists
             project_settings_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Write default settings
             with open(project_settings_path, 'w') as f:
                 json.dump(default_project_settings, f, indent=2)
-                
+
             return True
-            
+
         except Exception as e:
             self._log_error(f"Failed to create default project settings: {e}")
             return False
