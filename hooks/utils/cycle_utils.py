@@ -1521,57 +1521,17 @@ def extract_meaningful_context_from_summary(cycle_summary_data):
 
 
 def get_complexity_celebration(complexity_level, files_modified=0, subagents_used=0):
-    """Get varied celebration messages based on task complexity."""
+    """Get brief celebration messages based on task complexity."""
     import random
-    
+
     celebrations = {
-        "simple": [
-            "That was a nice and easy one!",
-            "Quick and smooth - just how I like it!",
-            "Simple task, clean execution!",
-            "That went really smoothly!",
-            "Easy peasy!",
-            "Straightforward and done!"
-        ],
-        "moderate": [
-            "That was a solid piece of work!",
-            "Good challenge, well executed!",
-            "That required some thinking, but we got it!",
-            "Nice work on that one!",
-            "That was a decent challenge!",
-            "A good workout for the brain!"
-        ],
-        "complex": [
-            "Wow, that was a really challenging one!",
-            "That was quite the complex task!",
-            "Phew! That was a tough nut to crack!",
-            "That was seriously challenging work!",
-            "What a complex puzzle that was!",
-            "That was no joke - really complex stuff!"
-        ]
+        "simple": ["Done.", "Complete.", "Ready.", "All set.", "Good."],
+        "moderate": ["Done.", "Solid.", "Complete.", "Ready.", "All set."],
+        "complex": ["Done.", "Big one done.", "Complete.", "All set.", "Handled."]
     }
-    
-    # Get base celebration
+
     base_celebrations = celebrations.get(complexity_level, celebrations["simple"])
-    celebration = random.choice(base_celebrations)
-    
-    # Add context-specific enthusiasm
-    if subagents_used > 2:
-        team_additions = [
-            " Great teamwork with all those agents!",
-            " Love how the team came together on this!",
-            " Excellent collaboration across the board!"
-        ]
-        celebration += random.choice(team_additions)
-    elif files_modified > 5:
-        file_additions = [
-            " Lots of files touched - comprehensive work!",
-            " Really thorough changes across the codebase!",
-            " Great coverage across multiple files!"
-        ]
-        celebration += random.choice(file_additions)
-    
-    return celebration
+    return random.choice(base_celebrations)
 
 
 def create_detailed_work_summary(context):
@@ -1849,233 +1809,78 @@ def create_fallback_verbose_message(user_intent, complexity):
             return f"{random.choice(reactions)} Complex task handled with precision and expertise!"
 
 def create_simple_completion_message(user_intent, context, timing_info=None):
-    """Create properly verbose completion for simple tasks."""
+    """Create brief completion for simple tasks."""
     import random
-    
-    # Build timing context if available
-    timing_intro = ""
-    if timing_info and timing_info.get('duration_seconds'):
-        duration = timing_info['duration_seconds']
-        if duration > 30:
-            long_phrases = [
-                "That was a long one! ", "Took longer than expected! ", "That required patience! ",
-                "Bit of a slog, but ", "That was quite the journey! ", "Extended effort there! ",
-                "That took some time! ", "Longer task completed! "
-            ]
-            timing_intro = random.choice(long_phrases)
-        elif duration > 10:
-            medium_phrases = [
-                "Took a moment, but ", "Brief pause required, ", "Quick thinking time, ",
-                "Short effort invested, ", "Moment of focus, ", "Brief work session, "
-            ]
-            timing_intro = random.choice(medium_phrases)
-        elif duration < 3:
-            quick_phrases = [
-                "Quick work! ", "Lightning fast! ", "Speedy execution! ",
-                "Rapid completion! ", "Swift work! ", "Instant results! "
-            ]
-            timing_intro = random.choice(quick_phrases)
-    
-    # Verbose but concise reactions for simple tasks
-    base_reactions = [
-        "Task completed successfully!",
-        "Work finished perfectly!",
-        "Everything handled cleanly!",
-        "Simple task executed well!",
-        "Straightforward work complete!",
-        "Clean execution achieved!",
-        "Boom! Nailed it!",
-        "Easy peasy lemon squeezy!",
-        "Like butter on toast!"
-    ]
-    
-    # Add context details for verbosity
-    details = []
+
+    # Build brief outcome
+    outcomes = []
     if context['files_modified'] > 0:
-        if context['files_modified'] == 1:
-            details.append(f"updated {context['files_modified']} file with precision")
-        else:
-            details.append(f"coordinated changes across {context['files_modified']} files")
-    
+        outcomes.append(f"{context['files_modified']} file{'s' if context['files_modified'] > 1 else ''}")
     if context['total_edits'] > 0:
-        details.append(f"made {context['total_edits']} careful edit{'s' if context['total_edits'] > 1 else ''}")
-    
-    # Combine timing + reaction + details
-    base = f"{timing_intro}{random.choice(base_reactions)}"
-    
-    if details:
-        # Use semantic truncation for natural detail selection
-        detail_text = " and ".join(details)
-        detail_text = truncate_for_speech(detail_text, max_words=20)  # More generous for logical completion
-        return f"{base} I {detail_text}, ensuring everything integrates smoothly."
+        outcomes.append(f"{context['total_edits']} edit{'s' if context['total_edits'] > 1 else ''}")
+
+    # Short varied endings
+    endings = ["Done.", "Complete.", "Ready.", "All set.", "Good."]
+
+    if outcomes:
+        outcome_text = ", ".join(outcomes)
+        return f"{outcome_text}. {random.choice(endings)}"
     else:
-        return f"{base} Clean, efficient implementation with attention to detail."
+        return random.choice(endings)
 
 def create_moderate_completion_message(user_intent, context, timing_info=None):
-    """Create balanced completion for moderate tasks."""
+    """Create brief completion for moderate tasks."""
     import random
-    
-    # Build timing context if available
-    timing_intro = ""
-    if timing_info and timing_info.get('duration_seconds'):
-        duration = timing_info['duration_seconds']
-        if duration > 45:
-            substantial_phrases = [
-                "That was a substantial one! ", "Significant effort invested! ", "That was quite involved! ",
-                "Decent chunk of work there! ", "That required some dedication! ", "Solid effort completed! ",
-                "That was no small task! ", "Good investment of time! "
-            ]
-            timing_intro = random.choice(substantial_phrases)
-        elif duration > 20:
-            moderate_phrases = [
-                "Good effort required, but ", "Some focus needed, ", "Steady work invested, ",
-                "Thoughtful approach taken, ", "Careful attention given, ", "Measured effort applied, "
-            ]
-            timing_intro = random.choice(moderate_phrases)
-        elif duration < 5:
-            efficient_phrases = [
-                "Efficient work! ", "Smooth execution! ", "Well-paced effort! ",
-                "Streamlined process! ", "Clean workflow! ", "Optimal timing! "
-            ]
-            timing_intro = random.choice(efficient_phrases)
-    
-    # Mix of reaction styles
-    reactions = [
-        "Solid work completed!",
-        "Task handled successfully!",
-        "Everything implemented nicely!",
-        "Great results achieved!",
-        "Work finished with care!",
-        "Implementation complete!",
-        "Smooth like jazz!",
-        "Crushed it!",
-        "Another one bites the dust!"
-    ]
-    
-    base = f"{timing_intro}{random.choice(reactions)}"
-    
-    # Add context details (always for moderate tasks)
-    details = []
-    if context['files_modified'] > 1:
-        details.append(f"coordinated {context['files_modified']} files seamlessly")
-    if context['subagents_used'] > 0:
-        details.append(f"managed agent collaboration effectively")
-    if context['total_edits'] > 3:
-        details.append(f"executed {context['total_edits']} precise edits")
-    if len(context['operation_types']) > 1:
-        details.append(f"handled {len(context['operation_types'])} operation types")
-    
-    if details:
-        detail_text = random.choice(details)
-        return f"{base} I {detail_text}, maintaining quality throughout the process."
+
+    # Build brief outcome
+    outcomes = []
+    if context['files_modified'] > 0:
+        outcomes.append(f"{context['files_modified']} files")
+    if context['total_edits'] > 0:
+        outcomes.append(f"{context['total_edits']} edits")
+
+    outcome_text = ", ".join(outcomes) if outcomes else "Done"
+
+    # Short varied endings
+    endings = ["Done.", "Complete.", "Ready.", "All set.", "Good."]
+
+    if user_intent:
+        intent_snippet = truncate_user_intent(user_intent, max_words=8)
+        return f"{intent_snippet}. {outcome_text}. {random.choice(endings)}"
     else:
-        return f"{base} Methodical approach with attention to detail and integration."
+        return f"{outcome_text}. {random.choice(endings)}"
 
 def create_complex_completion_message(user_intent, context, timing_info=None):
-    """Create celebratory completion for complex tasks with high variation."""
+    """Create brief completion for complex tasks with variation."""
     import random
-    
-    # Build timing context for complex tasks
+
+    # Short timing context
     timing_intro = ""
     if timing_info and timing_info.get('duration_seconds'):
         duration = timing_info['duration_seconds']
         if duration > 120:
-            marathon_phrases = [
-                "That was a marathon! ", "Epic journey completed! ", "That was quite the odyssey! ",
-                "Major undertaking finished! ", "That was a serious expedition! ", "Long haul completed! ",
-                "That was quite the adventure! ", "Extended mission accomplished! ", "What a ride that was! "
-            ]
-            timing_intro = random.choice(marathon_phrases)
+            timing_intro = random.choice(["Long one. ", "That took a while. ", "Big task. "])
         elif duration > 60:
-            serious_phrases = [
-                "That took some serious work! ", "Heavy lifting completed! ", "That was substantial! ",
-                "Significant effort invested! ", "That required real focus! ", "Deep work session! ",
-                "That was quite involved! ", "Intensive work completed! "
-            ]
-            timing_intro = random.choice(serious_phrases)
-        elif duration > 30:
-            good_effort_phrases = [
-                "Good effort invested! ", "Solid work session! ", "That took some doing! ",
-                "Decent effort required! ", "That needed focus! ", "Good chunk of work! ",
-                "That was engaging! ", "Quality time invested! "
-            ]
-            timing_intro = random.choice(good_effort_phrases)
+            timing_intro = random.choice(["Solid work. ", "Good chunk. ", ""])
         elif duration < 10:
-            efficient_phrases = [
-                "Remarkably efficient! ", "Lightning fast execution! ", "Incredibly smooth! ",
-                "Blazing fast work! ", "Exceptionally quick! ", "Amazingly swift! ",
-                "Impressively rapid! ", "Surprisingly fast! "
-            ]
-            timing_intro = random.choice(efficient_phrases)
-    
-    # Highly varied celebration styles
-    celebration_styles = [
-        "short_celebration",
-        "detailed_technical", 
-        "enthusiastic_brief",
-        "comprehensive_summary",
-        "achievement_focused"
-    ]
-    
-    style = random.choice(celebration_styles)
-    
-    if style == "short_celebration":
-        celebrations = [
-            "Boom! Complex task conquered!",
-            "Nailed it! Sophisticated work complete!",
-            "Outstanding! Intricate task mastered!",
-            "Exceptional work finished!",
-            "Brilliant execution complete!",
-            "Mic drop moment!",
-            "Like a boss!",
-            "Chef's kiss perfection!"
-        ]
-        return f"{timing_intro}{random.choice(celebrations)}"
-    
-    elif style == "enthusiastic_brief":
-        enthusiastic = [
-            f"Fantastic! Coordinated {context['files_modified']} files flawlessly!",
-            f"Amazing work! {context['total_edits']} edits executed with precision!",
-            f"Superb! Complex orchestration handled beautifully!",
-            f"Incredible! Multi-faceted task completed expertly!"
-        ]
-        return random.choice(enthusiastic)
-    
-    elif style == "achievement_focused":
-        achievements = [
-            f"Mission accomplished! Successfully managed {len(context['operation_types'])} operation types.",
-            f"Victory! Complex coordination across {context['files_modified']} files achieved.",
-            f"Success! Sophisticated task requiring {context['subagents_used']} agents completed.",
-            f"Excellence! Multi-layered implementation finished flawlessly."
-        ]
-        return random.choice(achievements)
-    
-    elif style == "detailed_technical":
-        # Longer technical celebration
-        details = []
-        if context['files_modified'] > 2:
-            details.append(f"orchestrated changes across {context['files_modified']} files")
-        if context['subagents_used'] > 1:
-            details.append(f"coordinated {context['subagents_used']} specialized agents")
-        if len(context['operation_types']) > 2:
-            details.append(f"executed {len(context['operation_types'])} operation types")
-        
-        if details:
-            # Use semantic truncation for natural detail combination
-            work_desc = ", ".join(details)
-            work_desc = truncate_for_speech(work_desc, max_words=25)  # More generous for logical completion
-            return f"Complex task mastered! I {work_desc} with expert precision. Everything integrated beautifully!"
-        else:
-            return "Sophisticated work completed! Complex requirements handled with technical excellence!"
-    
-    else:  # comprehensive_summary
-        # Full celebration with context
-        if user_intent:
-            intent_snippet = truncate_user_intent(user_intent, max_words=12)
-            return (f"Outstanding achievement! Your request: {intent_snippet} - "
-                   f"Successfully delivered through {context['files_modified']} file modifications, "
-                   f"{context['total_edits']} edits, demonstrating complex technical coordination. Exceptional results!")
-        else:
-            return (f"Magnificent work completed! This complex task involved {context['files_modified']} files, "
-                   f"{context['total_edits']} modifications, and sophisticated coordination. "
-                   f"Every aspect handled with expertise and precision!")
+            timing_intro = random.choice(["Quick one. ", "Fast. ", ""])
+
+    # Build brief outcome
+    outcomes = []
+    if context['files_modified'] > 0:
+        outcomes.append(f"{context['files_modified']} files")
+    if context['total_edits'] > 0:
+        outcomes.append(f"{context['total_edits']} edits")
+    if context['subagents_used'] > 0:
+        outcomes.append(f"{context['subagents_used']} agents")
+
+    outcome_text = ", ".join(outcomes) if outcomes else "Done"
+
+    # Short varied endings
+    endings = ["Done.", "Complete.", "Ready.", "All set.", "Good."]
+
+    if user_intent:
+        intent_snippet = truncate_user_intent(user_intent, max_words=8)
+        return f"{timing_intro}{intent_snippet}. {outcome_text}. {random.choice(endings)}"
+    else:
+        return f"{timing_intro}{outcome_text}. {random.choice(endings)}"
