@@ -9,8 +9,16 @@ todos/
 statsig/
 shell-snapshots/
 .claude/smarter-claude/
+debug/
+file-history/
+plugins/
+image-cache/
+plans/
 
 # Ignore runtime files
+mcp.json
+stats-cache.json
+statusline-command.sh
 *.lock
 *.log
 *.jsonl
