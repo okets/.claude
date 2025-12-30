@@ -519,7 +519,9 @@ def dump_hook_data(hook_name, hook_data, session_id, transcript_path):
     except Exception as e:
         # Log errors but don't fail the hook
         try:
-            with open('/tmp/cycle_utils_debug.log', 'a') as f:
+            import tempfile
+            debug_log = Path(tempfile.gettempdir()) / 'cycle_utils_debug.log'
+            with open(debug_log, 'a') as f:
                 f.write(f"\n{datetime.now()}: Error in dump_hook_data: {str(e)}\n")
         except:
             pass
@@ -1281,7 +1283,8 @@ def extract_current_todos(transcript_path):
         tools_used = transcript_data.get("raw_data", {}).get("tools_used", [])
         
         # Debug: Log what we found
-        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+        import tempfile
+        with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
             f.write(f"Todo extraction debug:\n")
             f.write(f"Tools found: {len(tools_used)}\n")
             f.write(f"TodoWrite calls: {len([t for t in tools_used if t.get('tool_name') == 'TodoWrite'])}\n")
@@ -1294,7 +1297,8 @@ def extract_current_todos(transcript_path):
             todos = last_todo_call.get('input', {}).get('todos', [])
             
             # Debug: Log todo details
-            with open('/tmp/todo_extraction_debug.log', 'a') as f:
+            import tempfile
+            with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
                 f.write(f"Last TodoWrite found {len(todos)} todos\n")
                 for i, todo in enumerate(todos):
                     f.write(f"Todo {i}: {todo.get('content', '')} - {todo.get('status', '')}\n")
@@ -1305,7 +1309,8 @@ def extract_current_todos(transcript_path):
                 for todo in todos:
                     if todo.get('status') == 'in_progress':
                         result = todo.get('content', '').strip()
-                        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                        import tempfile
+                        with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
                             f.write(f"Returning in_progress todo: {result}\n")
                         return result
                 
@@ -1313,7 +1318,8 @@ def extract_current_todos(transcript_path):
                 for todo in todos:
                     if todo.get('status') == 'pending':
                         result = todo.get('content', '').strip()
-                        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                        import tempfile
+                        with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
                             f.write(f"Returning pending todo: {result}\n")
                         return result
                 
@@ -1322,17 +1328,20 @@ def extract_current_todos(transcript_path):
                 total_count = len(todos)
                 if completed_count == total_count and total_count > 0:
                     result = f"All {total_count} tasks completed"
-                    with open('/tmp/todo_extraction_debug.log', 'a') as f:
+                    import tempfile
+                    with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
                         f.write(f"Returning completion summary: {result}\n")
                     return result
         
-        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+        import tempfile
+        with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
             f.write(f"No todos found, returning None\n")
         return None
         
     except Exception as e:
         # Log the exception for debugging
-        with open('/tmp/todo_extraction_debug.log', 'a') as f:
+        import tempfile
+        with open(Path(tempfile.gettempdir()) / 'todo_extraction_debug.log', 'a') as f:
             f.write(f"Exception in todo extraction: {str(e)}\n")
         return None
 

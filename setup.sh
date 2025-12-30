@@ -308,7 +308,7 @@ check_disk_space() {
 ensure_claude_directory() {
     save_state "ensure_claude_directory"
     log_info "Ensuring ~/.claude directory structure..."
-    
+
     # Create all necessary subdirectories
     local directories=(
         "$CLAUDE_DIR"
@@ -321,7 +321,7 @@ ensure_claude_directory() {
         "$CLAUDE_DIR/developer-docs"
         "$CLAUDE_DIR/.claude/smarter-claude"
     )
-    
+
     for dir in "${directories[@]}"; do
         if ! mkdir -p "$dir" 2>/dev/null; then
             log_error "Failed to create directory: $dir"
@@ -329,11 +329,111 @@ ensure_claude_directory() {
             exit 1
         fi
     done
-    
+
     # Initialize log file
     touch "$INSTALL_LOG" 2>/dev/null
-    
+
     log_success "Directory structure ready"
+}
+
+# Generate settings.json with Unix paths (macOS/Linux)
+generate_settings_json() {
+    save_state "generate_settings_json"
+    log_info "Generating settings.json for Unix (macOS/Linux)..."
+
+    SETTINGS_FILE="$CLAUDE_DIR/settings.json"
+
+    # Generate settings.json with Unix paths
+    cat > "$SETTINGS_FILE" << 'EOF'
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(uv:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "Bash(npm:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)",
+      "Write",
+      "Edit",
+      "Bash(chmod:*)",
+      "Bash(touch:*)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/pre_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/post_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/notification.py --notify"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/stop.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ~/.claude/hooks/subagent_stop.py"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline-command.sh"
+  }
+}
+EOF
+
+    if [ -f "$SETTINGS_FILE" ]; then
+        log_success "settings.json generated with Unix paths"
+    else
+        log_error "Failed to generate settings.json"
+        exit 1
+    fi
 }
 
 # Copy files from source to ~/.claude (only for automated setup)
@@ -814,6 +914,7 @@ main() {
         "check_python"
         "check_disk_space"
         "ensure_claude_directory"
+        "generate_settings_json"
         "copy_source_files"
         "set_permissions"
         "install_dependencies"

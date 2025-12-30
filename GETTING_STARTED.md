@@ -26,17 +26,17 @@ Simply tell Claude Code:
 
 Claude will read the repository, understand the project, and handle the entire installation process automatically.
 
-**OR**
+---
 
-### One-Line Install
+### 🍎 macOS / Linux
+
+#### One-Line Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash 
+curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-**OR**
-
-### Manual Install
+#### Manual Install
 
 ```bash
 git clone https://github.com/okets/.claude.git
@@ -44,10 +44,33 @@ cd .claude && cp -r * ~/.claude/
 bash ~/.claude/setup.sh
 ```
 
-**Both methods will:**
+---
+
+### 🪟 Windows
+
+#### One-Line Install (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/okets/.claude/main/install.ps1 | iex
+```
+
+#### Manual Install (PowerShell)
+
+```powershell
+git clone https://github.com/okets/.claude.git
+cd .claude
+Copy-Item -Path * -Destination $env:USERPROFILE\.claude\ -Recurse -Force
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.claude\setup.ps1
+```
+
+The setup script automatically generates `settings.json` with the correct Windows paths.
+
+---
+
+**All installation methods will:**
 - ✅ Check if Claude Code is installed
 - ✅ Download and install smarter-claude
-- ✅ **Auto-install all TTS voices** (Kokoro, macOS voices)
+- ✅ **Auto-install all TTS voices** (Kokoro neural voices)
 - ✅ **Configure optimal voice** for your platform
 - ✅ Configure sensible defaults
 - ✅ Test the installation
@@ -222,7 +245,7 @@ I'm not getting any TTS notifications from smarter-claude during our conversatio
 <details>
 <summary>Click for manual troubleshooting commands</summary>
 
-#### Check Installation
+#### Check Installation (macOS/Linux)
 ```bash
 # Verify hooks are installed and executable
 ls -la ~/.claude/hooks/
@@ -232,19 +255,38 @@ chmod +x ~/.claude/hooks/*.py
 python3 -c "from hooks.utils.contextual_db import ContextualDB; print('Success')"
 ```
 
+#### Check Installation (Windows PowerShell)
+```powershell
+# Verify hooks are installed
+Get-ChildItem $env:USERPROFILE\.claude\hooks\
+
+# Test Python imports
+python -c "import sys; sys.path.append('$env:USERPROFILE\.claude\hooks\utils'); from contextual_db import ContextualDB; print('Success')"
+```
+
 #### Debug TTS
 ```bash
 # Check TTS settings
 /smarter-claude_voice  # Shows current voice and status
 
-# Test system audio
-afplay /System/Library/Sounds/Ping.aiff  # macOS
+# Test system audio (macOS)
+afplay /System/Library/Sounds/Ping.aiff
 
 # Check interaction level (silent mode disables audio)
 python ~/.claude/hooks/utils/manage_settings.py get interaction_level
 ```
 
-#### Database Issues
+#### Debug TTS (Windows)
+```powershell
+# Test TTS directly
+cd $env:USERPROFILE\.claude\hooks\utils\tts
+uv run kokoro_voice.py kokoro-am_puck "Testing TTS"
+
+# Check if Kokoro models exist
+Test-Path $env:USERPROFILE\.kokoro-tts\models\kokoro-v1.0.onnx
+```
+
+#### Database Issues (macOS/Linux)
 ```bash
 # Check if database exists
 ls .claude/smarter-claude/
@@ -257,13 +299,34 @@ chmod 644 .claude/smarter-claude/smarter-claude.db  # if exists
 sqlite3 .claude/smarter-claude/smarter-claude.db "PRAGMA integrity_check;"
 ```
 
-#### Reset Everything
+#### Database Issues (Windows)
+```powershell
+# Check if database exists
+Get-ChildItem .claude\smarter-claude\
+
+# Test database integrity
+sqlite3 .claude\smarter-claude\smarter-claude.db "PRAGMA integrity_check;"
+```
+
+#### Reset Everything (macOS/Linux)
 ```bash
 # Remove project data (keeps global settings)
 rm -rf .claude/smarter-claude/
 
 # Nuclear option: remove all settings
 rm ~/.claude/hooks/utils/smarter-claude-global.json
+
+# Restart Claude Code for fresh installation
+claude
+```
+
+#### Reset Everything (Windows)
+```powershell
+# Remove project data (keeps global settings)
+Remove-Item -Recurse .claude\smarter-claude\
+
+# Nuclear option: remove all settings
+Remove-Item $env:USERPROFILE\.claude\hooks\utils\smarter-claude-global.json
 
 # Restart Claude Code for fresh installation
 claude

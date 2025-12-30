@@ -9,10 +9,15 @@ import os
 import sys
 import random
 import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime
 import re
 from typing import List, Dict, Set
+
+# Cross-platform temp directory for debug logs
+TEMP_DIR = Path(tempfile.gettempdir())
+DEBUG_LOG = TEMP_DIR / 'stop_hook_debug.log'
 
 # Import our cycle utilities
 sys.path.append(str(Path(__file__).parent / 'utils'))
@@ -404,7 +409,7 @@ def generate_summary_from_analysis(analysis: Dict) -> str:
 def main():
     try:
         # Debug logging to understand the issue
-        with open('/tmp/stop_hook_debug.log', 'a') as f:
+        with open(DEBUG_LOG, 'a') as f:
             f.write(f"\n{datetime.now()}: stop.py called with args: {sys.argv}\n")
             f.write(f"Working directory: {os.getcwd()}\n")
         
@@ -433,20 +438,20 @@ def main():
             # If this Stop hook has event_name "SubagentStop", it's a subagent completion
             if hook_event_name == "SubagentStop":
                 announce_tts("Stop detected from a subagent")
-                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG, 'a') as f:
                     f.write(f"\n{datetime.now()}: Stop hook triggered by SubagentStop - skipping final summary\n")
                 return False
             
             # If this Stop hook has event_name "Stop", it's the final cycle completion
             if hook_event_name == "Stop":
                 announce_tts("Stop detected from Main Agent")
-                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG, 'a') as f:
                     f.write(f"\n{datetime.now()}: Stop hook triggered by cycle completion - generating final summary\n")
                 return True
             
             # Fallback: if event name is unclear, default to generating summary
             announce_tts("Stop detected with unclear source")
-            with open('/tmp/stop_hook_debug.log', 'a') as f:
+            with open(DEBUG_LOG, 'a') as f:
                 f.write(f"\n{datetime.now()}: Stop hook with unclear event '{hook_event_name}' - defaulting to summary generation\n")
             return True
         
@@ -456,7 +461,7 @@ def main():
             sys.exit(0)
         
         # Debug: Log input data to understand structure
-        debug_log = Path('/tmp') / 'claude_debug_stop.json'
+        debug_log = TEMP_DIR / 'claude_debug_stop.json'
         with open(debug_log, 'w') as f:
             json.dump(input_data, f, indent=2)
         
@@ -967,7 +972,7 @@ def main():
                     }
                 }
                 
-                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG, 'a') as f:
                     f.write(f"\n{datetime.now()}: Successfully used hook-based parsing for cycle {cycle_id}\n")
                 
                 # Generate comprehensive cycle summary file
@@ -1011,7 +1016,7 @@ def main():
                                             todo_summary = f"{pending} todos pending"
                         except Exception as e:
                             # Don't fail the whole announcement if todo parsing fails
-                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                            with open(DEBUG_LOG, 'a') as f:
                                 f.write(f"\n{datetime.now()}: Todo parsing failed: {str(e)}\n")
                         
                         # Smart announcement logic: for short interactions, read actual response
@@ -1114,7 +1119,7 @@ def main():
                                             announce_user_content("I'm done")
                                 except Exception as e:
                                     # Debug logging
-                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                    with open(DEBUG_LOG, 'a') as f:
                                         f.write(f"\n{datetime.now()}: Failed to extract response text: {str(e)}\n")
                                     announce_user_content("I'm done")
                             
@@ -1193,7 +1198,7 @@ def main():
                         try:
                             collector = DataCollector()
                             collector._process_summary_file(Path(summary_path))
-                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                            with open(DEBUG_LOG, 'a') as f:
                                 f.write(f"\n{datetime.now()}: Cycle {cycle_id} auto-ingested to database\n")
                             
                             # RETENTION CLEANUP: Clean up previous cycle files after current cycle is safely stored
@@ -1244,34 +1249,34 @@ def main():
                                 
                                 # Infrastructure cleanup - no TTS announcement needed
                                 if files_cleaned:
-                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                    with open(DEBUG_LOG, 'a') as f:
                                         f.write(f"\n{datetime.now()}: Retention cleanup for cycle {cycle_id}: {', '.join(files_cleaned)}\n")
                                 else:
-                                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                    with open(DEBUG_LOG, 'a') as f:
                                         f.write(f"\n{datetime.now()}: No old files to clean up (retention_cycles={retention_cycles})\n")
                                 
                             except Exception as cleanup_error:
                                 # Log cleanup errors but don't fail the cycle
-                                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                                with open(DEBUG_LOG, 'a') as f:
                                     f.write(f"\n{datetime.now()}: Retention cleanup failed for cycle {cycle_id}: {str(cleanup_error)}\n")
                                 
                         except Exception as db_error:
-                            with open('/tmp/stop_hook_debug.log', 'a') as f:
+                            with open(DEBUG_LOG, 'a') as f:
                                 f.write(f"\n{datetime.now()}: Database auto-ingestion failed: {str(db_error)}\n")
                             # Don't clean up files if database ingestion failed
                         
-                        with open('/tmp/stop_hook_debug.log', 'a') as f:
+                        with open(DEBUG_LOG, 'a') as f:
                             f.write(f"\n{datetime.now()}: Cycle summary saved to {summary_path}\n")
                     else:
-                        with open('/tmp/stop_hook_debug.log', 'a') as f:
+                        with open(DEBUG_LOG, 'a') as f:
                             f.write(f"\n{datetime.now()}: Failed to generate cycle summary: {cycle_summary_result.get('error')}\n")
                 except Exception as e:
-                    with open('/tmp/stop_hook_debug.log', 'a') as f:
+                    with open(DEBUG_LOG, 'a') as f:
                         f.write(f"\n{datetime.now()}: Cycle summary generation exception: {str(e)}\n")
                     
             else:
                 # Hook parsing failed - fall back to transcript parsing
-                with open('/tmp/stop_hook_debug.log', 'a') as f:
+                with open(DEBUG_LOG, 'a') as f:
                     f.write(f"\n{datetime.now()}: Hook parsing failed ({hook_summary.get('error')}), falling back to transcript parsing\n")
                     
                 transcript_path = input_data.get('transcript_path', '')
@@ -1283,7 +1288,7 @@ def main():
                     
         except Exception as e:
             # Hook parsing error - fall back to transcript parsing
-            with open('/tmp/stop_hook_debug.log', 'a') as f:
+            with open(DEBUG_LOG, 'a') as f:
                 f.write(f"\n{datetime.now()}: Hook parsing exception ({str(e)}), falling back to transcript parsing\n")
                 
             transcript_path = input_data.get('transcript_path', '')

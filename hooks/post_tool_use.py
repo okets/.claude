@@ -233,7 +233,8 @@ def main():
                 
                 if tool_description:
                     # Deduplication: Check if we've already announced this description recently
-                    cache_file = Path('/tmp') / 'last_tool_description.txt'
+                    import tempfile
+                    cache_file = Path(tempfile.gettempdir()) / 'last_tool_description.txt'
                     should_announce = True
                     
                     if cache_file.exists():

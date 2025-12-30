@@ -21,12 +21,17 @@ except ImportError:
         pass
 
 def stop_all_tts():
-    """Stop all TTS playback immediately when new cycle starts"""
+    """Stop all TTS playback immediately when new cycle starts (cross-platform)"""
     try:
-        # Kill macOS 'say' processes
-        subprocess.run(["pkill", "-f", "say"], capture_output=True, timeout=1)
-        # Kill any afplay processes (audio playback)
-        subprocess.run(["pkill", "-f", "afplay"], capture_output=True, timeout=1)
+        from process_utils import stop_all_tts as _stop_tts
+        _stop_tts()
+    except ImportError:
+        # Fallback to original macOS behavior if process_utils not available
+        try:
+            subprocess.run(["pkill", "-f", "say"], capture_output=True, timeout=1)
+            subprocess.run(["pkill", "-f", "afplay"], capture_output=True, timeout=1)
+        except Exception:
+            pass
     except Exception:
         pass  # Fail silently
 

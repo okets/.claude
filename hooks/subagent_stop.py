@@ -11,8 +11,12 @@ import json
 import os
 import sys
 import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime
+
+# Cross-platform temp directory for debug logs
+TEMP_DIR = Path(tempfile.gettempdir())
 
 try:
     from dotenv import load_dotenv
@@ -233,7 +237,7 @@ def generate_subagent_contextual_data(session_id, transcript_path, input_data):
             )
             
             # Log the result for debugging
-            with open('/tmp/subagent_contextual_debug.log', 'a') as f:
+            with open(TEMP_DIR / 'subagent_contextual_debug.log', 'a') as f:
                 f.write(f"\n{datetime.now()}: Subagent contextual data generation completed\n")
                 f.write(f"Return code: {result.returncode}\n")
                 if result.stderr:
@@ -241,7 +245,7 @@ def generate_subagent_contextual_data(session_id, transcript_path, input_data):
                     
     except Exception as e:
         # Log errors but don't fail
-        with open('/tmp/subagent_contextual_debug.log', 'a') as f:
+        with open(TEMP_DIR / 'subagent_contextual_debug.log', 'a') as f:
             f.write(f"\n{datetime.now()}: Error generating subagent contextual data: {str(e)}\n")
 
 
@@ -275,7 +279,7 @@ def main():
                 
         except Exception as e:
             # Don't let contextual logging failures break the main hook
-            with open('/tmp/subagent_stop_debug.log', 'a') as f:
+            with open(TEMP_DIR / 'subagent_stop_debug.log', 'a') as f:
                 f.write(f"\n{datetime.now()}: Contextual logging error: {str(e)}\n")
 
         # Extract required fields

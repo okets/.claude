@@ -26,7 +26,7 @@ class SmarterClaudeSettings:
         "interaction_level": "verbose",  # silent, quiet, concise, verbose
         "interaction_level_options": "silent, quiet, concise, verbose",
         "tts_enabled": True,
-        "tts_engine": "macos-male",  # kokoro voices, macos-female, macos-male
+        "tts_engine": "kokoro-am_puck",  # kokoro voices, macos-female, macos-male
         "tts_engine_options": "kokoro-af_alloy, kokoro-af_river, kokoro-af_sky, kokoro-af_sarah, kokoro-af_nicole, kokoro-am_adam, kokoro-am_echo, kokoro-am_puck, kokoro-am_michael, kokoro-bf_emma, kokoro-bm_daniel, kokoro-bm_lewis, kokoro-bm_george, macos-female, macos-male",
         "notification_sounds": True,
         "cleanup_policy": {
@@ -188,10 +188,8 @@ class SmarterClaudeSettings:
         """
         import random
 
-        # Available voice options
-        voice_options = [
-            "macos-male",
-            "macos-female",
+        # Kokoro voices for random selection (cross-platform)
+        kokoro_voices = [
             "kokoro-af_alloy",
             "kokoro-af_river",
             "kokoro-af_sky",
@@ -206,14 +204,20 @@ class SmarterClaudeSettings:
             "kokoro-bm_george"
         ]
 
-        # Randomly select a voice for this project
-        selected_voice = random.choice(voice_options)
+        # All available voices (for display purposes)
+        all_voice_options = [
+            "macos-male",
+            "macos-female"
+        ] + kokoro_voices
+
+        # Randomly select a Kokoro voice for this project (works on all platforms)
+        selected_voice = random.choice(kokoro_voices)
 
         default_project_settings = {
             "interaction_level": "verbose",
             "retention_cycles": 2,
             "tts_engine": selected_voice,
-            "all options": voice_options
+            "all options": all_voice_options
         }
 
         try:
@@ -285,7 +289,9 @@ class SmarterClaudeSettings:
     def _log_error(self, message: str):
         """Log error messages (simple fallback logging)"""
         try:
-            with open('/tmp/smarter_claude_settings_debug.log', 'a') as f:
+            import tempfile
+            debug_log = Path(tempfile.gettempdir()) / 'smarter_claude_settings_debug.log'
+            with open(debug_log, 'a') as f:
                 from datetime import datetime
                 f.write(f"{datetime.now().isoformat()}: {message}\n")
         except:
