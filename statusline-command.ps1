@@ -34,7 +34,7 @@ $SYM_UP = [char]0x2191           # ↑
 $SYM_LIGHTNING = [char]0x26A1    # ⚡
 $SYM_SIGMA = [char]0x03A3       # Σ
 
-# Separator
+# Separator (no trailing space - parts handle their own spacing)
 $SEP = "${FG_GRAY}${SYM_DIAMOND}${RESET}"
 
 # Try to read JSON input from stdin (non-blocking)
@@ -67,15 +67,15 @@ $parts = @()
 if ($data -and $data.workspace.current_dir) {
     $cwd_basename = Split-Path $data.workspace.current_dir -Leaf
     $cwd_part = "${BOLD}${FG_CYAN}${cwd_basename}${RESET}"
+    $parts += $cwd_part
 
     # Project directory (magenta) if different
     if ($data.workspace.project_dir) {
         $project_name = Split-Path $data.workspace.project_dir -Leaf
         if ($project_name -ne $cwd_basename) {
-            $cwd_part += " ${FG_MAGENTA}${BOLD}${SYM_HOME}${project_name}${RESET}"
+            $parts += " ${FG_MAGENTA}${BOLD}${SYM_HOME}${project_name}${RESET}"
         }
     }
-    $parts += $cwd_part
 }
 
 # 2. Model name with symbol and hotkey hint
@@ -85,23 +85,23 @@ if ($data -and $data.model.id) {
     $model_display = ""
 
     if ($model_id -match "opus-4-5|opus-4\.5") {
-        $model_display = "${BOLD}${FG_ORANGE}${SYM_MODEL} Opus 4.5${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus 4.5${RESET} ${hotkey}"
     } elseif ($model_id -match "opus-4|opus4") {
-        $model_display = "${BOLD}${FG_ORANGE}${SYM_MODEL} Opus 4${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus 4${RESET} ${hotkey}"
     } elseif ($model_id -match "opus") {
-        $model_display = "${BOLD}${FG_ORANGE}${SYM_MODEL} Opus${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus${RESET} ${hotkey}"
     } elseif ($model_id -match "sonnet-4-5|sonnet-4\.5") {
-        $model_display = "${BOLD}${FG_BLUE}${SYM_MODEL} Sonnet 4.5${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet 4.5${RESET} ${hotkey}"
     } elseif ($model_id -match "sonnet-4|sonnet4") {
-        $model_display = "${BOLD}${FG_BLUE}${SYM_MODEL} Sonnet 4${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet 4${RESET} ${hotkey}"
     } elseif ($model_id -match "sonnet") {
-        $model_display = "${BOLD}${FG_BLUE}${SYM_MODEL} Sonnet${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet${RESET} ${hotkey}"
     } elseif ($model_id -match "haiku") {
-        $model_display = "${BOLD}${FG_GREEN}${SYM_MODEL} Haiku${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_GREEN}Haiku${RESET} ${hotkey}"
     } else {
-        $model_display = "${BOLD}${FG_WHITE}${SYM_MODEL} $($data.model.display_name)${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_WHITE}$($data.model.display_name)${RESET} ${hotkey}"
     }
-    $parts += $model_display
+    $parts += " $model_display"
 }
 
 # 3. Context window percentage with bar
@@ -125,7 +125,7 @@ if ($data -and $data.context_window.current_usage) {
         $empty = 5 - $filled
         $bar = ("${pct_color}${SYM_FILLED}" * $filled) + ("${FG_GRAY}${SYM_EMPTY}" * $empty)
 
-        $parts += "${bar}${RESET} ${BOLD}${pct_color}${pct}%${RESET}"
+        $parts += " ${bar}${RESET} ${BOLD}${pct_color}${pct}%${RESET}"
     }
 }
 
@@ -137,7 +137,7 @@ if ($data -and $data.context_window.current_usage) {
 
     $in_fmt = Format-K $in_tokens
     $out_fmt = Format-K $out_tokens
-    $token_part = "${FG_BLUE}${SYM_DOWN}${in_fmt}${RESET} ${FG_YELLOW}${SYM_UP}${out_fmt}${RESET}"
+    $token_part = "${FG_BLUE}${SYM_DOWN}${in_fmt}${RESET}${FG_YELLOW}${SYM_UP}${out_fmt}${RESET}"
 
     # Cache stats
     $cache_creation = if ($usage.cache_creation_input_tokens) { $usage.cache_creation_input_tokens } else { 0 }
@@ -148,18 +148,17 @@ if ($data -and $data.context_window.current_usage) {
         $token_part += " ${DIM}${FG_CYAN}${SYM_LIGHTNING}+${cc_fmt}${RESET}${DIM}${FG_GREEN}/${cr_fmt}${RESET}"
     }
 
-    $parts += $token_part
-}
-
-# 5. Session totals with sigma
-if ($data -and $data.context_window) {
-    $total_in = if ($data.context_window.total_input_tokens) { $data.context_window.total_input_tokens } else { 0 }
-    $total_out = if ($data.context_window.total_output_tokens) { $data.context_window.total_output_tokens } else { 0 }
-    $session_total = $total_in + $total_out
-    if ($session_total -gt 0) {
-        $sess_fmt = Format-K $session_total
-        $parts += "${FG_MAGENTA}${SYM_SIGMA}${sess_fmt}${RESET}"
+    # 5. Session totals with sigma - combine with tokens
+    if ($data.context_window) {
+        $total_in = if ($data.context_window.total_input_tokens) { $data.context_window.total_input_tokens } else { 0 }
+        $total_out = if ($data.context_window.total_output_tokens) { $data.context_window.total_output_tokens } else { 0 }
+        $session_total = $total_in + $total_out
+        if ($session_total -gt 0) {
+            $sess_fmt = Format-K $session_total
+            $token_part += " ${FG_MAGENTA}${SYM_SIGMA}${sess_fmt}${RESET}"
+        }
     }
+    $parts += $token_part
 }
 
 # 6. TTS status based on interaction level
@@ -171,7 +170,7 @@ if (-not (Test-Path $settingsFile)) {
     $settingsFile = Join-Path $CLAUDE_DIR "hooks\utils\smarter-claude-global.json"
 }
 
-$tts_display = "${FG_GRAY}TTS:off${RESET}"
+$tts_display = "${FG_GRAY}🗣️ off${RESET}"
 if (Test-Path $settingsFile) {
     try {
         $settings = Get-Content $settingsFile -Raw | ConvertFrom-Json
@@ -179,10 +178,10 @@ if (Test-Path $settingsFile) {
 
         switch ($level) {
             "silent" {
-                $tts_display = "${FG_GRAY}TTS:off${RESET}"
+                $tts_display = "${FG_GRAY}🗣️ off${RESET}"
             }
             "quiet" {
-                $tts_display = "${FG_LIGHT_ORANGE}TTS:beep${RESET}"
+                $tts_display = "${FG_LIGHT_ORANGE}🗣️ beep${RESET}"
             }
             { $_ -in "concise", "verbose" } {
                 $engine = $settings.tts_engine
@@ -198,21 +197,21 @@ if (Test-Path $settingsFile) {
                         $voice_name = $engine
                     }
                 }
-                $tts_display = "${FG_ROYAL_BLUE}TTS:${voice_name}${RESET}"
+                $tts_display = "${FG_ROYAL_BLUE}🗣️ ${voice_name}${RESET}"
             }
             default {
-                $tts_display = "${FG_GRAY}TTS:off${RESET}"
+                $tts_display = "${FG_GRAY}🗣️ off${RESET}"
             }
         }
     } catch {
-        $tts_display = "${FG_GRAY}TTS:?${RESET}"
+        $tts_display = "${FG_GRAY}🗣️ ?${RESET}"
     }
 }
-$parts += $tts_display
+$parts += " $tts_display"
 
 # Output the status line
 if ($parts.Count -gt 0) {
-    Write-Output ($parts -join " $SEP ")
+    Write-Output ($parts -join "$SEP")
 } else {
     Write-Output "StatusLine Error"
 }

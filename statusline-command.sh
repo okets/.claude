@@ -28,7 +28,7 @@ BG_SUNSET_PURPLE="\033[48;5;53m"
 BG_SUNSET_WINE="\033[48;5;52m"
 BG_SUNSET_ORANGE="\033[48;5;166m"
 
-# Separators
+# Separators (no trailing space - parts handle their own spacing)
 SEP="${FG_GRAY}◆${RESET}"
 
 # 1. Current directory basename (cyan, bold)
@@ -55,35 +55,35 @@ model_id=$(echo "$input" | jq -r '.model.id')
 hotkey="${DIM}${FG_GRAY}(switch ⌥P)${RESET}"
 case "$model_id" in
     *opus-4-5*|*opus-4.5*)
-        model_name="${BOLD}${FG_ORANGE}◈ Opus 4.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus 4.5${RESET} ${hotkey}"
         ;;
     *opus-4*|*opus4*)
-        model_name="${BOLD}${FG_ORANGE}◈ Opus 4${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus 4${RESET} ${hotkey}"
         ;;
     *opus*)
-        model_name="${BOLD}${FG_ORANGE}◈ Opus${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus${RESET} ${hotkey}"
         ;;
     *sonnet-4-5*|*sonnet-4.5*)
-        model_name="${BOLD}${FG_BLUE}◈ Sonnet 4.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 4.5${RESET} ${hotkey}"
         ;;
     *sonnet-4*|*sonnet4*)
-        model_name="${BOLD}${FG_BLUE}◈ Sonnet 4${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 4${RESET} ${hotkey}"
         ;;
     *sonnet-3-5*|*sonnet-3.5*)
-        model_name="${BOLD}${FG_BLUE}◈ Sonnet 3.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 3.5${RESET} ${hotkey}"
         ;;
     *sonnet*)
-        model_name="${BOLD}${FG_BLUE}◈ Sonnet${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet${RESET} ${hotkey}"
         ;;
     *haiku-3-5*|*haiku-3.5*)
-        model_name="${BOLD}${FG_GREEN}◈ Haiku 3.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_GREEN}Haiku 3.5${RESET} ${hotkey}"
         ;;
     *haiku*)
-        model_name="${BOLD}${FG_GREEN}◈ Haiku${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_GREEN}Haiku${RESET} ${hotkey}"
         ;;
     *)
         display_name=$(echo "$input" | jq -r '.model.display_name' | awk '{print $1}')
-        model_name="${BOLD}${FG_WHITE}◈ ${display_name}${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_WHITE}${display_name}${RESET} ${hotkey}"
         ;;
 esac
 
@@ -122,9 +122,9 @@ fi
 if [ "$usage" != "null" ]; then
     input_tokens=$(echo "$usage" | jq '.input_tokens // 0')
     output_tokens=$(echo "$usage" | jq '.output_tokens // 0')
-    token_display="${FG_BLUE}↓${input_tokens}${RESET} ${FG_YELLOW}↑${output_tokens}${RESET}"
+    token_display="${FG_BLUE}↓${input_tokens}${RESET}${FG_YELLOW}↑${output_tokens}${RESET}"
 else
-    token_display="${FG_GRAY}↓0 ↑0${RESET}"
+    token_display="${FG_GRAY}↓0↑0${RESET}"
 fi
 
 # 6. Cache stats (dim, with icons) - format large numbers with k
@@ -164,7 +164,7 @@ global_settings="$CLAUDE_DIR/hooks/utils/smarter-claude-global.json"
 FG_ROYAL_BLUE="\033[38;5;69m"
 FG_LIGHT_ORANGE="\033[38;5;215m"
 
-tts_display="${FG_GRAY}TTS:off${RESET}"
+tts_display="${FG_GRAY}🗣️ off${RESET}"
 settings_file=""
 
 if [ -f "$project_settings" ]; then
@@ -179,10 +179,10 @@ if [ -n "$settings_file" ]; then
 
     case "$level" in
         silent)
-            tts_display="${FG_GRAY}TTS:off${RESET}"
+            tts_display="${FG_GRAY}🗣️ off${RESET}"
             ;;
         quiet)
-            tts_display="${FG_LIGHT_ORANGE}TTS:beep${RESET}"
+            tts_display="${FG_LIGHT_ORANGE}🗣️ beep${RESET}"
             ;;
         concise|verbose)
             # Extract just the voice name
@@ -198,40 +198,33 @@ if [ -n "$settings_file" ]; then
                     voice_name="$tts_engine"
                 fi
             fi
-            tts_display="${FG_ROYAL_BLUE}TTS:${voice_name}${RESET}"
+            tts_display="${FG_ROYAL_BLUE}🗣️ ${voice_name}${RESET}"
             ;;
         *)
-            tts_display="${FG_GRAY}TTS:off${RESET}"
+            tts_display="${FG_GRAY}🗣️ off${RESET}"
             ;;
     esac
 fi
 
-# Assemble status line - only include project separator if project exists
-if [ -n "$project_display" ]; then
-    printf "%b%b %b %b %b %b %b %b %b %b %b %b\n" \
-        "$cwd_display" \
-        "$project_display" \
-        "$SEP" \
-        "$model_name" \
-        "$SEP" \
-        "$context_display" \
-        "$SEP" \
-        "$token_display $cache_display" \
-        "$SEP" \
-        "$session_display" \
-        "$SEP" \
-        "$tts_display"
-else
-    printf "%b %b %b %b %b %b %b %b %b %b %b\n" \
-        "$cwd_display" \
-        "$SEP" \
-        "$model_name" \
-        "$SEP" \
-        "$context_display" \
-        "$SEP" \
-        "$token_display $cache_display" \
-        "$SEP" \
-        "$session_display" \
-        "$SEP" \
-        "$tts_display"
-fi
+# Assemble status line - build array and join with separators (skip empty)
+parts=()
+parts+=("$cwd_display")
+[ -n "$project_display" ] && parts+=(" $project_display")
+parts+=(" $model_name")
+parts+=(" $context_display")
+parts+=("$token_display $cache_display $session_display")
+parts+=(" $tts_display")
+
+# Join parts with separator
+first=true
+for part in "${parts[@]}"; do
+    if [ -n "$part" ]; then
+        if $first; then
+            printf "%b" "$part"
+            first=false
+        else
+            printf "%b%b" "$SEP" "$part"
+        fi
+    fi
+done
+printf "\n"
