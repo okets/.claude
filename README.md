@@ -20,8 +20,33 @@
 [![Local](https://img.shields.io/badge/100%25-Local-green?logo=home)](https://github.com/okets/.claude)
 [![Zero Tokens](https://img.shields.io/badge/Zero-Tokens-orange?logo=coin)](https://github.com/okets/.claude)
 [![macOS](https://img.shields.io/badge/macOS-Compatible-black?logo=apple)](https://github.com/okets/.claude)
+[![Windows](https://img.shields.io/badge/Windows-Compatible-blue?logo=windows)](https://github.com/okets/.claude)
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+---
+
+## 🎉 NEW: Windows Support is Here! (December 30, 2025)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🪟  W I N D O W S   S U P P O R T   N O W   A V A I L A B L E  🪟           ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   smarter-claude now runs natively on Windows!                               ║
+║                                                                              ║
+║   ✅ Full TTS with Kokoro neural voices                                      ║
+║   ✅ Complete contextual memory system                                       ║
+║   ✅ All hooks and lifecycle tracking                                        ║
+║   ✅ Cross-platform audio playback                                           ║
+║   ✅ PowerShell installation scripts                                         ║
+║                                                                              ║
+║   See "Windows Installation" below to get started!                           ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
 
 ## 🎥 See It In Action
 
@@ -59,23 +84,56 @@ Simply tell Claude Code:
 
 **That's it!** Claude will read the repository, understand what to do, and install everything automatically.
 
-**OR**
+---
 
-### One-Line Install 
+### 🍎 macOS / Linux Installation
+
+#### One-Line Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-**OR**
-
-### Manual Installation
+#### Manual Installation
 
 ```bash
 git clone https://github.com/okets/.claude.git
 cd .claude && cp -r * ~/.claude/
 bash ~/.claude/setup.sh
 ```
+
+---
+
+### 🪟 Windows Installation
+
+#### One-Line Install (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/okets/.claude/main/install.ps1 | iex
+```
+
+#### Manual Installation (PowerShell)
+
+```powershell
+git clone https://github.com/okets/.claude.git
+cd .claude
+Copy-Item -Path * -Destination $env:USERPROFILE\.claude\ -Recurse -Force
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.claude\setup.ps1
+```
+
+#### Windows Requirements
+
+- **Python 3.8+** with pip
+- **Git** for cloning
+- **Claude Code CLI** installed
+
+The setup script will automatically:
+- Generate `settings.json` with correct Windows paths
+- Install required Python packages (pygame, psutil, kokoro-onnx)
+- Download Kokoro TTS neural voice models (~350MB)
+- Configure Windows-specific settings
+
+---
 
 > [!TIP]
 > Having issues? Just ask Claude Code: *"Help me fix my smarter-claude installation"*
@@ -151,15 +209,14 @@ Ask Claude after install:
 "Install https://github.com/okets/.claude"
 ```
 
-**OR One-Line Install:**
+**macOS/Linux:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/okets/.claude/main/install.sh | bash
 ```
 
-**OR Manual Install:**
-```bash
-git clone https://github.com/okets/.claude.git
-cd .claude && cp -r * ~/.claude/ && bash ~/.claude/setup.sh
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/okets/.claude/main/install.ps1 | iex
 ```
 
 *The Claude Code breakthrough you've been waiting for.* ⚡

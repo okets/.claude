@@ -2,6 +2,31 @@
 
 This file documents Claude's enhanced contextual memory capabilities through the **smarter-claude** system.
 
+## Cross-Platform Settings
+
+**`settings.json` is generated locally and never tracked in git.**
+
+The install scripts automatically generate the correct `settings.json` for your platform:
+- **macOS/Linux**: `setup.sh` generates `settings.json` with Unix paths (`~/.claude/`)
+- **Windows**: `setup.ps1` generates `settings.json` with Windows paths (`%USERPROFILE%\.claude\`)
+
+**This means:**
+- `settings.json` is in `.gitignore` - never commit it
+- Each platform gets the correct paths automatically
+- No manual copying or path fixes needed
+
+**If hooks fail with "Failed to spawn":**
+
+Re-run the setup script to regenerate settings.json:
+
+```bash
+# macOS/Linux
+bash ~/.claude/setup.sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.claude\setup.ps1
+```
+
 ## Project Context Check
 
 Before starting any task, run:

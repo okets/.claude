@@ -18,7 +18,7 @@ def is_kokoro_installed():
 
 def install_kokoro():
     """Install Kokoro TTS"""
-    print("🚀 First run - installing Kokoro TTS...")
+    print("[INSTALL] First run - installing Kokoro TTS...")
     
     # Create installer script inline
     installer_code = '''
@@ -32,18 +32,18 @@ install_dir.mkdir(parents=True, exist_ok=True)
 model_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx"
 voices_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
 
-print("📥 Downloading Kokoro model...")
+print("[DOWNLOAD] Downloading Kokoro model...")
 urllib.request.urlretrieve(model_url, install_dir / "kokoro-v1.0.onnx")
-print("📥 Downloading voices...")
+print("[DOWNLOAD] Downloading voices...")
 urllib.request.urlretrieve(voices_url, install_dir / "voices-v1.0.bin")
-print("✅ Kokoro installed!")
+print("[OK] Kokoro installed!")
 '''
     
     try:
         subprocess.run([sys.executable, "-c", installer_code], check=True)
         return True
     except Exception as e:
-        print(f"❌ Installation failed: {e}")
+        print(f"[ERROR] Installation failed: {e}")
         return False
 
 def speak_text(text, voice="am_echo", use_streaming=False):
@@ -53,7 +53,7 @@ def speak_text(text, voice="am_echo", use_streaming=False):
         try:
             from kokoro_onnx import Kokoro
         except ImportError:
-            print("📦 Installing kokoro-onnx...")
+            print("[INSTALL] Installing kokoro-onnx...")
             subprocess.run([sys.executable, "-m", "pip", "install", "--user", "kokoro-onnx", "soundfile"], check=True)
             from kokoro_onnx import Kokoro
         
@@ -75,7 +75,7 @@ def speak_text(text, voice="am_echo", use_streaming=False):
             return speak_standard(kokoro, text, voice)
         
     except Exception as e:
-        print(f"❌ Speech failed: {e}")
+        print(f"[ERROR] Speech failed: {e}")
         return False
 
 def speak_streaming(kokoro, text, voice):
@@ -84,7 +84,7 @@ def speak_streaming(kokoro, text, voice):
     import soundfile as sf
     import numpy as np
     
-    # Import lock functions
+    # Import lock functions and audio player
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
     try:
@@ -94,13 +94,20 @@ def speak_streaming(kokoro, text, voice):
         def check_tts_lock(): return False
         def create_tts_lock(duration): pass
         def remove_tts_lock(): pass
-    
+
+    try:
+        from audio_player import play_audio_file
+    except ImportError:
+        # Fallback to afplay on macOS if audio_player not available
+        def play_audio_file(path, timeout=30):
+            subprocess.run(["afplay", path], check=True, timeout=timeout)
+
     # Check if TTS is locked before starting stream
     if check_tts_lock():
         return True  # Skip streaming - another TTS is playing
-    
+
     async def stream_and_play():
-        print(f"🔄 Streaming with {voice}...")
+        print(f"[STREAM] Streaming with {voice}...")
         
         # Start timing from text input to first audio
         total_start = time.time()
@@ -127,7 +134,7 @@ def speak_streaming(kokoro, text, voice):
                 if first_audio_time is None:
                     first_audio_time = time.time()
                     time_to_first_audio = (first_audio_time - total_start) * 1000
-                    print(f"⚡ Time-to-first-audio: {time_to_first_audio:.0f}ms")
+                    print(f"[PERF] Time-to-first-audio: {time_to_first_audio:.0f}ms")
                 
                 # Handle different chunk formats
                 if isinstance(chunk, tuple) and len(chunk) >= 2:
@@ -142,7 +149,7 @@ def speak_streaming(kokoro, text, voice):
                     # Object with audio attribute
                     audio_chunks.append(chunk.audio)
                 else:
-                    print(f"🔍 Unknown chunk format: {type(chunk)}")
+                    print(f"[DEBUG] Unknown chunk format: {type(chunk)}")
                     continue
             
             # Combine all chunks and play
@@ -155,10 +162,10 @@ def speak_streaming(kokoro, text, voice):
                 create_tts_lock(duration)
                 
                 try:
-                    # Play the complete audio
+                    # Play the complete audio (cross-platform)
                     with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
                         sf.write(tmp_file.name, full_audio, sample_rate)
-                        subprocess.run(["afplay", tmp_file.name], check=True)
+                        play_audio_file(tmp_file.name)
                 finally:
                     # Always remove lock when playback completes
                     remove_tts_lock()
@@ -166,28 +173,28 @@ def speak_streaming(kokoro, text, voice):
                 total_time = time.time() - total_start
                 rtf = (total_time - (time_to_first_audio/1000)) / duration if duration > 0 else 0
                 
-                print(f"⚡ Total time: {total_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
-                print("✅ Streaming speech complete!")
+                print(f"[PERF] Total time: {total_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
+                print("[OK] Streaming speech complete!")
                 return True
             else:
-                print("❌ No audio data received from stream")
+                print("[ERROR] No audio data received from stream")
                 return False
                 
         except Exception as e:
-            print(f"❌ Streaming error: {e}")
+            print(f"[ERROR] Streaming error: {e}")
             return False
     
     # Run the async streaming
     try:
         return asyncio.run(stream_and_play())
     except Exception as e:
-        print(f"❌ Streaming failed: {e}")
-        print("🔄 Falling back to standard synthesis...")
+        print(f"[ERROR] Streaming failed: {e}")
+        print("[FALLBACK] Falling back to standard synthesis...")
         return speak_standard(kokoro, text, voice)
 
 def speak_standard(kokoro, text, voice):
     """Standard non-streaming TTS synthesis with lock coordination"""
-    # Import lock functions
+    # Import lock functions and audio player
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
     try:
@@ -197,12 +204,19 @@ def speak_standard(kokoro, text, voice):
         def check_tts_lock(): return False
         def create_tts_lock(duration): pass
         def remove_tts_lock(): pass
+
+    try:
+        from audio_player import play_audio_file
+    except ImportError:
+        # Fallback to afplay on macOS if audio_player not available
+        def play_audio_file(path, timeout=30):
+            subprocess.run(["afplay", path], check=True, timeout=timeout)
     
     # Check if TTS is locked before expensive generation
     if check_tts_lock():
         return True  # Skip generation - another TTS is playing
     
-    print(f"🗣️  Speaking with {voice}...")
+    print(f"[TTS] Speaking with {voice}...")
     synthesis_start = time.time()
     
     # Get voice-specific settings
@@ -221,22 +235,33 @@ def speak_standard(kokoro, text, voice):
     duration = len(samples) / sample_rate
     rtf = synthesis_time / duration if duration > 0 else 0
     
-    print(f"⚡ Synthesis: {synthesis_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
+    print(f"[PERF] Synthesis: {synthesis_time*1000:.0f}ms (RTF: {rtf:.2f}x)")
     
     # Create lock with exact duration before playback
     create_tts_lock(duration)
     
     try:
-        # Play the pre-generated audio
+        # Play the pre-generated audio (cross-platform)
         import soundfile as sf
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=True) as tmp_file:
-            sf.write(tmp_file.name, samples, sample_rate)
-            subprocess.run(["afplay", tmp_file.name], check=True)
+        import os
+        # On Windows, use delete=False and clean up manually to avoid file locking issues
+        tmp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        tmp_path = tmp_file.name
+        tmp_file.close()  # Close before writing on Windows
+        try:
+            sf.write(tmp_path, samples, sample_rate)
+            play_audio_file(tmp_path)
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
     finally:
         # Always remove lock when playback completes
         remove_tts_lock()
     
-    print("✅ Speech complete!")
+    print("[OK] Speech complete!")
     return True
 
 # Voice-specific settings for optimal TTS delivery
@@ -281,7 +306,7 @@ def main():
     }
     
     if len(sys.argv) < 2:
-        print("🎤 Kokoro TTS Voice Engine")
+        print("Kokoro TTS Voice Engine")
         print("Usage:")
         print("  Hook call:   uv run kokoro_voice.py <voice_id> <text>")
         print("  Direct call: uv run kokoro_voice.py '<text>' [--voice VOICE] [--stream]")
@@ -298,7 +323,7 @@ def main():
     if first_arg in voice_mapping:
         # Hook call: kokoro_voice.py kokoro-af_sarah "text"
         if len(sys.argv) < 3:
-            print("❌ Missing text for hook call")
+            print("[ERROR] Missing text for hook call")
             sys.exit(1)
         
         voice_id = first_arg

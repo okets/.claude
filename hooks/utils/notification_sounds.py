@@ -3,11 +3,19 @@
 Notification Sound Utilities for Smarter-Claude
 
 Provides simple sound notifications for Quiet Mode interaction level.
-Uses afplay on macOS for minimal, subtle audio feedback.
+Cross-platform audio playback (macOS afplay, Windows pygame/winsound, Linux aplay).
 """
 
 import subprocess
 from pathlib import Path
+
+# Import cross-platform audio player
+try:
+    from audio_player import play_audio_file
+except ImportError:
+    # Fallback to afplay on macOS if audio_player not available
+    def play_audio_file(path, timeout=30):
+        subprocess.run(["afplay", str(path)], capture_output=True, timeout=timeout)
 
 
 def get_sounds_dir() -> Path:
@@ -20,20 +28,12 @@ def play_notification_sound():
     try:
         sounds_dir = get_sounds_dir()
         notification_sound = sounds_dir / "notification.mp3"
-        
+
         if notification_sound.exists():
-            # Use afplay on macOS for minimal audio feedback
-            subprocess.run([
-                "afplay", str(notification_sound)
-            ], 
-            capture_output=True,  # Suppress output
-            timeout=5  # 5-second timeout
-            )
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        # Fail silently if sound playback encounters issues
-        pass
+            # Cross-platform audio playback
+            play_audio_file(str(notification_sound), timeout=5)
     except Exception:
-        # Fail silently for any other errors
+        # Fail silently if sound playback encounters issues
         pass
 
 
@@ -42,20 +42,12 @@ def play_completion_sound():
     try:
         sounds_dir = get_sounds_dir()
         completion_sound = sounds_dir / "decide.mp3"
-        
+
         if completion_sound.exists():
-            # Use afplay on macOS for minimal audio feedback
-            subprocess.run([
-                "afplay", str(completion_sound)
-            ], 
-            capture_output=True,  # Suppress output
-            timeout=5  # 5-second timeout
-            )
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        # Fail silently if sound playback encounters issues
-        pass
+            # Cross-platform audio playback
+            play_audio_file(str(completion_sound), timeout=5)
     except Exception:
-        # Fail silently for any other errors
+        # Fail silently if sound playback encounters issues
         pass
 
 
@@ -65,20 +57,12 @@ def play_subagent_completion_sound():
         sounds_dir = get_sounds_dir()
         # Use the same completion sound for subagent completion
         completion_sound = sounds_dir / "decide.mp3"
-        
+
         if completion_sound.exists():
-            # Use afplay on macOS for minimal audio feedback
-            subprocess.run([
-                "afplay", str(completion_sound)
-            ], 
-            capture_output=True,  # Suppress output
-            timeout=5  # 5-second timeout
-            )
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        # Fail silently if sound playback encounters issues
-        pass
+            # Cross-platform audio playback
+            play_audio_file(str(completion_sound), timeout=5)
     except Exception:
-        # Fail silently for any other errors
+        # Fail silently if sound playback encounters issues
         pass
 
 

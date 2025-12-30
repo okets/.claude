@@ -18,10 +18,12 @@ plans/
 # Ignore runtime files
 mcp.json
 stats-cache.json
+.credentials.json
 *.lock
 *.log
 *.jsonl
 settings.local.json
+settings.json
 tool_executions.jsonl
 
 # Ignore database files (contain session data)
