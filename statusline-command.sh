@@ -155,9 +155,60 @@ total_out=$(echo "$input" | jq '.context_window.total_output_tokens // 0')
 session_total=$((total_in + total_out))
 session_display="${FG_MAGENTA}Σ$(format_k $session_total)${RESET}"
 
+# 8. TTS Voice status (single compact segment based on interaction level)
+CLAUDE_DIR="$HOME/.claude"
+project_settings="$cwd/.claude/smarter-claude/smarter-claude.json"
+global_settings="$CLAUDE_DIR/hooks/utils/smarter-claude-global.json"
+
+# Colors for TTS display
+FG_ROYAL_BLUE="\033[38;5;69m"
+FG_LIGHT_ORANGE="\033[38;5;215m"
+
+tts_display="${FG_GRAY}TTS:off${RESET}"
+settings_file=""
+
+if [ -f "$project_settings" ]; then
+    settings_file="$project_settings"
+elif [ -f "$global_settings" ]; then
+    settings_file="$global_settings"
+fi
+
+if [ -n "$settings_file" ]; then
+    level=$(jq -r '.interaction_level // "concise"' "$settings_file" 2>/dev/null)
+    tts_engine=$(jq -r '.tts_engine // ""' "$settings_file" 2>/dev/null)
+
+    case "$level" in
+        silent)
+            tts_display="${FG_GRAY}TTS:off${RESET}"
+            ;;
+        quiet)
+            tts_display="${FG_LIGHT_ORANGE}TTS:beep${RESET}"
+            ;;
+        concise|verbose)
+            # Extract just the voice name
+            voice_name="on"
+            if [ -n "$tts_engine" ] && [ "$tts_engine" != "null" ]; then
+                if [[ "$tts_engine" =~ kokoro-[abm][fm]_(.+) ]]; then
+                    voice_name="${BASH_REMATCH[1]}"
+                elif [[ "$tts_engine" =~ macos-(.+) ]]; then
+                    voice_name="${BASH_REMATCH[1]}"
+                elif [[ "$tts_engine" =~ windows-(.+) ]]; then
+                    voice_name="${BASH_REMATCH[1]}"
+                else
+                    voice_name="$tts_engine"
+                fi
+            fi
+            tts_display="${FG_ROYAL_BLUE}TTS:${voice_name}${RESET}"
+            ;;
+        *)
+            tts_display="${FG_GRAY}TTS:off${RESET}"
+            ;;
+    esac
+fi
+
 # Assemble status line - only include project separator if project exists
 if [ -n "$project_display" ]; then
-    printf "%b%b %b %b %b %b %b %b %b %b\n" \
+    printf "%b%b %b %b %b %b %b %b %b %b %b %b\n" \
         "$cwd_display" \
         "$project_display" \
         "$SEP" \
@@ -167,9 +218,11 @@ if [ -n "$project_display" ]; then
         "$SEP" \
         "$token_display $cache_display" \
         "$SEP" \
-        "$session_display"
+        "$session_display" \
+        "$SEP" \
+        "$tts_display"
 else
-    printf "%b %b %b %b %b %b %b %b %b\n" \
+    printf "%b %b %b %b %b %b %b %b %b %b %b\n" \
         "$cwd_display" \
         "$SEP" \
         "$model_name" \
@@ -178,5 +231,7 @@ else
         "$SEP" \
         "$token_display $cache_display" \
         "$SEP" \
-        "$session_display"
+        "$session_display" \
+        "$SEP" \
+        "$tts_display"
 fi
