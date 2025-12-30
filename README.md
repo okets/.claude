@@ -20,7 +20,7 @@
 [![Local](https://img.shields.io/badge/100%25-Local-green?logo=home)](https://github.com/okets/.claude)
 [![Zero Tokens](https://img.shields.io/badge/Zero-Tokens-orange?logo=coin)](https://github.com/okets/.claude)
 [![macOS](https://img.shields.io/badge/macOS-Compatible-black?logo=apple)](https://github.com/okets/.claude)
-[![Windows](https://img.shields.io/badge/Windows-Compatible-blue?logo=windows)](https://github.com/okets/.claude)
+[![Windows](https://img.shields.io/badge/Windows-Compatible-0078D4?logo=windows&logoColor=white)](https://github.com/okets/.claude)
 [![Linux](https://img.shields.io/badge/Linux-Compatible-yellow?logo=linux)](https://github.com/okets/.claude)
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
