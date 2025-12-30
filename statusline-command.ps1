@@ -33,6 +33,7 @@ $SYM_DOWN = [char]0x2193         # ↓
 $SYM_UP = [char]0x2191           # ↑
 $SYM_LIGHTNING = [char]0x26A1    # ⚡
 $SYM_SIGMA = [char]0x03A3       # Σ
+$SYM_SPEAK = [char]::ConvertFromUtf32(0x1F5E3)  # 🗣️ (speaking head)
 
 # Separator (no trailing space - parts handle their own spacing)
 $SEP = "${FG_GRAY}${SYM_DIAMOND}${RESET}"
@@ -170,7 +171,7 @@ if (-not (Test-Path $settingsFile)) {
     $settingsFile = Join-Path $CLAUDE_DIR "hooks\utils\smarter-claude-global.json"
 }
 
-$tts_display = "${FG_GRAY}🗣️ off${RESET}"
+$tts_display = "${FG_GRAY}${SYM_SPEAK} off${RESET}"
 if (Test-Path $settingsFile) {
     try {
         $settings = Get-Content $settingsFile -Raw | ConvertFrom-Json
@@ -178,10 +179,10 @@ if (Test-Path $settingsFile) {
 
         switch ($level) {
             "silent" {
-                $tts_display = "${FG_GRAY}🗣️ off${RESET}"
+                $tts_display = "${FG_GRAY}${SYM_SPEAK} off${RESET}"
             }
             "quiet" {
-                $tts_display = "${FG_LIGHT_ORANGE}🗣️ beep${RESET}"
+                $tts_display = "${FG_LIGHT_ORANGE}${SYM_SPEAK} beep${RESET}"
             }
             { $_ -in "concise", "verbose" } {
                 $engine = $settings.tts_engine
@@ -197,14 +198,14 @@ if (Test-Path $settingsFile) {
                         $voice_name = $engine
                     }
                 }
-                $tts_display = "${FG_ROYAL_BLUE}🗣️ ${voice_name}${RESET}"
+                $tts_display = "${FG_ROYAL_BLUE}${SYM_SPEAK} ${voice_name}${RESET}"
             }
             default {
-                $tts_display = "${FG_GRAY}🗣️ off${RESET}"
+                $tts_display = "${FG_GRAY}${SYM_SPEAK} off${RESET}"
             }
         }
     } catch {
-        $tts_display = "${FG_GRAY}🗣️ ?${RESET}"
+        $tts_display = "${FG_GRAY}${SYM_SPEAK} ?${RESET}"
     }
 }
 $parts += " $tts_display"
