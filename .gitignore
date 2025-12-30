@@ -18,7 +18,6 @@ plans/
 # Ignore runtime files
 mcp.json
 stats-cache.json
-statusline-command.sh
 *.lock
 *.log
 *.jsonl
