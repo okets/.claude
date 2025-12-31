@@ -52,38 +52,38 @@ fi
 
 # 3. Short model name with version (model-specific colors) + hotkey hint
 model_id=$(echo "$input" | jq -r '.model.id')
-hotkey="${DIM}${FG_GRAY}(switch ⌥P)${RESET}"
+hotkey="${DIM}${FG_GRAY}(⌥P)${RESET}"
 case "$model_id" in
     *opus-4-5*|*opus-4.5*)
-        model_name="${BOLD}${FG_ORANGE}Opus 4.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus 4.5${RESET}${hotkey}"
         ;;
     *opus-4*|*opus4*)
-        model_name="${BOLD}${FG_ORANGE}Opus 4${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus 4${RESET}${hotkey}"
         ;;
     *opus*)
-        model_name="${BOLD}${FG_ORANGE}Opus${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_ORANGE}Opus${RESET}${hotkey}"
         ;;
     *sonnet-4-5*|*sonnet-4.5*)
-        model_name="${BOLD}${FG_BLUE}Sonnet 4.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 4.5${RESET}${hotkey}"
         ;;
     *sonnet-4*|*sonnet4*)
-        model_name="${BOLD}${FG_BLUE}Sonnet 4${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 4${RESET}${hotkey}"
         ;;
     *sonnet-3-5*|*sonnet-3.5*)
-        model_name="${BOLD}${FG_BLUE}Sonnet 3.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet 3.5${RESET}${hotkey}"
         ;;
     *sonnet*)
-        model_name="${BOLD}${FG_BLUE}Sonnet${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_BLUE}Sonnet${RESET}${hotkey}"
         ;;
     *haiku-3-5*|*haiku-3.5*)
-        model_name="${BOLD}${FG_GREEN}Haiku 3.5${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_GREEN}Haiku 3.5${RESET}${hotkey}"
         ;;
     *haiku*)
-        model_name="${BOLD}${FG_GREEN}Haiku${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_GREEN}Haiku${RESET}${hotkey}"
         ;;
     *)
         display_name=$(echo "$input" | jq -r '.model.display_name' | awk '{print $1}')
-        model_name="${BOLD}${FG_WHITE}${display_name}${RESET} ${hotkey}"
+        model_name="${BOLD}${FG_WHITE}${display_name}${RESET}${hotkey}"
         ;;
 esac
 
@@ -212,7 +212,7 @@ parts+=("$cwd_display")
 [ -n "$project_display" ] && parts+=(" $project_display")
 parts+=(" $model_name")
 parts+=(" $context_display")
-parts+=("$token_display $cache_display $session_display")
+parts+=(" $token_display $cache_display $session_display")
 parts+=(" $tts_display")
 
 # Join parts with separator

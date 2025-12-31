@@ -35,6 +35,16 @@ $SYM_LIGHTNING = [char]0x26A1    # ⚡
 $SYM_SIGMA = [char]0x03A3       # Σ
 $SYM_SPEAK = [char]::ConvertFromUtf32(0x1F5E3)  # 🗣️ (speaking head)
 
+# Superscript hotkey hint ⁽ᴬᴸᵀ⁺ᴾ⁾
+$SYM_SUP_LPAREN = [char]0x207D   # ⁽
+$SYM_SUP_A = [char]::ConvertFromUtf32(0x1D2C)   # ᴬ
+$SYM_SUP_L = [char]::ConvertFromUtf32(0x1D38)   # ᴸ
+$SYM_SUP_T = [char]::ConvertFromUtf32(0x1D40)   # ᵀ
+$SYM_SUP_PLUS = [char]0x207A    # ⁺
+$SYM_SUP_P = [char]::ConvertFromUtf32(0x1D3E)   # ᴾ
+$SYM_SUP_RPAREN = [char]0x207E  # ⁾
+$SYM_HOTKEY = "${SYM_SUP_LPAREN}${SYM_SUP_A}${SYM_SUP_L}${SYM_SUP_T}${SYM_SUP_PLUS}${SYM_SUP_P}${SYM_SUP_RPAREN}"
+
 # Separator (no trailing space - parts handle their own spacing)
 $SEP = "${FG_GRAY}${SYM_DIAMOND}${RESET}"
 
@@ -82,25 +92,25 @@ if ($data -and $data.workspace.current_dir) {
 # 2. Model name with symbol and hotkey hint
 if ($data -and $data.model.id) {
     $model_id = $data.model.id
-    $hotkey = "${DIM}${FG_GRAY}(Alt+P)${RESET}"
+    $hotkey = "${DIM}${FG_GRAY}${SYM_HOTKEY}${RESET}"
     $model_display = ""
 
     if ($model_id -match "opus-4-5|opus-4\.5") {
-        $model_display = "${BOLD}${FG_ORANGE}Opus 4.5${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus 4.5${RESET}${hotkey}"
     } elseif ($model_id -match "opus-4|opus4") {
-        $model_display = "${BOLD}${FG_ORANGE}Opus 4${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus 4${RESET}${hotkey}"
     } elseif ($model_id -match "opus") {
-        $model_display = "${BOLD}${FG_ORANGE}Opus${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_ORANGE}Opus${RESET}${hotkey}"
     } elseif ($model_id -match "sonnet-4-5|sonnet-4\.5") {
-        $model_display = "${BOLD}${FG_BLUE}Sonnet 4.5${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet 4.5${RESET}${hotkey}"
     } elseif ($model_id -match "sonnet-4|sonnet4") {
-        $model_display = "${BOLD}${FG_BLUE}Sonnet 4${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet 4${RESET}${hotkey}"
     } elseif ($model_id -match "sonnet") {
-        $model_display = "${BOLD}${FG_BLUE}Sonnet${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_BLUE}Sonnet${RESET}${hotkey}"
     } elseif ($model_id -match "haiku") {
-        $model_display = "${BOLD}${FG_GREEN}Haiku${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_GREEN}Haiku${RESET}${hotkey}"
     } else {
-        $model_display = "${BOLD}${FG_WHITE}$($data.model.display_name)${RESET} ${hotkey}"
+        $model_display = "${BOLD}${FG_WHITE}$($data.model.display_name)${RESET}${hotkey}"
     }
     $parts += " $model_display"
 }
@@ -159,7 +169,7 @@ if ($data -and $data.context_window.current_usage) {
             $token_part += " ${FG_MAGENTA}${SYM_SIGMA}${sess_fmt}${RESET}"
         }
     }
-    $parts += $token_part
+    $parts += " $token_part"
 }
 
 # 6. TTS status based on interaction level
